@@ -203,6 +203,9 @@ static const char* USAGE[] = {
     "        --headers=hpp,hxx\n"
     "        --headers=hpp\n"
     "\n"
+    "    timing\n"
+    "      Display elapsed processing time.\n"
+    "\n"
     "    cpplint.py supports per-directory configurations specified in CPPLINT.cfg\n"
     "    files. CPPLINT.cfg file can contain a number of key=value pairs.\n"
     "    Currently the following options are supported:\n"
@@ -393,6 +396,8 @@ std::vector<fs::path> Options::ParseArguments(int argc, char** argv,
             m_config_filename = ArgToValue(opt);
             if (StrContain(m_config_filename, "\\") || StrContain(m_config_filename, "/"))
                 PrintUsage("Config file name must not include directory components.");
+        } else if (opt == "--timing") {
+            m_timing = true;
         } else {
             PrintUsage("Invalid arguments. (" + opt + ")");
         }

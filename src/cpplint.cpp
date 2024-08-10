@@ -21,6 +21,9 @@ static void ProcessFile(const fs::path& filename,
 }
 
 int main(int argc, char** argv) {
+    // We don't use cstdio
+    std::ios_base::sync_with_stdio(false);
+
     std::chrono::system_clock::time_point  start, end;
     start = std::chrono::system_clock::now();
 
@@ -52,7 +55,7 @@ int main(int argc, char** argv) {
     if (cpplint_state.OutputFormat() == "junit")
         std::cerr << cpplint_state.FormatJUnitXML();
 
-    if (!cpplint_state.Quiet()) {
+    if (global_options.Timing()) {
         end = std::chrono::system_clock::now();
         std::chrono::milliseconds::rep elapsed_ms =
             std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count();

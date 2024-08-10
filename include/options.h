@@ -24,6 +24,7 @@ class Options {
     std::set<std::string> m_valid_extensions;
     std::set<std::string> m_hpp_headers;
     std::string m_include_order;
+    bool m_timing;
 
     // filters to apply when emitting error messages
     std::vector<std::string> m_filters;
@@ -54,7 +55,8 @@ class Options {
         m_valid_extensions({}),
         m_hpp_headers({}),
         m_include_order("default"),
-        m_filters(DEFAULT_FILTERS)
+        m_filters(DEFAULT_FILTERS),
+        m_timing(false)
         {}
 
     /*Parses the command line arguments.
@@ -88,4 +90,6 @@ class Options {
     // Checks if the error is filtered or not.
     bool ShouldPrintError(const std::string& category,
                           const std::string& filename, size_t linenum);
+
+    bool Timing() const { return m_timing; }
 };
