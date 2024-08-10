@@ -583,7 +583,7 @@ TEST_F(LinesLinterTest, TrailingSemicolonFail) {
         "switch (foo) {};",
         "Function() {};",
         "if (foo) {",
-        "    hellow;",
+        "    hello;",
         "};",
     });
     // You don't need a ; after a }
@@ -2767,7 +2767,7 @@ TEST_F(LinesLinterTest, NolintNextLine) {
 
 TEST_F(LinesLinterTest, LintCFile) {
     ProcessLines({
-        // This surpress readability/casting
+        // This suppress readability/casting
         "// LINT_C_FILE",
         "long a = (int64) 65;",
         "long a = (int64) 65;",
@@ -2778,7 +2778,7 @@ TEST_F(LinesLinterTest, LintCFile) {
 
 TEST_F(LinesLinterTest, VimMode) {
     ProcessLines({
-        // This surpress readability/casting
+        // This suppress readability/casting
         "// vim: sw=8 filetype=c ts=8",
         "long a = (int64) 65;",
         "long a = (int64) 65;",
@@ -2789,7 +2789,7 @@ TEST_F(LinesLinterTest, VimMode) {
 
 TEST_F(LinesLinterTest, VimMode2) {
     ProcessLines({
-        // This surpresses readability/casting
+        // This suppresses readability/casting
         "// vi: sw=8 filetype=c ts=8",
         "long a = (int64) 65;",
         "long a = (int64) 65;",
@@ -2800,7 +2800,7 @@ TEST_F(LinesLinterTest, VimMode2) {
 
 TEST_F(LinesLinterTest, LintKernelFile) {
     ProcessLines({
-        // This surpresses whitespace/tab
+        // This suppresses whitespace/tab
         "// LINT_KERNEL_FILE",
         "\t\tint a = 0;",
         "\t\tlong a = (int64) 65;",

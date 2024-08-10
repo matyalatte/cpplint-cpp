@@ -185,7 +185,7 @@ void FileLinter::ProcessGlobalSuppressions(const std::vector<std::string>& lines
     }
 }
 
-// Make a path relative from a repository path specified wth --repository
+// Make a path relative from a repository path specified with --repository
 fs::path FileLinter::GetRelativeFromRepository(const fs::path& file, const fs::path& repository) {
     fs::path project_dir = file.parent_path();
 
@@ -2600,7 +2600,7 @@ void FileLinter::CheckPrintf(const std::string& elided_line, size_t linenum) {
     const std::string& line = elided_line;
     bool match;
 
-    // We don't need to search two regex patters
+    // We don't need to search two regex patterns
     // if the line does not have printf.
     if (StrContain(line, "printf")) {
         // When snprintf is used, the second argument shouldn't be a literal.

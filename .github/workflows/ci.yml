@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'include/**'
+      - 'src/**'
+      - 'tests/**'
+      - 'subprojects/**'
+      - 'meson.build'
+      - 'meson_options.txt'
+      - '.github/workflows/ci.yml'
+      - '*.cfg'
+  workflow_dispatch:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip3 install cpplint codespell
+      - run: |
+          cpplint --recursive --quiet .
+          codespell
+
+  test:
+    name: test-${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, ubuntu-20.04, macos-14]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Meson for Windows
+        if: runner.os == 'Windows'
+        run: pip install meson
+
+      - name: Install Meson for Unix
+        if: runner.os != 'Windows'
+        run: pip3 install meson ninja
+
+      - name: Prepare MSVC
+        if: runner.os == 'Windows'
+        uses: bus1/cabuild/action/msdevshell@v1
+        with:
+          architecture: x64
+
+      - name: Build and Run Tests
+        run: |
+          meson setup build
+          meson compile -C build
+          meson test -C build -v

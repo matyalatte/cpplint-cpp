@@ -364,7 +364,7 @@ std::vector<fs::path> Options::ParseArguments(int argc, char** argv,
         } else if (opt.starts_with("--root=")) {
             m_root = ArgToValue(opt);
             if (!fs::exists(m_repository)) {
-                PrintUsage("Root direcotry does not exist.(" + opt + ")");
+                PrintUsage("Root directory does not exist.(" + opt + ")");
             }
         } else if (opt.starts_with("--repository=")) {
             m_repository = ArgToValue(opt);

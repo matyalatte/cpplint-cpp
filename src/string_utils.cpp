@@ -101,7 +101,7 @@ std::string StrStripChar(const std::string &str, char c) {
 }
 
 std::vector<std::string> StrSplit(const std::string& str, size_t max_size) {
-    std::vector<std::string> splitted = {};
+    std::vector<std::string> split = {};
     const char* str_p = &str[0];
     const char* start = str_p;
     // skip white spaces
@@ -121,12 +121,12 @@ std::vector<std::string> StrSplit(const std::string& str, size_t max_size) {
             str_p++;
         }
         const char* end = str_p;
-        splitted.emplace_back(str.substr(TO_SIZE(start - &str[0]), TO_SIZE(end - start)));
-        if (splitted.size() >= max_size) {
+        split.emplace_back(str.substr(TO_SIZE(start - &str[0]), TO_SIZE(end - start)));
+        if (split.size() >= max_size) {
             break;
         }
     }
-    return splitted;
+    return split;
 }
 
 std::vector<std::string> StrSplitBy(const std::string &str, const std::string &delimiter) {

@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-BSD_3--Clause-green.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
-A C++ reimplementation of [cpplint 1.7](https://github.com/cpplint/cpplint/commit/ab7335bcc734f6d21226631060888bfb77bbc9d7)
+C++ reimplementation of [cpplint 1.7](https://github.com/cpplint/cpplint/commit/ab7335bcc734f6d21226631060888bfb77bbc9d7)
 
 ## What is cpplint?
 
@@ -27,7 +27,7 @@ You can build `cpplint-cpp` with the following commands.
 meson setup build
 meson compile -C build
 meson test -C build
-./build/cpplint-cpp --version
+./build/cpplint-cpp --recursive .
 ```
 
 ### Release build

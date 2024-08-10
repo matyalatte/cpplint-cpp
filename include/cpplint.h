@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 
-// You can suppress warnigns about unused variables with this macro.
+// You can suppress warnings about unused variables with this macro.
 #define UNUSED(x) (void)(x)
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
