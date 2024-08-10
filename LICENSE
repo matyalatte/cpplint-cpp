@@ -1,6 +1,8 @@
 BSD 3-Clause License
 
-Copyright (c) 2024, matyalatte
+This reimplementation is Copyright (c) 2024, matyalatte.
+It is inspired by cpplint.py and its corresponding unit tests,
+which are Copyright (C) 2009 Google Inc.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:

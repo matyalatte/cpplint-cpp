@@ -1,0 +1,2 @@
+*                       text=auto
+tests/test_files/crlf.c -text

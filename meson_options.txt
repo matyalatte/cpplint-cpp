@@ -1,0 +1,3 @@
+option('tests', type : 'boolean', value : true, description : 'Build tests')
+option('macosx_version_min', type : 'string', value : '10.9',
+       description : 'Deployment target for macOS. This will affect to subprojects')

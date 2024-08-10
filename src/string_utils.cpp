@@ -1,0 +1,270 @@
+#include "string_utils.h"
+#include <ctype.h>
+#include <algorithm>
+#include <cstdint>
+#include <iostream>
+#include <map>
+#include <set>
+#include <string>
+#include <utility>
+#include <vector>
+#include "cpplint.h"
+
+#define IS_SPACE(c) isspace((uint8_t)(c))
+#define IS_DIGIT(c) isdigit((uint8_t)(c))
+
+std::string StrBeforeChar(const std::string& str, char c) {
+    const char* str_p = &str[0];
+    const char* start = str_p;
+    const char* end = &str[str.size()];
+    while (*str_p != '\0') {
+        if (*str_p == c) {
+            end = str_p;
+            break;
+        }
+        str_p++;
+    }
+    return str.substr(0, TO_SIZE(end - start));
+}
+
+std::string StrAfterChar(const std::string& str, char c) {
+    const char* str_p = &str[0];
+    while (*str_p != '\0') {
+        if (*str_p == c)
+            return str_p + 1;
+        str_p++;
+    }
+    return "";
+}
+
+std::string StrStrip(const std::string &str) {
+    if (str.empty()) return str;
+    const char* start = &str[0];
+    while (IS_SPACE(*start))
+        start++;
+    const char* end = &str[str.size() - 1];
+    while (start < end && IS_SPACE(*end))
+        end--;
+    return str.substr(TO_SIZE(start - &str[0]), TO_SIZE(end - start) + 1);
+}
+
+std::string StrRstrip(const std::string &str) {
+    if (str.empty()) return str;
+    const char* start = &str[0];
+    const char* end = &str[str.size() - 1];
+    while (start < end && IS_SPACE(*end))
+        end--;
+    return str.substr(0, TO_SIZE(end - start) + 1);
+}
+
+std::string StrRstrip(const std::string &str, char c) {
+    if (str.empty()) return str;
+    const char* start = &str[0];
+    const char* end = &str[str.size() - 1];
+    while (start < end && *end == c)
+        end--;
+    return str.substr(0, TO_SIZE(end - start) + 1);
+}
+
+std::string StrLstrip(const std::string &str) {
+    const char* start = &str[0];
+    while (IS_SPACE(*start))
+        start++;
+    const char* end = &str[str.size()];
+    return str.substr(TO_SIZE(start - &str[0]), TO_SIZE(end - start));
+}
+
+std::string StrLstrip(const std::string &str, char c) {
+    const char* start = &str[0];
+    while (*start == c)
+        start++;
+    const char* end = &str[str.size()];
+    return str.substr(TO_SIZE(start - &str[0]), TO_SIZE(end - start));
+}
+
+size_t StrLstripSize(const std::string &str) {
+    const char* start = &str[0];
+    while (IS_SPACE(*start))
+        start++;
+    return &str[0] + str.size() - start;
+}
+
+std::string StrStripChar(const std::string &str, char c) {
+    if (str.empty()) return str;
+    const char* start = &str[0];
+    while (*start == c)
+        start++;
+    const char* end = &str[str.size() - 1];
+    while (start < end && *end == c)
+        end--;
+    return str.substr(TO_SIZE(start - &str[0]), TO_SIZE(end - start) + 1);
+}
+
+std::vector<std::string> StrSplit(const std::string& str, size_t max_size) {
+    std::vector<std::string> splitted = {};
+    const char* str_p = &str[0];
+    const char* start = str_p;
+    // skip white spaces
+
+    while (*str_p != '\0') {
+        // skip white spaces
+        while (IS_SPACE(*str_p)) {
+            str_p++;
+        }
+        if (*str_p == '\0')
+            break;
+        start = str_p;
+        // find the next white space
+        while (!IS_SPACE(*str_p)) {
+            if (*str_p == '\0')
+                break;
+            str_p++;
+        }
+        const char* end = str_p;
+        splitted.emplace_back(str.substr(TO_SIZE(start - &str[0]), TO_SIZE(end - start)));
+        if (splitted.size() >= max_size) {
+            break;
+        }
+    }
+    return splitted;
+}
+
+std::vector<std::string> StrSplitBy(const std::string &str, const std::string &delimiter) {
+    std::string copied = str;
+    std::vector<std::string> tokens = {};
+    size_t pos = 0;
+    size_t delimiter_length = delimiter.size();
+
+    while ((pos = copied.find(delimiter)) != std::string::npos) {
+        tokens.emplace_back(copied.substr(0, pos));
+        copied = copied.substr(pos + delimiter_length);
+    }
+    tokens.emplace_back(copied);  // Add the remaining part of the string
+
+    return tokens;
+}
+
+std::set<std::string> ParseCommaSeparetedList(const std::string& str) {
+    std::set<std::string> set = {};
+    std::string copied = str;
+    char* str_p = &copied[0];
+    char* start = str_p;
+
+    while (*str_p != '\0') {
+        if (*str_p == ',') {
+            *str_p = '\0';
+            std::string item = StrStrip(start);
+            if (item.size() > 0)
+                set.insert(item);
+            start = str_p + 1;
+        }
+        str_p++;
+    }
+    std::string item = StrStrip(start);
+    if (item.size() > 0)
+        set.insert(item);
+    return set;
+}
+
+std::string SetToStr(const std::set<std::string>& set,
+                     const std::string& prefix,
+                     const std::string& delim,
+                     const std::string& suffix) {
+    if (set.empty())
+        return "";
+    std::string ret = prefix;
+    size_t i = 0;
+    for (const std::string& s : set) {
+        ret += s;
+        if (i < (set.size() - 1)) {
+            ret += delim;
+        }
+        i++;
+    }
+    ret += suffix;
+    return ret;
+}
+
+#define IS_DIGIT(c) isdigit((uint8_t)(c))
+
+// Converts a string to an int. returns -1 when failed to parse.
+size_t StrToUint(const std::string& val) noexcept {
+    const char* val_p = &val[0];
+    size_t ret = 0;
+    size_t old_ret = 0;
+    while (*val_p != '\0') {
+        if (!IS_DIGIT(*val_p))
+            return SIZE_T_NONE;
+        old_ret = ret;
+        ret = ret * 10 + TO_SIZE(*val_p - '0');
+        if (ret < old_ret)
+            return SIZE_T_NONE;
+        val_p++;
+    }
+    return ret;
+}
+
+int StrCount(const std::string& str, const std::string& target) noexcept {
+    int occurrences = 0;
+    std::string::size_type pos = 0;
+    while ((pos = str.find(target, pos)) != std::string::npos) {
+        ++occurrences;
+        pos += target.length();
+    }
+    return occurrences;
+}
+
+int StrCount(const std::string& str, char c) noexcept {
+    int occurrences = 0;
+    const char* str_p = &str[0];
+    while (*str_p != '\0') {
+        if (*str_p == c)
+            ++occurrences;
+        str_p++;
+    }
+    return occurrences;
+}
+
+std::string StrReplaceAll(const std::string &str, const std::string& from, const std::string& to) {
+    std::string copied = str;
+    size_t pos = 0;
+    size_t to_len = to.length();
+
+    if (from.empty())
+        return copied;
+
+    while ((pos = copied.find(from, pos)) != std::string::npos) {
+        copied.replace(pos, from.length(), to);
+        pos += to_len;
+    }
+    return copied;
+}
+
+std::string StrToLower(const std::string &str) {
+    std::string lower = str;
+    std::transform(lower.begin(), lower.end(), lower.begin(),
+        [](unsigned char c){ return std::tolower(c); });
+    return lower;
+}
+
+std::string StrToUpper(const std::string &str) {
+    std::string upper = str;
+    std::transform(upper.begin(), upper.end(), upper.begin(),
+        [](unsigned char c){ return std::toupper(c); });
+    return upper;
+}
+
+bool CheckFirstNonSpace(const std::string& str, char c) noexcept {
+    const char* start = &str[0];
+    while (IS_SPACE(*start))
+        start++;
+    return *start == c;
+}
+
+bool StrIsDigit(const std::string& str) noexcept {
+    if (str.empty()) return false;
+    const char* start = &str[0];
+    while (IS_DIGIT(*start))
+        start++;
+    return *start == '\0';
+}
