@@ -58,9 +58,14 @@ cpplint-cpp is a WIP project. Please note that the following features are not im
 - UNIX convention of using "-" for stdin.
 - Installation by package managers.
 
+## Submitting Feature Requests
+
+I do not accept feature requests related to cpplint specifications, including the addition of new rules.
+For such requests, please visit [the original cpplint project](https://github.com/cpplint/cpplint/issues) to submit your suggestions.
+
 ## Credits
 
-This software uses (or is inspired by) several open-source projects. We gratefully acknowledge the work of the following contributors:
+This software uses (or is inspired by) several open-source projects. I gratefully acknowledge the work of the following contributors:
 
 - **[Google Style Guides](https://github.com/google/styleguide)** by Google Inc.
   - Contribution: Original implementation of `cpplint.py`.
@@ -75,5 +80,5 @@ This software uses (or is inspired by) several open-source projects. We grateful
   - License: [PCRE2 LICENCE](https://github.com/PCRE2Project/pcre2/blob/master/LICENCE)
 
 - **[widechar_width.h](https://github.com/ridiculousfish/widecharwidth/blob/master/widechar_width.h)** by ridiculousfish
-  - Contribution: Getting the width of Unicode characters.
+  - Contribution: Reference tables for character widths.
   - License: [CC0 Public Domain](https://github.com/ridiculousfish/widecharwidth/blob/master/LICENSE)
