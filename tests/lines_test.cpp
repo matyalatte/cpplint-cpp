@@ -268,6 +268,7 @@ TEST_F(LinesLinterTest, NamespaceIndentationPass) {
         "    do { \\",
         "        something(); \\",
         "    } while (0)",
+        "    // comment"
         "}"
     });
     EXPECT_EQ(0, cpplint_state.ErrorCount());

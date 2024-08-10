@@ -405,6 +405,7 @@ std::vector<fs::path> Options::ParseArguments(int argc, char** argv,
         if (!fs::exists(p)) {
             // TODO(unknown): Maybe make this have an exit code of 2 after all is done
             cpplint_state->PrintError("Skipping input '" + p.string() + "': Path not found.");
+            continue;
         }
         filenames.emplace_back(fs::canonical(p).make_preferred());
     }

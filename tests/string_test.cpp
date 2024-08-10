@@ -20,6 +20,16 @@ TEST(StringTest, StrStrip) {
     EXPECT_STREQ("test", res.c_str());
 }
 
+TEST(StringTest, StrStripEmpty) {
+    std::string res = StrStrip("   ");
+    EXPECT_STREQ("", res.c_str());
+}
+
+TEST(StringTest, StrStripNostrip) {
+    std::string res = StrStrip("a");
+    EXPECT_STREQ("a", res.c_str());
+}
+
 TEST(StringTest, StrStripWithChar) {
     std::string res = StrStripChar("@@@test@@@", '@');
     EXPECT_STREQ("test", res.c_str());
@@ -30,6 +40,16 @@ TEST(StringTest, StrLstrip) {
     EXPECT_STREQ("test   ", res.c_str());
 }
 
+TEST(StringTest, StrLstripEmpty) {
+    std::string res = StrLstrip("   ");
+    EXPECT_STREQ("", res.c_str());
+}
+
+TEST(StringTest, StrLstripNostrip) {
+    std::string res = StrLstrip("a");
+    EXPECT_STREQ("a", res.c_str());
+}
+
 TEST(StringTest, StrLstripWithChar) {
     std::string res = StrLstrip("@@@test@@@", '@');
     EXPECT_STREQ("test@@@", res.c_str());
@@ -38,6 +58,16 @@ TEST(StringTest, StrLstripWithChar) {
 TEST(StringTest, StrRstrip) {
     std::string res = StrRstrip("   test   ");
     EXPECT_STREQ("   test", res.c_str());
+}
+
+TEST(StringTest, StrRstripEmpty) {
+    std::string res = StrRstrip("   ");
+    EXPECT_STREQ("", res.c_str());
+}
+
+TEST(StringTest, StrRstripNostrip) {
+    std::string res = StrRstrip("a");
+    EXPECT_STREQ("a", res.c_str());
 }
 
 TEST(StringTest, StrRstripWithChar) {

@@ -43,8 +43,10 @@ std::string StrStrip(const std::string &str) {
     while (IS_SPACE(*start))
         start++;
     const char* end = &str[str.size() - 1];
-    while (start < end && IS_SPACE(*end))
+    while (start <= end && IS_SPACE(*end))
         end--;
+    if (end < start)
+        return "";
     return str.substr(TO_SIZE(start - &str[0]), TO_SIZE(end - start) + 1);
 }
 
@@ -52,8 +54,10 @@ std::string StrRstrip(const std::string &str) {
     if (str.empty()) return str;
     const char* start = &str[0];
     const char* end = &str[str.size() - 1];
-    while (start < end && IS_SPACE(*end))
+    while (start <= end && IS_SPACE(*end))
         end--;
+    if (end < start)
+        return "";
     return str.substr(0, TO_SIZE(end - start) + 1);
 }
 
@@ -61,8 +65,10 @@ std::string StrRstrip(const std::string &str, char c) {
     if (str.empty()) return str;
     const char* start = &str[0];
     const char* end = &str[str.size() - 1];
-    while (start < end && *end == c)
+    while (start <= end && *end == c)
         end--;
+    if (end < start)
+        return "";
     return str.substr(0, TO_SIZE(end - start) + 1);
 }
 
