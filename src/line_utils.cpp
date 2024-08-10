@@ -269,3 +269,27 @@ const std::string& ReverseCloseExpression(const CleansedLines& clean_lines,
     *pos = INDEX_NONE;
     return clean_lines.GetElidedAt(*linenum);
 }
+
+bool IsCppString(const std::string& line) {
+    int count = 0;
+    bool escape = false;
+    bool inside_char = false;
+
+    for (const char c : line) {
+        if (escape) {
+            escape = false;
+            continue;
+        }
+        if (c == '\\') {
+            escape = true;
+        } else if (c == '"') {
+            if (!inside_char) {
+                ++count;
+            }
+        } else if (c == '\'') {
+            inside_char = !inside_char;
+        }
+    }
+
+    return count & 1;
+}

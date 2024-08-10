@@ -64,3 +64,9 @@ Args:
 */
 const std::string& ReverseCloseExpression(const CleansedLines& clean_lines,
                                           size_t* linenum, size_t* pos);
+
+/*
+    Does line terminate so, that the next symbol is in string constant.
+    This function does not consider single-line nor multi-line comments.
+*/
+bool IsCppString(const std::string& line);

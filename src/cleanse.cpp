@@ -5,6 +5,7 @@
 #include <utility>
 #include <vector>
 #include "cpplint_state.h"
+#include "line_utils.h"
 #include "regex_utils.h"
 #include "string_utils.h"
 
@@ -54,15 +55,6 @@ std::string GetReAltTokenReplacement() {
 
 const regex_code RE_PATTERN_INCLUDE = RegexCompile(R"(^\s*#\s*include\s*([<"])([^>"]*)[>"].*$)");
 const regex_code RE_PATTERN_ALT_TOKEN_REPLACEMENT = RegexCompile(GetReAltTokenReplacement());
-
-bool IsCppString(const std::string& line) {
-    std::string replaced;
-    replaced = StrReplaceAll(line, R"(\\)", "XX");  // after this, \\" does not match to \"
-    int count = StrCount(replaced, '"') -
-                StrCount(replaced, R"(\")") -
-                StrCount(replaced, R"('"')");
-    return count & 1;
-}
 
 std::vector<std::string>
 CleansedLines::CleanseRawStrings(const std::vector<std::string>& raw_lines) {
@@ -144,16 +136,9 @@ CleansedLines::CleanseRawStrings(const std::vector<std::string>& raw_lines) {
 // Match a single C style comment on the same line.
 #define RE_PATTERN_C_COMMENTS R"(/\*(?:[^*]|\*(?!/))*\*/)"
 
-std::string CleanseComments(const std::string& line, bool* is_comment,
-                            regex_match& re_result_temp) {
-    std::string new_line = line;
-    size_t commentpos = line.find("//");
-    if (commentpos != std::string::npos &&
-        !IsCppString(line.substr(0, commentpos))) {
-        new_line = StrRstrip(line.substr(0, commentpos));
-        *is_comment = true;
-    }
-
+static std::string CleanseMultilineComments(
+        const std::string& line, bool* is_comment,
+        regex_match& re_result_temp) {
     /* Matches multi-line C style comments.
     This RE is a little bit more complicated than one might expect, because we
     have to take care of space removals tools so we can handle comments inside
@@ -172,11 +157,26 @@ std::string CleanseComments(const std::string& line, bool* is_comment,
 
     // get rid of /* ... */
     bool replaced;
-    new_line = RegexReplace(RE_PATTERN_CLEANSE_LINE_C_COMMENTS, "", new_line,
+    std::string new_line;
+    new_line = RegexReplace(RE_PATTERN_CLEANSE_LINE_C_COMMENTS, "", line,
                             re_result_temp, &replaced);
     if (replaced)
         *is_comment = true;
     return new_line;
+}
+
+std::string CleanseComments(const std::string& line, bool* is_comment,
+                            regex_match& re_result_temp) {
+    size_t commentpos = line.find("//");
+    if (commentpos != std::string::npos) {
+        std::string new_line = line.substr(0, commentpos);
+        if (!IsCppString(new_line)) {
+            new_line = StrRstrip(new_line);
+            *is_comment = true;
+            return CleanseMultilineComments(new_line, is_comment, re_result_temp);
+        }
+    }
+    return CleanseMultilineComments(line, is_comment, re_result_temp);
 }
 
 std::string CleansedLines::ReplaceAlternateTokens(const std::string& line) {
