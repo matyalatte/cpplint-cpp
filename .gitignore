@@ -17,6 +17,8 @@ coverage-report
 
 # python
 *.py
+!benchmark.py
+python*
 
 # vscode
 .vscode

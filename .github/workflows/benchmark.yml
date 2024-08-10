@@ -1,0 +1,36 @@
+name: Benchmark
+
+on:
+  workflow_dispatch:
+
+env:
+  GTEST_VER: 1.14.0
+
+jobs:
+  benchmark:
+    name: benchmark
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Meson
+        run: pip3 install meson ninja
+
+      - name: Build cpplint-cpp
+        run: |
+          meson setup build --native-file=presets/release.ini
+          meson compile -C build
+
+      - name: Copy gooletest, Download cpplint.py
+        run: |
+          cp -r subprojects/googletest-${{ env.GTEST_VER }} ../
+          curl -O https://raw.githubusercontent.com/cpplint/cpplint/ab7335bcc734f6d21226631060888bfb77bbc9d7/cpplint.py
+
+      - name: Lint cpplint-cpp
+        run: python benchmark.py . --cpplint_cpp="./build/cpplint-cpp"
+
+      - name: Lint googletest
+        run: python benchmark.py ../googletest-${{ env.GTEST_VER }}/googletest --cpplint_cpp="./build/cpplint-cpp"
