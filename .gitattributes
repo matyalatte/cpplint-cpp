@@ -1,2 +1,3 @@
-*                       text=auto
-tests/test_files/crlf.c -text
+*                              text=auto
+tests/test_files/invalid_utf.c text eol=lf
+tests/test_files/crlf.c        -text
