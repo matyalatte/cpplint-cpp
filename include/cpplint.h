@@ -10,7 +10,7 @@
 #define TO_SIZE(n) static_cast<size_t>(n)
 
 // Use SIZE_MAX as an invalid value
-constexpr size_t SIZE_T_NONE = SIZE_MAX;
+constexpr size_t INDEX_NONE = SIZE_MAX;
 
 // Ensures that npos is SIZE_MAX
 static_assert(std::string::npos == SIZE_MAX,
@@ -21,4 +21,4 @@ static_assert(std::string::npos == -1,
               "std::string::npos should be equal to -1");
 
 // Maximum valid value
-constexpr size_t SIZE_T_MAX = SIZE_MAX - 1;
+constexpr size_t INDEX_MAX = SIZE_MAX - 1;

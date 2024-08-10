@@ -32,7 +32,7 @@ size_t StrLstripSize(const std::string &str);
 std::string StrStripChar(const std::string &str, char c);
 
 // Split string by white spaces. Empty strings are removed from return value.
-std::vector<std::string> StrSplit(const std::string& str, size_t max_size = SIZE_T_MAX);
+std::vector<std::string> StrSplit(const std::string& str, size_t max_size = INDEX_MAX);
 
 // Split string by another string.
 std::vector<std::string> StrSplitBy(const std::string &str, const std::string &delimiter);

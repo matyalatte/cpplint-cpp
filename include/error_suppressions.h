@@ -192,7 +192,7 @@ class ErrorSuppressions {
     }
 
     void AddGlobalSuppression(const std::string& category) {
-        AddSuppression(category, LineRange(0, SIZE_T_MAX));
+        AddSuppression(category, LineRange(0, INDEX_MAX));
     }
 
     void AddLineSuppression(const std::string& category, size_t linenum) {
@@ -200,7 +200,7 @@ class ErrorSuppressions {
     }
 
     void StartBlockSuppression(const std::string& category, size_t linenum) {
-        LineRange* open_block = AddSuppression(category, LineRange(linenum, SIZE_T_MAX));
+        LineRange* open_block = AddSuppression(category, LineRange(linenum, INDEX_MAX));
         m_open_block_suppressions.push(open_block);
     }
 
@@ -220,7 +220,7 @@ class ErrorSuppressions {
                 return open_block->GetBegin();
             m_open_block_suppressions.pop();
         }
-        return SIZE_T_NONE;
+        return INDEX_NONE;
     }
 
     bool IsSuppressed(const std::string& category, size_t linenum) {

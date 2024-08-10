@@ -48,7 +48,7 @@ size_t IncludeState::FindHeader(const std::string& header) {
                 return f.second;
         }
     }
-    return SIZE_T_NONE;
+    return INDEX_NONE;
 }
 
 void IncludeState::ResetSection(const std::string& directive) {
@@ -225,7 +225,7 @@ bool NestingState::InTemplateArgumentList(const CleansedLines& clean_lines,
         size_t end_line = linenum;
         size_t end_pos = pos - 1;
         CloseExpression(clean_lines, &end_line, &end_pos);
-        if (end_pos == SIZE_T_NONE) {
+        if (end_pos == INDEX_NONE) {
             // Not sure if template argument list or syntax error in file
             return false;
         }

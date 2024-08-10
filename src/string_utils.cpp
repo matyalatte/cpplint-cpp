@@ -194,11 +194,11 @@ size_t StrToUint(const std::string& val) noexcept {
     size_t old_ret = 0;
     while (*val_p != '\0') {
         if (!IS_DIGIT(*val_p))
-            return SIZE_T_NONE;
+            return INDEX_NONE;
         old_ret = ret;
         ret = ret * 10 + TO_SIZE(*val_p - '0');
         if (ret < old_ret)
-            return SIZE_T_NONE;
+            return INDEX_NONE;
         val_p++;
     }
     return ret;

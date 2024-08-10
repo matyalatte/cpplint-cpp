@@ -373,7 +373,7 @@ std::vector<fs::path> Options::ParseArguments(int argc, char** argv,
             }
         } else if (opt.starts_with("--linelength=")) {
             m_line_length = ArgToUintValue(opt);
-            if (m_line_length == SIZE_T_NONE)
+            if (m_line_length == INDEX_NONE)
                 PrintUsage("Line length should be an integer. (" + opt + ")");
         } else if (opt.starts_with("--exclude=")) {
             std::string val = ArgToValue(opt);
@@ -609,7 +609,7 @@ bool Options::ProcessConfigOverrides(const fs::path& filename,
                 }
             } else if (name == "linelength") {
                 size_t len = StrToUint(val);
-                if (len == SIZE_T_NONE) {
+                if (len == INDEX_NONE) {
                     cpplint_state->PrintError(
                         "Line length must be numeric in file (" + cfg_path.string() + ")\n");
                 } else {
@@ -687,14 +687,14 @@ static void ParseFilterSelector(const std::string& filter,
     if (colon_pos == std::string::npos) {
         category = filter;
         file = "";
-        *line = SIZE_T_NONE;
+        *line = INDEX_NONE;
         return;
     }
     category = filter.substr(0, colon_pos);
     size_t second_colon_pos = filter.find(':', colon_pos + 1);
     if (second_colon_pos == std::string::npos) {
         file = filter.substr(colon_pos + 1, std::string::npos);
-        *line = SIZE_T_NONE;
+        *line = INDEX_NONE;
         return;
     }
     file = filter.substr(colon_pos + 1, second_colon_pos - colon_pos);
@@ -714,7 +714,7 @@ bool Options::ShouldPrintError(const std::string& category,
         ParseFilterSelector(filter_without_dot, filter_cat, filter_file, &filter_line);
         bool category_match = category.starts_with(filter_cat);
         bool file_match = filter_file.empty() || filter_file == filename;
-        bool line_match = filter_line == linenum || filter_line == SIZE_T_NONE;
+        bool line_match = filter_line == linenum || filter_line == INDEX_NONE;
 
         if (one_filter.starts_with('-')) {
             if (category_match && file_match && line_match)

@@ -69,7 +69,7 @@ PCRE2_SIZE GetMatchStart(regex_match& match, int i) noexcept {
     int rc = pcre2_get_ovector_count(match.get());
 
     if (i >= rc || ovector[2 * i] == PCRE2_UNSET || ovector[2 * i + 1] == PCRE2_UNSET)
-        return SIZE_T_NONE;  // the group does not exist or is not matched
+        return INDEX_NONE;  // the group does not exist or is not matched
 
     PCRE2_SIZE start = ovector[2 * i];
     return start;
@@ -80,7 +80,7 @@ PCRE2_SIZE GetMatchEnd(regex_match& match, int i) noexcept {
     int rc = pcre2_get_ovector_count(match.get());
 
     if (i >= rc || ovector[2 * i] == PCRE2_UNSET || ovector[2 * i + 1] == PCRE2_UNSET)
-        return SIZE_T_NONE;  // the group does not exist or is not matched
+        return INDEX_NONE;  // the group does not exist or is not matched
 
     PCRE2_SIZE end = ovector[2 * i + 1];
     return end;
@@ -91,7 +91,7 @@ PCRE2_SIZE GetMatchSize(regex_match& match, int i) noexcept {
     int rc = pcre2_get_ovector_count(match.get());
 
     if (i >= rc || ovector[2 * i] == PCRE2_UNSET || ovector[2 * i + 1] == PCRE2_UNSET)
-        return SIZE_T_NONE;  // the group does not exist or is not matched
+        return INDEX_NONE;  // the group does not exist or is not matched
 
     PCRE2_SIZE start = ovector[2 * i];
     PCRE2_SIZE end = ovector[2 * i + 1];

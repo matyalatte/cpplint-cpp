@@ -34,7 +34,7 @@ void FindEndOfExpressionInLine(const std::string& line,
                 if (!stack->empty() && stack->top() == '<') {
                     stack->pop();
                     if (stack->empty()) {
-                        *startpos = SIZE_T_NONE;
+                        *startpos = INDEX_NONE;
                         *stack = {};
                         return;
                     }
@@ -54,7 +54,7 @@ void FindEndOfExpressionInLine(const std::string& line,
             while (!stack->empty() && stack->top() == '<')
                 stack->pop();
             if (stack->empty()) {
-                *startpos = SIZE_T_NONE;
+                *startpos = INDEX_NONE;
                 *stack = {};
                 return;
             }
@@ -69,7 +69,7 @@ void FindEndOfExpressionInLine(const std::string& line,
                 }
             } else {
                 // Mismatched parentheses
-                *startpos = SIZE_T_NONE;
+                *startpos = INDEX_NONE;
                 *stack = {};
                 return;
             }
@@ -100,7 +100,7 @@ void FindEndOfExpressionInLine(const std::string& line,
             while (!stack->empty() && stack->top() == '<')
                 stack->pop();
             if (stack->empty()) {
-                *startpos = SIZE_T_NONE;
+                *startpos = INDEX_NONE;
                 *stack = {};
                 return;
             }
@@ -108,7 +108,7 @@ void FindEndOfExpressionInLine(const std::string& line,
     }
 
     // Did not find end of expression or unbalanced parentheses on this line
-    *startpos = SIZE_T_NONE;
+    *startpos = INDEX_NONE;
     return;
 }
 
@@ -119,7 +119,7 @@ const std::string& CloseExpression(const CleansedLines& clean_lines, size_t* lin
     if (!(c == '(' || c == '{' || c == '[' || c == '<') ||
         (exp.starts_with("<<") || exp.starts_with("<="))) {
         *linenum = clean_lines.NumLines();
-        *pos = SIZE_T_NONE;
+        *pos = INDEX_NONE;
         return line;
     }
 
@@ -127,7 +127,7 @@ const std::string& CloseExpression(const CleansedLines& clean_lines, size_t* lin
     std::stack<char> stack = {};
     size_t end_pos = *pos;
     FindEndOfExpressionInLine(line, &end_pos, &stack);
-    if (end_pos != SIZE_T_NONE) {
+    if (end_pos != INDEX_NONE) {
         *pos = end_pos;
         return line;
     }
@@ -138,7 +138,7 @@ const std::string& CloseExpression(const CleansedLines& clean_lines, size_t* lin
         const std::string& l = clean_lines.GetElidedAt(*linenum);
         end_pos = 0;
         FindEndOfExpressionInLine(l, &end_pos, &stack);
-        if (end_pos != SIZE_T_NONE) {
+        if (end_pos != INDEX_NONE) {
             *pos = end_pos;
             return l;
         }
@@ -146,7 +146,7 @@ const std::string& CloseExpression(const CleansedLines& clean_lines, size_t* lin
 
     // Did not find end of expression before end of file, give up
     *linenum = clean_lines.NumLines() - 1;
-    *pos = SIZE_T_NONE;
+    *pos = INDEX_NONE;
     return clean_lines.GetElidedAt(*linenum);
 }
 
@@ -154,7 +154,7 @@ void FindStartOfExpressionInLine(const std::string& line,
                                  size_t* endpos,
                                  std::stack<char>* stack) {
     size_t i = *endpos;
-    while (i != SIZE_T_NONE) {
+    while (i != INDEX_NONE) {
         char c = line[i];
         if (c == ')' || c == ']' || c == '}') {
             // Found end of expression, push to expression stack
@@ -195,7 +195,7 @@ void FindStartOfExpressionInLine(const std::string& line,
             while (!stack->empty() && stack->top() == '>')
                 stack->pop();
             if (stack->empty()) {
-                *endpos = SIZE_T_NONE;
+                *endpos = INDEX_NONE;
                 *stack = {};
                 return;
             }
@@ -210,7 +210,7 @@ void FindStartOfExpressionInLine(const std::string& line,
                 }
             } else {
                 // Mismatched parentheses
-                *endpos = SIZE_T_NONE;
+                *endpos = INDEX_NONE;
                 *stack = {};
                 return;
             }
@@ -221,7 +221,7 @@ void FindStartOfExpressionInLine(const std::string& line,
             while (!stack->empty() && stack->top() == '>')
                 stack->pop();
             if (stack->empty()) {
-                *endpos = SIZE_T_NONE;
+                *endpos = INDEX_NONE;
                 *stack = {};
                 return;
             }
@@ -230,7 +230,7 @@ void FindStartOfExpressionInLine(const std::string& line,
         i--;
     }
 
-    *endpos = SIZE_T_NONE;
+    *endpos = INDEX_NONE;
 }
 
 const std::string& ReverseCloseExpression(const CleansedLines& clean_lines,
@@ -239,7 +239,7 @@ const std::string& ReverseCloseExpression(const CleansedLines& clean_lines,
     char c = line[*pos];
     if (!(c == ')' || c == '}' || c == ']' || c == '>')) {
         *linenum = 0;
-        *pos = SIZE_T_NONE;
+        *pos = INDEX_NONE;
         return line;
     }
 
@@ -247,7 +247,7 @@ const std::string& ReverseCloseExpression(const CleansedLines& clean_lines,
     size_t start_pos = *pos;
     std::stack<char> stack = {};
     FindStartOfExpressionInLine(line, &start_pos, &stack);
-    if (start_pos != SIZE_T_NONE) {
+    if (start_pos != INDEX_NONE) {
         *pos = start_pos;
         return line;
     }
@@ -258,7 +258,7 @@ const std::string& ReverseCloseExpression(const CleansedLines& clean_lines,
         const std::string& l = clean_lines.GetElidedAt(*linenum);
         start_pos = l.size() - 1;
         FindStartOfExpressionInLine(l, &start_pos, &stack);
-        if (start_pos != SIZE_T_NONE) {
+        if (start_pos != INDEX_NONE) {
             *pos = start_pos;
             return l;
         }
@@ -266,6 +266,6 @@ const std::string& ReverseCloseExpression(const CleansedLines& clean_lines,
 
     // Did not find start of expression before beginning of file, give up
     *linenum = 0;
-    *pos = SIZE_T_NONE;
+    *pos = INDEX_NONE;
     return clean_lines.GetElidedAt(*linenum);
 }

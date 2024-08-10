@@ -604,7 +604,7 @@ void FileLinter::CheckBraces(const CleansedLines& clean_lines,
             size_t endlinenum = linenum;
             size_t endpos = pos;
             const std::string& endline = CloseExpression(clean_lines, &endlinenum, &endpos);
-            bool brace_on_right = endpos != SIZE_T_NONE &&
+            bool brace_on_right = endpos != INDEX_NONE &&
                                   endline.substr(endpos).find('{') != std::string::npos;
             if (brace_on_left != brace_on_right) {    // must be brace after if
                 Error(linenum, "readability/braces", 5,
@@ -677,7 +677,7 @@ void FileLinter::CheckBraces(const CleansedLines& clean_lines,
         }
 
         std::string endline_sub = "";
-        if (endpos != SIZE_T_NONE) {
+        if (endpos != INDEX_NONE) {
             endline_sub = endline.substr(endpos);
         }
         // Check for an opening brace, either directly after the if or on the next
@@ -687,7 +687,7 @@ void FileLinter::CheckBraces(const CleansedLines& clean_lines,
               endlinenum < (clean_lines.NumLines() - 1) &&
               CheckFirstNonSpace(clean_lines.GetElidedAt(endlinenum + 1), '{'))) {
             while (endlinenum < clean_lines.NumLines() &&
-                   !(endpos != SIZE_T_NONE &&
+                   !(endpos != INDEX_NONE &&
                      StrContain(clean_lines.GetElidedAt(endlinenum).substr(endpos), ';'))) {
                 endlinenum += 1;
                 endpos = 0;
@@ -810,7 +810,7 @@ void FileLinter::CheckTrailingSemicolon(const CleansedLines& clean_lines,
         size_t endpos = GetMatchStr(m_re_result, line, 1).rfind(')');
         const std::string& opening_parenthesis = ReverseCloseExpression(
                 clean_lines, &endlinenum, &endpos);
-        if (endpos != SIZE_T_NONE) {
+        if (endpos != INDEX_NONE) {
             std::string line_prefix = opening_parenthesis.substr(0, endpos);
             static const regex_code RE_PATTERN_MACRO =
                 RegexCompile(R"(\b([A-Z_][A-Z0-9_]*)\s*$)");
@@ -870,7 +870,7 @@ void FileLinter::CheckTrailingSemicolon(const CleansedLines& clean_lines,
         size_t endpos = GetMatchEnd(m_re_result, 1);
         const std::string& endline = CloseExpression(
                                         clean_lines, &endlinenum, &endpos);
-        if (endpos != SIZE_T_NONE && CheckFirstNonSpace(endline.substr(endpos), ';')) {
+        if (endpos != INDEX_NONE && CheckFirstNonSpace(endline.substr(endpos), ';')) {
             // Current {} pair is eligible for semicolon check, and we have found
             // the redundant semicolon, output warning here.
             //
@@ -907,7 +907,7 @@ void FileLinter::CheckEmptyBlockBody(const CleansedLines& clean_lines,
         // Output warning if what follows the condition expression is a semicolon.
         // No warning for all other cases, including whitespace or newline, since we
         // have a separate check for semicolons preceded by whitespace.
-        if (end_pos != SIZE_T_NONE && end_line.substr(end_pos).starts_with(';')) {
+        if (end_pos != INDEX_NONE && end_line.substr(end_pos).starts_with(';')) {
             if (GetMatchStr(m_re_result, line, 1) == "if") {
                 Error(end_linenum, "whitespace/empty_conditional_body", 5,
                       "Empty conditional bodies should use {}");
@@ -919,7 +919,7 @@ void FileLinter::CheckEmptyBlockBody(const CleansedLines& clean_lines,
 
         // Check for if statements that have completely empty bodies (no comments)
         // and no else clauses.
-        if (end_pos != SIZE_T_NONE && GetMatchStr(m_re_result, line, 1) == "if") {
+        if (end_pos != INDEX_NONE && GetMatchStr(m_re_result, line, 1) == "if") {
             // Find the position of the opening { for the if statement.
             // Return without logging an error if it has no brackets.
             size_t opening_linenum = end_linenum;
@@ -952,7 +952,7 @@ void FileLinter::CheckEmptyBlockBody(const CleansedLines& clean_lines,
             size_t closing_pos = opening_pos;
             const std::string& closing_line = CloseExpression(
                                                 clean_lines, &closing_linenum, &closing_pos);
-            if (closing_pos == SIZE_T_NONE)
+            if (closing_pos == INDEX_NONE)
                 return;
 
             // Now construct the body of the conditional. This consists of the portion
@@ -1114,13 +1114,13 @@ void FileLinter::CheckSpacing(const CleansedLines& clean_lines,
             if (RegexMatch(R"( {6}\w)", prev_line, m_re_result_temp)) {  // Initializer list?
                 // We are looking for the opening column of initializer list, which
                 // should be indented 4 spaces to cause 6 space indentation afterwards.
-                size_t search_position = (linenum >= 2) ? linenum - 2 : SIZE_T_NONE;
-                while (search_position != SIZE_T_NONE &&
+                size_t search_position = (linenum >= 2) ? linenum - 2 : INDEX_NONE;
+                while (search_position != INDEX_NONE &&
                        RegexMatch(R"( {6}\w)", clean_lines.GetElidedAt(search_position),
                                   m_re_result_temp)) {
                     search_position--;
                 }
-                exception = (search_position != SIZE_T_NONE &&
+                exception = (search_position != INDEX_NONE &&
                              clean_lines.GetElidedAt(search_position).starts_with("    :"));
             } else {
                 // Search for the function arguments or an initializer list.  We use a
@@ -1280,7 +1280,7 @@ void FileLinter::CheckOperatorSpacing(const CleansedLines& clean_lines,
             size_t end_linenum = linenum;
             size_t end_pos = GetMatchSize(m_re_result, 1);
             CloseExpression(clean_lines, &end_linenum, &end_pos);
-            if (end_pos == SIZE_T_NONE) {
+            if (end_pos == INDEX_NONE) {
                 Error(linenum, "whitespace/operators", 3,
                       "Missing spaces around <");
             }
@@ -1296,7 +1296,7 @@ void FileLinter::CheckOperatorSpacing(const CleansedLines& clean_lines,
             size_t start_linenum = linenum;
             size_t start_pos = GetMatchSize(m_re_result, 1);
             ReverseCloseExpression(clean_lines, &start_linenum, &start_pos);
-            if (start_pos == SIZE_T_NONE) {
+            if (start_pos == INDEX_NONE) {
                 Error(linenum, "whitespace/operators", 3,
                       "Missing spaces around >");
             }
@@ -1478,8 +1478,8 @@ static bool IsType(const CleansedLines& clean_lines,
     std::string typename_pattern = R"(\b(?:typename|class|struct)\s+)" + RegexEscape(token) +
                                             R"(\b)";
     size_t block_index = (nesting_state->GetStackSize() >= 1) ?
-                            nesting_state->GetStackSize() - 1: SIZE_T_NONE;
-    while (block_index != SIZE_T_NONE) {
+                            nesting_state->GetStackSize() - 1: INDEX_NONE;
+    while (block_index != INDEX_NONE) {
         if (nesting_state->GetStackAt(block_index)->IsNamespaceInfo())
             return false;
 
@@ -1495,12 +1495,12 @@ static bool IsType(const CleansedLines& clean_lines,
         if (block_index > 0)
             next_block_start = nesting_state->GetStackAt(block_index - 1)->StartingLinenum();
         size_t first_line = last_line;
-        while (first_line >= next_block_start && first_line != SIZE_T_NONE) {
+        while (first_line >= next_block_start && first_line != INDEX_NONE) {
             if (clean_lines.GetElidedAt(first_line).find("template") != std::string::npos)
                 break;
             first_line--;
         }
-        if (first_line < next_block_start || first_line == SIZE_T_NONE) {
+        if (first_line < next_block_start || first_line == INDEX_NONE) {
             // Didn't find any "template" keyword before reaching the next block,
             // there are probably no template things to check for this block
             block_index--;
@@ -1567,7 +1567,7 @@ void FileLinter::CheckBracesSpacing(const CleansedLines& clean_lines,
         size_t endpos = GetMatchEnd(m_re_result, 1);
         const std::string& endline = CloseExpression(clean_lines, &endlinenum, &endpos);
         std::string trailing_text = "";
-        if (endpos != SIZE_T_NONE)
+        if (endpos != INDEX_NONE)
             trailing_text = endline.substr(endpos);
         for (size_t offset = endlinenum + 1;
              offset < MIN(endlinenum + 3, clean_lines.NumLines() - 1); offset++) {
@@ -1783,7 +1783,7 @@ static std::string FindCheckMacro(const std::string& line, size_t* start_pos,
             return macro;
         }
     }
-    *start_pos = SIZE_T_NONE;
+    *start_pos = INDEX_NONE;
     return "";
 }
 
@@ -1799,7 +1799,7 @@ void FileLinter::CheckCheck(const CleansedLines& clean_lines,
     size_t end_line = linenum;
     size_t end_pos = start_pos;
     const std::string& last_line = CloseExpression(clean_lines, &end_line, &end_pos);
-    if (end_pos == SIZE_T_NONE)
+    if (end_pos == INDEX_NONE)
         return;
 
     // If the check macro is followed by something other than a
@@ -1838,7 +1838,7 @@ void FileLinter::CheckCheck(const CleansedLines& clean_lines,
                 std::stack<char> stack = {};
                 stack.push('(');
                 FindEndOfExpressionInLine(expression, &end, &stack);
-                if (end == SIZE_T_NONE)
+                if (end == INDEX_NONE)
                     return;  // Unmatched parenthesis
                 lhs += "(" + expression.substr(0, end);
                 expression = expression.substr(end);
@@ -2266,7 +2266,7 @@ void FileLinter::CheckIncludeLine(const CleansedLines& clean_lines, size_t linen
         std::string include = GetMatchStr(m_re_result, line, 2);
         bool used_angle_brackets = StrIsChar(GetMatchStr(m_re_result, line, 1), '<');
         size_t duplicate_line = include_state->FindHeader(include);
-        if (duplicate_line != SIZE_T_NONE) {
+        if (duplicate_line != INDEX_NONE) {
             Error(linenum, "build/include", 4,
                   "\"" + include + "\" already included at " +
                   m_filename + ":" + std::to_string(duplicate_line));
@@ -2509,11 +2509,11 @@ void FileLinter::CheckCasts(const CleansedLines& clean_lines,
             size_t y1 = linenum;
             size_t x1 = GetMatchSize(m_re_result, 1);
             CloseExpression(clean_lines, &y1, &x1);
-            if (x1 != SIZE_T_NONE && clean_lines.GetElidedAt(y1)[x1] == '(') {
+            if (x1 != INDEX_NONE && clean_lines.GetElidedAt(y1)[x1] == '(') {
                 size_t y2 = y1;
                 size_t x2 = x1;
                 CloseExpression(clean_lines, &y2, &x2);
-                if (x2 != SIZE_T_NONE) {
+                if (x2 != INDEX_NONE) {
                     std::string extended_line = clean_lines.GetElidedAt(y2).substr(x2);
                     if (y2 < clean_lines.NumLines() - 1)
                         extended_line += clean_lines.GetElidedAt(y2 + 1);
@@ -2921,7 +2921,7 @@ static bool IsDerivedFunction(const CleansedLines& clean_lines, size_t linenum,
             size_t pos = i;
             const std::string& close_line = CloseExpression(
                                         clean_lines, &pos, &closing_paren);
-            return (closing_paren != SIZE_T_NONE &&
+            return (closing_paren != INDEX_NONE &&
                     RegexSearch(RE_PATTERN_OVERRIDE, close_line.substr(closing_paren), re_result));
         }
         if (i == min_line) break;
@@ -3090,7 +3090,7 @@ void FileLinter::CheckForNonConstReference(const CleansedLines& clean_lines,
                 size_t startline = linenum;
                 size_t startpos = endpos;
                 ReverseCloseExpression(clean_lines, &startline, &startpos);
-                if (startpos != SIZE_T_NONE && startline < linenum) {
+                if (startpos != INDEX_NONE && startline < linenum) {
                     // Found the matching < on an earlier line, collect all
                     // pieces up to current line.
                     line = "";
@@ -3445,8 +3445,8 @@ void FileLinter::CheckRedundantVirtual(const CleansedLines& clean_lines,
     // TODO(unknown): doesn't work if there are virtual functions with
     // decltype() or other things that use parentheses, but csearch suggests
     // that this is rare.
-    size_t end_col = SIZE_T_NONE;
-    size_t end_line = SIZE_T_NONE;
+    size_t end_col = INDEX_NONE;
+    size_t end_line = INDEX_NONE;
     size_t start_col = GetMatchSize(m_re_result, 2);
     for (size_t start_line = linenum;
             start_line < MIN(linenum + 3, clean_lines.NumLines()); start_line++) {
@@ -3462,7 +3462,7 @@ void FileLinter::CheckRedundantVirtual(const CleansedLines& clean_lines,
         start_col = 0;
     }
 
-    if (end_col == SIZE_T_NONE)
+    if (end_col == INDEX_NONE)
         return;  // Couldn't find end of parameter list, give up
 
     // Look for "override" or "final" after the parameter list
@@ -3766,7 +3766,7 @@ void FileLinter::CheckForIncludeWhatYouUse(const CleansedLines& clean_lines,
         size_t linenum = required_header_unstripped.second.first;
         const std::string& func = required_header_unstripped.second.second;
         const std::string& header = required_header_unstripped.first;
-        if (include_state->FindHeader(header) == SIZE_T_NONE) {
+        if (include_state->FindHeader(header) == INDEX_NONE) {
             Error(linenum,
                   "build/include_what_you_use", 4,
                   "Add #include <" + header + "> for " + func);
@@ -3785,7 +3785,7 @@ void FileLinter::CheckHeaderFileIncluded(IncludeState* include_state) {
         return;
 
     std::string message = "";
-    size_t first_include = SIZE_T_NONE;
+    size_t first_include = INDEX_NONE;
     std::string basefilename =
         basename.substr(0, basename.size() - m_file_extension.size());
     for (const std::string& ext : m_header_extensions) {
@@ -3806,7 +3806,7 @@ void FileLinter::CheckHeaderFileIncluded(IncludeState* include_state) {
                 if (StrContain(headername, include_text) ||
                     StrContain(include_text, headername))
                     return;
-                if (first_include == SIZE_T_NONE)
+                if (first_include == INDEX_NONE)
                     first_include = f.second;
             }
         }
@@ -3815,7 +3815,7 @@ void FileLinter::CheckHeaderFileIncluded(IncludeState* include_state) {
         if (include_uses_unix_dir_aliases)
             message += ". Relative paths like . and .. are not allowed.";
     }
-    if (first_include == SIZE_T_NONE)
+    if (first_include == INDEX_NONE)
         first_include = 0;
 
     if (!message.empty())
