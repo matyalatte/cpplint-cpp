@@ -13,9 +13,6 @@ namespace fs = std::filesystem;
 static void ProcessFile(const fs::path& filename,
                         CppLintState* cpplint_state,
                         const Options& global_options) {
-    // Note:
-    //    CppLintState::Error() is the only function that uses mutex lock.
-    //    All other functions in ProcessFile() should be thread-safe without mutex locks.
     FileLinter linter(filename, cpplint_state, global_options);
     linter.ProcessFile();
 }

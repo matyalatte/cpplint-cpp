@@ -43,7 +43,7 @@ meson compile -C build
 
 Basically, `cpplint-cpp` uses the same algorithm as `cpplint.py`, but some changes have been made to reduce processing time.
 
-- Added concurrent file processing. (Removed mutable variables from the global scope.)
+- Added concurrent file processing.
 - Removed some redundant function calls.
 - Combined some regex patterns.
 - And other minor changes for optimization...

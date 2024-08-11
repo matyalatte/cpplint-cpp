@@ -4,6 +4,8 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <map>
+#include <mutex>
 #include <set>
 #include <string>
 #include <utility>
@@ -551,6 +553,86 @@ std::set<std::string> Options::GetNonHeaderExtensions() const {
     return difference;
 }
 
+class CfgFile {
+ public:
+    bool noparent;
+    std::vector<std::string> filters;
+    std::vector<std::string> exclude_files;
+    size_t line_length;
+    std::set<std::string> extensions;
+    std::set<std::string> headers;
+    std::string include_order;
+
+    CfgFile() :
+        noparent(false),
+        filters({}),
+        exclude_files({}),
+        line_length(INDEX_NONE),
+        extensions({}),
+        headers({}),
+        include_order("")
+        {}
+
+    bool ReadFile(const fs::path& file, CppLintState* cpplint_state) {
+        std::ifstream cfg_file(file);
+        if (!cfg_file) {
+            cpplint_state->PrintError("Skipping config file '" +
+                                      file.string() +
+                                      "': Can't open for reading\n");
+            return false;
+        }
+
+        // read .cfg file
+        std::string line;
+        while (std::getline(cfg_file, line)) {
+            line = StrStrip(StrBeforeChar(line, '#'));
+            if (line.size() == 0) continue;
+            std::string name = StrStrip(StrBeforeChar(line, '='));
+            std::string val = StrStrip(StrAfterChar(line, '='));
+            if (name == "set noparent") {
+                noparent = true;
+            } else if (name == "filter") {
+                filters.emplace_back(std::move(val));
+            } else if (name == "exclude_files") {
+                exclude_files.emplace_back(std::move(val));
+            } else if (name == "linelength") {
+                line_length = StrToUint(val);
+                if (line_length == INDEX_NONE) {
+                    cpplint_state->PrintError(
+                        "Line length must be numeric in file (" + file.string() + ")\n");
+                }
+            } else if (name == "extensions") {
+                extensions = ParseCommaSeparetedList(val);
+            } else if (name == "headers") {
+                headers = ParseCommaSeparetedList(val);
+            } else if (name == "includeorder") {
+                include_order = val;
+            } else {
+                cpplint_state->PrintError(
+                    "Invalid configuration option (" + name +
+                    ") in file " + file.string() + "\n");
+            }
+        }
+        return true;
+    }
+};
+
+std::map<fs::path, CfgFile> g_cfg_map = {};
+std::mutex g_cfg_mtx;
+
+CfgFile* GetCfg(const fs::path& file, CppLintState* cpplint_state) {
+    std::lock_guard<std::mutex> lock(g_cfg_mtx);
+
+    auto it = g_cfg_map.find(file);
+    if (it != g_cfg_map.end())
+        return &it->second;
+
+    auto new_it = g_cfg_map.emplace(file, CfgFile());
+    CfgFile* cfg = &(new_it.first->second);
+    cfg->ReadFile(file, cpplint_state);
+    return cfg;
+}
+
 bool Options::ProcessConfigOverrides(const fs::path& filename,
                                      CppLintState* cpplint_state) {
     fs::path path = filename;
@@ -565,32 +647,26 @@ bool Options::ProcessConfigOverrides(const fs::path& filename,
         if (!fs::is_regular_file(cfg_path))
             continue;
 
-        std::ifstream cfg_file(cfg_path);
-        if (!cfg_file) {
-            cpplint_state->PrintError("Skipping config file '" +
-                                      cfg_path.string() +
-                                      "': Can't open for reading\n");
+        CfgFile* cfg = GetCfg(cfg_path, cpplint_state);
+        if (!cfg)
             break;
-        }
 
-        // read .cfg file
-        std::string line;
-        while (std::getline(cfg_file, line)) {
-            line = StrStrip(StrBeforeChar(line, '#'));
-            if (line.size() == 0) continue;
-            std::string name = StrStrip(StrBeforeChar(line, '='));
-            std::string val = StrStrip(StrAfterChar(line, '='));
-            if (name == "set noparent") {
-                noparent = true;
-            } else if (name == "filter") {
-                bool added = AddFilters(val);
+        noparent = cfg->noparent;
+
+        if (!cfg->filters.empty()) {
+            for (const std::string& filter : cfg->filters) {
+                bool added = AddFilters(filter);
                 if (!added) {
                     cpplint_state->PrintError(
                         cfg_path.string() +
                         ": Every filter must start with + or -"
-                        " (" + val + ")");
+                        " (" + filter + ")");
                 }
-            } else if (name == "exclude_files") {
+            }
+        }
+
+        if (!cfg->exclude_files.empty()) {
+            for (const std::string& exclude : cfg->exclude_files) {
                 // When matching exclude_files pattern, use the base_name of
                 // the current file name or the directory name we are processing.
                 // For example, if we are checking for lint errors in /foo/bar/baz.cc
@@ -600,7 +676,7 @@ bool Options::ProcessConfigOverrides(const fs::path& filename,
                 std::string base_name = basename.string();
                 if (base_name == "")
                     continue;
-                bool match = RegexMatch(val, base_name);
+                bool match = RegexMatch(exclude, base_name);
                 if (match) {
                     if (cpplint_state->Quiet()) {
                         // Suppress "Ignoring file" warning when using --quiet.
@@ -610,29 +686,23 @@ bool Options::ProcessConfigOverrides(const fs::path& filename,
                         "Ignoring \"" + filename.string() + "\": file excluded by \"" +
                         cfg_path.string() + "\". " +
                         "File path component " + base_name + " matches "
-                        "pattern " + val + "\n");
+                        "pattern " + exclude + "\n");
                     return false;
                 }
-            } else if (name == "linelength") {
-                size_t len = StrToUint(val);
-                if (len == INDEX_NONE) {
-                    cpplint_state->PrintError(
-                        "Line length must be numeric in file (" + cfg_path.string() + ")\n");
-                } else {
-                    m_line_length = len;
-                }
-            } else if (name == "extensions") {
-                ProcessExtensionsOption(val);
-            } else if (name == "headers") {
-                ProcessHppHeadersOption(val);
-            } else if (name == "includeorder") {
-                ProcessIncludeOrderOption(val);
-            } else {
-                cpplint_state->PrintError(
-                    "Invalid configuration option (" + name +
-                    ") in file " + cfg_path.string() + "\n");
             }
         }
+
+        if (cfg->line_length != INDEX_NONE)
+            m_line_length = cfg->line_length;
+
+        if (!cfg->extensions.empty())
+            m_valid_extensions = cfg->extensions;
+
+        if (!cfg->headers.empty())
+            m_hpp_headers = cfg->headers;
+
+        if (!cfg->include_order.empty())
+            ProcessIncludeOrderOption(cfg->include_order);
     }
 
     return true;
