@@ -274,10 +274,10 @@ std::string FileLinter::GetHeaderGuardCPPVariable() {
     // flymake.
     static const regex_code RE_PATTERN_FLYMAKE =
         RegexCompile(R"(_flymake\.h$)");
-    new_filename = RegexReplace(RE_PATTERN_FLYMAKE, ".h", new_filename, m_re_result_temp);
+    RegexReplace(RE_PATTERN_FLYMAKE, ".h", &new_filename, m_re_result_temp);
     static const regex_code RE_PATTERN_FLYMAKE2 =
         RegexCompile(R"(/\.flymake/([^/]*)$)");
-    new_filename = RegexReplace(RE_PATTERN_FLYMAKE2, R"(/\1)", new_filename, m_re_result_temp);
+    RegexReplace(RE_PATTERN_FLYMAKE2, R"(/\1)", &new_filename, m_re_result_temp);
 
     // Replace 'c++' with 'cpp'.
     new_filename = StrReplaceAll(new_filename, "C++", "cpp");
@@ -286,10 +286,11 @@ std::string FileLinter::GetHeaderGuardCPPVariable() {
     fs::path file = new_filename;
     fs::path file_from_repo = GetRelativeFromRepository(file, m_options.Repository());
     fs::path file_path_from_root = GetRelativeFromSubdir(file_from_repo, m_options.Root());
-    cppvar = StrToUpper(
-                RegexReplace("[^a-zA-Z0-9]", "_",
-                             file_path_from_root.string(),
-                             m_re_result_temp)) + "_";
+    std::string root_str = file_path_from_root.string();
+    static const regex_code RE_PATTERN_ALPHANUM =
+        RegexCompile("[^a-zA-Z0-9]");
+    RegexReplace(RE_PATTERN_ALPHANUM, "_", &root_str, m_re_result_temp);
+    cppvar = StrToUpper(root_str) + "_";
     return cppvar;
 }
 
@@ -3163,12 +3164,14 @@ void FileLinter::CheckForNonConstReference(const CleansedLines& clean_lines,
         }
     }
 
-    std::string decls = RegexReplace("{[^}]*}", " ", line);  // exclude function body
+    static const regex_code RE_PATTERN_FUNC_BODY =
+        RegexCompile("{[^}]*}");
+    RegexReplace(RE_PATTERN_FUNC_BODY, " ", &line, m_re_result_temp);  // exclude function body
     while (true) {
-        bool matched = RegexSearch(RE_REF_PARAM, decls, m_re_result);
+        bool matched = RegexSearch(RE_REF_PARAM, line, m_re_result);
         if (!matched)
             break;
-        std::string parameter = GetMatchStr(m_re_result, decls, 1);
+        std::string parameter = GetMatchStr(m_re_result, line, 1);
         if (!RegexMatch(RE_CONST_REF_PARAM, parameter, m_re_result_temp) &&
             !RegexMatch(RE_REF_STREAM_PARAM, parameter, m_re_result_temp)) {
             Error(linenum, "runtime/references", 2,
@@ -3176,7 +3179,7 @@ void FileLinter::CheckForNonConstReference(const CleansedLines& clean_lines,
                   "If so, make const or use a pointer: " +
                   RegexReplace(" *<", "<", parameter, m_re_result_temp));
         }
-        decls = decls.substr(GetMatchEnd(m_re_result, 0));
+        line = line.substr(GetMatchEnd(m_re_result, 0));
     }
 }
 

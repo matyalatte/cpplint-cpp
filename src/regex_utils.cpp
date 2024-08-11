@@ -130,10 +130,12 @@ bool RegexSearch(const regex_code& regex, const std::string& str,
     return pcre2_match_priv(regex.get(), str, result.get(), flags);
 }
 
-static std::string regex_replace_base(const pcre2_code* re, const std::string& fmt,
-                                      const std::string& str,
-                                      pcre2_match_data* match_data,
-                                      bool* replaced, bool replace_all) {
+static std::vector<char> regex_replace_base(
+        const pcre2_code* re, const std::string& fmt,
+        const std::string& str,
+        pcre2_match_data* match_data,
+        PCRE2_SIZE* outlength,
+        bool* replaced, bool replace_all) {
     *replaced = false;
     uint32_t options = PCRE2_SUBSTITUTE_EXTENDED;
     if (replace_all)
@@ -141,7 +143,7 @@ static std::string regex_replace_base(const pcre2_code* re, const std::string& f
 
     // Calculate the output size
     size_t buffer_size = MAX(str.length(), 1);  // Starting buffer size
-    PCRE2_SIZE outlength = buffer_size;
+    *outlength = buffer_size;
     std::vector<char> buffer(buffer_size);
     while (true) {
         int result = pcre2_substitute(
@@ -155,29 +157,60 @@ static std::string regex_replace_base(const pcre2_code* re, const std::string& f
             reinterpret_cast<PCRE2_SPTR>(fmt.c_str()),
             fmt.length(),
             reinterpret_cast<PCRE2_UCHAR8*>(buffer.data()),
-            &outlength);
+            outlength);
 
         if (result == PCRE2_ERROR_NOMEMORY) {
             // Increase buffer size and try again
             buffer_size *= 2;
             buffer.resize(buffer_size);
-            outlength = buffer_size;
+            *outlength = buffer_size;
         } else if (result >= 0) {
             // Success
             *replaced = result > 0;
-            return std::string(buffer.data(), outlength);
+            break;
         } else {
             // Substitution failed, return original string
-            return str;
+            break;
         }
     }
+    return buffer;
+}
+
+inline std::string regex_replace_base(const pcre2_code* re, const std::string& fmt,
+                                      const std::string& str,
+                                      pcre2_match_data* match_data,
+                                      bool* replaced, bool replace_all) {
+    PCRE2_SIZE outlength = 0;
+    std::vector<char> buffer =
+        regex_replace_base(re, fmt, str, match_data, &outlength, replaced, replace_all);
+    if (*replaced)
+        return std::string(buffer.data(), outlength);
+    else
+        return str;
 }
 
 inline std::string regex_replace_base(const pcre2_code* re, const std::string& fmt,
                                       const std::string& str,
                                       pcre2_match_data* match_data, bool replace_all) {
     bool replaced;
-    return regex_replace_base(re, fmt, str, match_data, &replaced, replace_all);
+    PCRE2_SIZE outlength = 0;
+    std::vector<char> buffer =
+        regex_replace_base(re, fmt, str, match_data, &outlength, &replaced, replace_all);
+    if (replaced)
+        return std::string(buffer.data(), outlength);
+    else
+        return str;
+}
+
+inline void regex_replace_base(const pcre2_code* re, const std::string& fmt,
+                               std::string* str,
+                               pcre2_match_data* match_data, bool replace_all) {
+    bool replaced;
+    PCRE2_SIZE outlength = 0;
+    std::vector<char> buffer =
+        regex_replace_base(re, fmt, *str, match_data, &outlength, &replaced, replace_all);
+    if (replaced)
+        *str = std::string(buffer.data(), outlength);
 }
 
 std::string RegexReplace(const std::string& regex, const std::string& fmt,
@@ -219,6 +252,13 @@ std::string RegexReplace(const regex_code& regex, const std::string& fmt,
                          regex_match& match_data, bool* replaced, bool replace_all) {
     if (!regex) return str;
     return regex_replace_base(regex.get(), fmt, str, match_data.get(), replaced, replace_all);
+}
+
+void RegexReplace(const regex_code& regex, const std::string& fmt,
+                  std::string* str,
+                  regex_match& match_data, bool replace_all) {
+    if (!regex) return;
+    regex_replace_base(regex.get(), fmt, str, match_data.get(), replace_all);
 }
 
 std::string RegexEscape(const std::string& str) {
