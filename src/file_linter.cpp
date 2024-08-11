@@ -119,52 +119,73 @@ void FileLinter::CheckForNewlineAtEOF(const std::vector<std::string>& lines) {
     */
 }
 
+static void ProcessCategoryNextline(FileLinter* linter,
+                                    ErrorSuppressions* error_suppressions,
+                                    const std::string& category, size_t linenum) {
+    UNUSED(linter);
+    error_suppressions->AddLineSuppression(category, linenum + 1);
+}
+
+static void ProcessCategoryBegin(FileLinter* linter,
+                                 ErrorSuppressions* error_suppressions,
+                                 const std::string& category, size_t linenum) {
+    UNUSED(linter);
+    error_suppressions->StartBlockSuppression(category, linenum);
+}
+
+static void ProcessCategoryEnd(FileLinter* linter,
+                               ErrorSuppressions* error_suppressions,
+                               const std::string& category, size_t linenum) {
+    if (!category.empty()) {
+        linter->Error(linenum, "readability/nolint", 5,
+                      "NOLINT categories not supported in block END: " + category);
+    }
+    error_suppressions->EndBlockSuppression(linenum);
+}
+
+static void ProcessCategoryDefault(FileLinter* linter,
+                                   ErrorSuppressions* error_suppressions,
+                                   const std::string& category, size_t linenum) {
+    UNUSED(linter);
+    error_suppressions->AddLineSuppression(category, linenum);
+}
+
 void FileLinter::ParseNolintSuppressions(const std::string& raw_line,
                                          size_t linenum) {
-    // TODO(matyalatte): Use this function only for comment lines
-    bool match = RegexSearch(R"(\bNOLINT(NEXTLINE|BEGIN|END)?\b(\([^)]+\))?)", raw_line, m_re_result);
+    static const regex_code RE_PATTERN_NOLINT =
+        RegexCompile(R"(\bNOLINT(NEXTLINE|BEGIN|END)?\b(\([^)]+\))?)");
+    bool match = RegexSearch(RE_PATTERN_NOLINT, raw_line, m_re_result);
     if (match) {
         std::string no_lint_type = GetMatchStr(m_re_result, raw_line, 1);
-        std::function<void(const std::string&, size_t)> ProcessCategory;
+        std::function<void(FileLinter*, ErrorSuppressions*,
+                           const std::string&, size_t)> ProcessCategory;
 
         if (no_lint_type == "NEXTLINE") {
-            ProcessCategory = [this](const std::string& category, size_t linenum) {
-                m_error_suppressions.AddLineSuppression(category, linenum + 1);
-            };
+            ProcessCategory = ProcessCategoryNextline;
         } else if (no_lint_type == "BEGIN") {
             if (m_error_suppressions.HasOpenBlock()) {
                 Error(linenum, "readability/nolint", 5,
                       "NONLINT block already defined on line " +
                       m_error_suppressions.GetOpenBlockStart());
             }
-            ProcessCategory = [this](const std::string& category, size_t linenum) {
-                m_error_suppressions.StartBlockSuppression(category, linenum);
-            };
+            ProcessCategory = ProcessCategoryBegin;
         } else if (no_lint_type == "END") {
             if (!m_error_suppressions.HasOpenBlock())
                 Error(linenum, "readability/nolint", 5, "Not in a NOLINT block");
 
-            ProcessCategory = [this](const std::string& category, size_t linenum) {
-                if (!category.empty()) {
-                    Error(linenum, "readability/nolint", 5,
-                          "NOLINT categories not supported in block END: " + category);
-                }
-                m_error_suppressions.EndBlockSuppression(linenum);
-            };
+            ProcessCategory = ProcessCategoryEnd;
         } else {
-            ProcessCategory = [this](const std::string& category, size_t linenum) {
-                m_error_suppressions.AddLineSuppression(category, linenum);
-            };
+            ProcessCategory = ProcessCategoryDefault;
         }
         std::string categories = GetMatchStr(m_re_result, raw_line, 2);
         if (categories.empty() || categories == "(*)") {  // => "suppress all"
-            ProcessCategory("", linenum);
+            ProcessCategory(this, &m_error_suppressions, "", linenum);
         } else if (categories.starts_with('(') && categories.ends_with(')')) {
             categories = categories.substr(1, categories.size() - 2);
             std::set<std::string> category_set = ParseCommaSeparetedList(categories);
             for (const std::string& category : category_set) {
                 if (InErrorCategories(category)) {
-                    ProcessCategory(category, linenum);
+                    ProcessCategory(this, &m_error_suppressions, category, linenum);
                 } else if (!InOtherNolintCategories(category) &&
                            !InLegacyErrorCategories(category)) {
                     Error(linenum, "readability/nolint", 5,
