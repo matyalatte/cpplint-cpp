@@ -50,13 +50,17 @@ static size_t FindNextMultiLineCommentStart(const std::vector<std::string>& line
                                             size_t lineix) {
     // Find the beginning marker for a multiline comment.
     while (lineix < lines.size()) {
-        std::string stripped = StrStrip(lines[lineix]);
-        if (stripped.starts_with("/*")) {
-            // Only return this marker if the comment goes beyond this line
-            if (stripped.find("*/", 2) == std::string::npos)
-                return lineix;
+        const std::string& line = lines[lineix];
+        size_t pos = GetFirstNonSpacePos(line);
+        if (pos != INDEX_NONE) {
+            const char* lp = &line[pos];
+            if (*lp == '/' && *(lp + 1) == '*') {
+                // Only return this marker if the comment goes beyond this line
+                if (line.find("*/", pos + 2) == std::string::npos)
+                    return lineix;
+            }
         }
-        lineix += 1;
+        lineix++;
     }
     return lines.size();
 }
@@ -324,21 +328,23 @@ void FileLinter::CheckForHeaderGuard(const CleansedLines& clean_lines) {
     size_t endif_linenum = 0;
     size_t linenum = 0;
     for (const std::string& line : raw_lines) {
-        std::vector<std::string> linesplit = StrSplit(line, 2);
-        if (linesplit.size() >= 2) {
-            // find the first occurrence of #ifndef and #define, save arg
-            if (ifndef.empty() && linesplit[0] == "#ifndef") {
-                // set ifndef to the header guard presented on the #ifndef line.
-                ifndef = linesplit[1];
-                ifndef_linenum = linenum;
+        if (line[0] == '#') {
+            std::vector<std::string> linesplit = StrSplit(line, 2);
+            if (linesplit.size() >= 2) {
+                // find the first occurrence of #ifndef and #define, save arg
+                if (ifndef.empty() && linesplit[0] == "#ifndef") {
+                    // set ifndef to the header guard presented on the #ifndef line.
+                    ifndef = linesplit[1];
+                    ifndef_linenum = linenum;
+                }
+                if (define.empty() && linesplit[0] == "#define")
+                    define = linesplit[1];
             }
-            if (define.empty() && linesplit[0] == "#define")
-                define = linesplit[1];
-        }
-        // find the last occurrence of #endif, save entire line
-        if (line.starts_with("#endif")) {
-            endif = line;
-            endif_linenum = linenum;
+            // find the last occurrence of #endif, save entire line
+            if (line.starts_with("#endif")) {
+                endif = line;
+                endif_linenum = linenum;
+            }
         }
         linenum++;
     }
@@ -435,7 +441,7 @@ void FileLinter::CheckForNamespaceIndentation(const CleansedLines& clean_lines,
         !nesting_state->IsBlockInNameSpace(is_forward_declaration))
         return;
 
-    if (RegexMatch(R"(^\s+)", elided_line, m_re_result_temp)) {
+    if (IS_SPACE(elided_line[0])) {
         Error(linenum, "whitespace/indent_namespace", 4,
               "Do not indent within a namespace.");
     }
@@ -510,22 +516,47 @@ void FileLinter::CheckForMultilineCommentsAndStrings(const std::string& elided_l
                                                      size_t linenum) {
     // Remove all \\ (escaped backslashes) from the line. They are OK, and the
     // second (escaped) slash may trigger later \" detection erroneously.
-    std::string line = StrReplaceAll(elided_line, "\\\\", "");
+    bool escaped = false;
+    char last_char = ' ';
+    int quote_count = 0;  // counter for "
+    int comment_open_count = 0;  // counter for /*
+    int comment_close_count = 0;  // counter for */
 
-    if (StrCount(line, "/*") > StrCount(line, "*/")) {
-        Error(linenum, "readability/multiline_comment", 5,
-                              "Complex multi-line /*...*/-style comment found. "
-                              "Lint may give bogus warnings.  "
-                              "Consider replacing these with //-style comments, "
-                              "with #if 0...#endif, "
-                              "or with more clearly structured multi-line comments.");
+    for (const char c : elided_line) {
+        if (escaped) {
+            escaped = false;
+            last_char = ' ';
+            continue;
+        }
+        if (c == '\\') {
+            escaped = true;
+            continue;
+        } else if (c == '"') {
+            quote_count++;
+        } else if (c == '*') {
+            if (last_char == '/')
+                comment_open_count++;
+        } else if (c == '/') {
+            if (last_char == '*')
+                comment_close_count++;
+        }
+        last_char = c;
     }
 
-    if ((StrCount(line, '"') - StrCount(line, "\\\"")) % 2) {
+    if (comment_open_count > comment_close_count) {
+        Error(linenum, "readability/multiline_comment", 5,
+              "Complex multi-line /*...*/-style comment found. "
+              "Lint may give bogus warnings.  "
+              "Consider replacing these with //-style comments, "
+              "with #if 0...#endif, "
+              "or with more clearly structured multi-line comments.");
+    }
+
+    if (quote_count % 2) {
         Error(linenum, "readability/multiline_string", 5,
-                              "Multi-line string (\"...\") found.  This lint script doesn\'t "
-                              "do well with such strings, and may give bogus warnings.  "
-                              "Use C++11 raw strings or concatenation instead.");
+              "Multi-line string (\"...\") found.  This lint script doesn\'t "
+              "do well with such strings, and may give bogus warnings.  "
+              "Use C++11 raw strings or concatenation instead.");
     }
 }
 
@@ -582,7 +613,7 @@ void FileLinter::CheckBraces(const CleansedLines& clean_lines,
         const std::string& prevline = GetPreviousNonBlankLine(clean_lines, linenum);
         if (RegexMatch(R"(\s*}\s*$)", prevline, m_re_result_temp)) {
             Error(linenum, "whitespace/newline", 4,
-                                  "An else should appear on the same line as the preceding }");
+                  "An else should appear on the same line as the preceding }");
         } else {
             last_wrong = false;
         }
@@ -1624,7 +1655,6 @@ void FileLinter::CheckSpacingForFunctionCall(const std::string& elided_line, siz
     // expressions - which have their own, more liberal conventions - we
     // first see if we should be looking inside such an expression for a
     // function call, to which we can apply more strict standards.
-    std::string fncall = line;    // if there's no control flow construct, look at whole line
     static const regex_code RE_PATTERN_IF_FOR_SWITCH =
         RegexCompile(R"(\b(if|for|switch)\s*\((.*)\)\s*{)");
     static const regex_code RE_PATTERN_WHILE =
@@ -1633,15 +1663,23 @@ void FileLinter::CheckSpacingForFunctionCall(const std::string& elided_line, siz
     bool match = RegexSearch(RE_PATTERN_IF_FOR_SWITCH, line, m_re_result);
     if (match) {
         // look inside the parens for function calls
-        fncall = GetMatchStr(m_re_result, line, 2);
+        CheckSpacingForFunctionCallBase(
+            line, GetMatchStr(m_re_result, line, 2), linenum);
     } else {
         match = RegexSearch(RE_PATTERN_WHILE, line, m_re_result);
         if (match) {
             // look inside the parens for function calls
-            fncall = GetMatchStr(m_re_result, line, 1);
+            CheckSpacingForFunctionCallBase(
+                line, GetMatchStr(m_re_result, line, 1), linenum);
+            return;
         }
     }
 
+    CheckSpacingForFunctionCallBase(line, line, linenum);
+}
+
+void FileLinter::CheckSpacingForFunctionCallBase(const std::string& line,
+                                                 const std::string& fncall, size_t linenum) {
     // Except in if/for/while/switch, there should never be space
     // immediately inside parens (eg "f( 3, 4 )").  We make an exception
     // for nested parens ( (a+b) + c ).  Likewise, there should never be
@@ -2728,7 +2766,10 @@ void FileLinter::CheckLanguage(const CleansedLines& clean_lines,
 
     // Perform other checks now that we are sure that this is not an include line
     CheckCasts(clean_lines, elided_line, linenum);
-    if (linenum + 1 < clean_lines.NumLines() && !RegexSearch("[;({]", line, m_re_result_temp)) {
+    static const regex_code RE_PATTERN_MULTILINE_TOKEN =
+        RegexCompile("[;({]");
+    if (linenum + 1 < clean_lines.NumLines() &&
+            !RegexSearch(RE_PATTERN_MULTILINE_TOKEN, line, m_re_result_temp)) {
         // Match two lines at a time to support multiline declarations
         std::string new_line = line + StrStrip(clean_lines.GetElidedAt(linenum + 1));
         CheckGlobalStatic(new_line, linenum);
@@ -2822,9 +2863,9 @@ void FileLinter::CheckLanguage(const CleansedLines& clean_lines,
               ", 0, " + GetMatchStr(m_re_result, line, 2) + ")\"?");
     }
 
-    static const regex_code RE_PATTERN_NAMESPACE =
+    static const regex_code RE_PATTERN_NAMESPACE_USING =
         RegexCompile(R"(\busing namespace\b)");
-    if (RegexSearch(RE_PATTERN_NAMESPACE, line, m_re_result_temp)) {
+    if (RegexSearch(RE_PATTERN_NAMESPACE_USING, line, m_re_result_temp)) {
         if (RegexSearch(R"(\bliterals\b)", line, m_re_result_temp)) {
             Error(linenum, "build/namespaces_literals", 5,
                   "Do not use namespace using-directives.  "
@@ -2893,8 +2934,10 @@ void FileLinter::CheckLanguage(const CleansedLines& clean_lines,
     // Check for use of unnamed namespaces in header files.  Registration
     // macros are typically OK, so we allow use of "namespace {" on lines
     // that end with backslashes.
+    static const regex_code RE_PATTERN_NAMESPACE_HEAD =
+        RegexCompile(R"(\bnamespace\s*{)");
     if (is_header_extension &&
-        RegexSearch(R"(\bnamespace\s*{)", line, m_re_result_temp) &&
+        RegexSearch(RE_PATTERN_NAMESPACE_HEAD, line, m_re_result_temp) &&
         line.back() != '\\') {
         Error(linenum, "build/namespaces_headers", 4,
               "Do not use unnamed namespaces in header files.  See "
@@ -3276,13 +3319,16 @@ void FileLinter::CheckForNonStandardConstructs(const CleansedLines& clean_lines,
 
     // The class may have been declared with namespace or classname qualifiers.
     // The constructor and destructor will not have those qualifiers.
-    std::string base_classname = StrSplitBy(classinfo->Name(), "::").back();
+    std::string base_classname = classinfo->Basename();
+
+    if (!StrContain(elided, base_classname))
+        return;
 
     // Look for single-argument constructors that aren't marked explicit.
     // Technically a valid construct, but against style.
     bool explicit_constructor_match = RegexMatch(
         R"(\s+(?:(?:inline|constexpr)\s+)*(explicit\s+)?)"
-        R"((?:(?:inline|constexpr)\s+)*)" + RegexEscape(base_classname) + R"(\s*)"
+        R"((?:(?:inline|constexpr)\s+)*)" + base_classname + R"(\s*)"
         R"(\(((?:[^()]|\([^()]*\))*)\))", elided, m_re_result);
 
     if (!explicit_constructor_match)
@@ -3339,7 +3385,7 @@ void FileLinter::CheckForNonStandardConstructs(const CleansedLines& clean_lines,
     bool copy_constructor =
             onearg_constructor &&
             RegexMatch(R"(((const\s+(volatile\s+)?)?|(volatile\s+(const\s+)?))?)" +
-                       RegexEscape(base_classname) + R"((\s*<[^>]*>)?(\s+const)?\s*(?:<\w+>\s*)?&)",
+                       base_classname + R"((\s*<[^>]*>)?(\s+const)?\s*(?:<\w+>\s*)?&)",
                        StrStrip(constructor_args[0]), m_re_result_temp);
 
     if (!is_marked_explicit &&

@@ -116,6 +116,8 @@ std::string StrToUpper(const std::string &str);
 // Returns true if the first non-space character is the specified character.
 bool CheckFirstNonSpace(const std::string& str, char c) noexcept;
 
+size_t GetFirstNonSpacePos(const std::string& str) noexcept;
+
 // Returns true if the string is empty or consists of only white spaces.
 inline bool StrIsBlank(const std::string& str) noexcept {
     return CheckFirstNonSpace(str, '\0');

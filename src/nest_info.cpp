@@ -12,6 +12,7 @@ ClassInfo::ClassInfo(const std::string& name,
                      size_t linenum) :
                      BlockInfo(linenum, false),
                      m_name(name),
+                     m_basename(),
                      m_is_derived(false),
                      m_re_result(RegexCreateMatchData(2)) {
     m_block_type = CLASS_INFO;
@@ -23,6 +24,8 @@ ClassInfo::ClassInfo(const std::string& name,
         m_access = "private";
         m_is_struct = false;
     }
+
+    m_basename = RegexEscape(StrSplitBy(m_name, "::").back());
 
     // Remember initial indentation level for this class.  Using raw_lines here
     // instead of elided to account for leading comments.
@@ -63,16 +66,18 @@ void ClassInfo::CheckEnd(const CleansedLines& clean_lines,
     bool seen_last_thing_in_class = false;
     for (size_t i = linenum - 1; i > m_starting_linenum; i--) {
         const std::string& elided = clean_lines.GetElidedAt(i);
-        bool match = RegexSearch(
-                        R"(\b(DISALLOW_COPY_AND_ASSIGN|DISALLOW_IMPLICIT_CONSTRUCTORS)\()" +
-                        RegexEscape(m_name) + R"(\))",
-                        elided, m_re_result);
-        if (match) {
-            if (seen_last_thing_in_class)
-                file_linter->Error(i, "readability/constructors", 3,
-                                   GetMatchStr(m_re_result, elided, 1) +
-                                   " should be the last thing in the class");
-            break;
+        if (StrContain(elided, "DISALLOW_")) {
+            bool match = RegexSearch(
+                            R"(\b(DISALLOW_COPY_AND_ASSIGN|DISALLOW_IMPLICIT_CONSTRUCTORS)\()" +
+                            RegexEscape(m_name) + R"(\))",
+                            elided, m_re_result);
+            if (match) {
+                if (seen_last_thing_in_class)
+                    file_linter->Error(i, "readability/constructors", 3,
+                                    GetMatchStr(m_re_result, elided, 1) +
+                                    " should be the last thing in the class");
+                break;
+            }
         }
 
         if (!StrIsBlank(elided))

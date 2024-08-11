@@ -104,6 +104,7 @@ class ExternCInfo : public BlockInfo {
 class ClassInfo : public BlockInfo {
  private:
     std::string m_name;
+    std::string m_basename;
     bool m_is_derived;
     std::string m_access;
     bool m_is_struct;
@@ -128,6 +129,7 @@ class ClassInfo : public BlockInfo {
     bool IsStruct() const { return m_is_struct; }
     size_t ClassIndent() const { return m_class_indent; }
     const std::string& Name() const { return m_name; }
+    const std::string& Basename() const { return m_basename; }
     size_t LastLine() { return m_last_line; }
 };
 

@@ -267,6 +267,15 @@ bool CheckFirstNonSpace(const std::string& str, char c) noexcept {
     return *start == c;
 }
 
+size_t GetFirstNonSpacePos(const std::string& str) noexcept {
+    const char* start = &str[0];
+    while (IS_SPACE(*start))
+        start++;
+    if (*start == '\0')
+        return INDEX_NONE;
+    return TO_SIZE(start - &str[0]);
+}
+
 bool StrIsDigit(const std::string& str) noexcept {
     if (str.empty()) return false;
     const char* start = &str[0];

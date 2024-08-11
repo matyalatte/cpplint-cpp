@@ -205,11 +205,11 @@ std::string CleansedLines::CollapseStrings(const std::string& elided) {
     static const regex_code RE_PATTERN_CLEANSE_LINE_ESCAPES =
         RegexCompile(R"(\\([abfnrtv?"\\\']|\d+|x[0-9a-fA-F]+))");
 
-    std::string new_elided;
+    std::string new_elided = elided;
     // Remove escaped characters first to make quote/single quote collapsing
     // basic.  Things that look like escaped characters shouldn't occur
     // outside of strings and chars.
-    new_elided = RegexReplace(RE_PATTERN_CLEANSE_LINE_ESCAPES, "", elided, m_re_result);
+    RegexReplace(RE_PATTERN_CLEANSE_LINE_ESCAPES, "", &new_elided, m_re_result);
 
     // Replace quoted strings and digit separators.  Both single quotes
     // and double quotes are processed in the same loop, otherwise

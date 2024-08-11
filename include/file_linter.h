@@ -152,6 +152,8 @@ class FileLinter {
 
     // Checks for the correctness of various spacing around function calls.
     void CheckSpacingForFunctionCall(const std::string& elided_line, size_t linenum);
+    void CheckSpacingForFunctionCallBase(const std::string& line,
+                                         const std::string& fncall, size_t linenum);
 
     // Checks the use of CHECK and EXPECT macros.
     void CheckCheck(const CleansedLines& clean_lines,
