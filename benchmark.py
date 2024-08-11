@@ -25,7 +25,7 @@ def get_args():
     parser.add_argument("--options", default="--recursive --quiet --counting=detailed", type=str,
                         help="options for cpplint")
     parser.add_argument("--time", default=30, type=int,
-                        help="Minimum mesurement time for a command. Default to 30 (sec)")
+                        help="Minimum measurement time for a command. Default to 30 (sec)")
     return parser.parse_args()
 
 
