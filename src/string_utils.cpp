@@ -8,7 +8,7 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "cpplint.h"
+#include "common.h"
 
 #define IS_SPACE(c) isspace((uint8_t)(c))
 #define IS_DIGIT(c) isdigit((uint8_t)(c))

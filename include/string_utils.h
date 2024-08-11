@@ -2,7 +2,7 @@
 #include <set>
 #include <string>
 #include <vector>
-#include "cpplint.h"
+#include "common.h"
 
 // Gets a substring before a character.
 std::string StrBeforeChar(const std::string& str, char c);

@@ -4,7 +4,7 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "cpplint.h"
+#include "common.h"
 
 class CppLintState {
     // Maintains module-wide state..

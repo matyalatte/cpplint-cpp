@@ -14,7 +14,7 @@
 #include <vector>
 #include "c_header_list.h"
 #include "cleanse.h"
-#include "cpplint.h"
+#include "common.h"
 #include "cpplint_state.h"
 #include "error_suppressions.h"
 #include "getline.h"

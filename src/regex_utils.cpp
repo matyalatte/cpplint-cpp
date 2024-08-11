@@ -5,7 +5,7 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "cpplint.h"
+#include "common.h"
 
 pcre2_code* RegexCompileBase(const std::string& regex, uint32_t options) noexcept {
     int error_number;
