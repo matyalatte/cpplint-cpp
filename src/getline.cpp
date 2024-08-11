@@ -54,10 +54,11 @@ std::string GetLine(std::istream& stream, std::stringstream& ss,
     *status = LINE_OK;
     int c = 0;
     unsigned char rune[5];
+    std::string buffer;
 
     // Initialize stringstream
     ss.str("");
-    ss.clear(std::stringstream::goodbit);
+    ss.clear();
 
     while (c != EOF) {
         size_t rune_size = 0;
@@ -65,19 +66,21 @@ std::string GetLine(std::istream& stream, std::stringstream& ss,
 
         if (c == EOF) {
             *status |= LINE_EOF;
+            ss << buffer;
             return ss.str();
         } else if (c <= ASCII_MAX) {
             // ascii
             if (c == '\n') {
                 // a line found
+                ss << buffer;
                 return ss.str();
             } else if (c == '\0') {
                 // replace null byte with a bad rune
                 *status |= LINE_NULL;
-                ss << BAD_RUNE;
+                buffer += BAD_RUNE;
             } else {
                 // ascii
-                ss << (unsigned char)c;
+                buffer += (unsigned char)c;
             }
             continue;
         } else if (c <= MULTIBYTE_SEQ_MAX) {
@@ -110,13 +113,15 @@ std::string GetLine(std::istream& stream, std::stringstream& ss,
             }
         }
         if (rune_size == 0) {
-            ss << BAD_RUNE;
+            buffer += BAD_RUNE;
             *status |= LINE_BAD_RUNE;
         } else {
             rune[rune_size] = '\0';
-            ss << rune;
+            buffer.append(rune, rune + rune_size * sizeof(unsigned char));
         }
     }
+
+    ss << buffer;
     return ss.str();
 }
 
