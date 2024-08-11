@@ -95,7 +95,10 @@ void FileLinter::RemoveMultiLineComments(std::vector<std::string>& lines) {
         // Having // <empty> comments makes the lines non-empty, so we will not get
         // unnecessary blank line warnings later in the code.
         for (size_t i = lineix_begin; i < lineix_end + 1; i++) {
-            lines[i] = "/**/";
+            std::string& line = lines[i];
+            // Check global suppressions before removing comments
+            ProcessGlobalSuppressions(line);
+            line = "/**/";
         }
 
         lineix = lineix_end + 1;
@@ -196,18 +199,16 @@ void FileLinter::ParseNolintSuppressions(const std::string& raw_line,
     }
 }
 
-void FileLinter::ProcessGlobalSuppressions(const std::vector<std::string>& lines) {
+void FileLinter::ProcessGlobalSuppressions(const std::string& line) {
     static const regex_code RE_SEARCH_C_FILE =
         RegexCompile(R"(\b(?:LINT_C_FILE|)"
                      R"(vim?:\s*.*(\s*|:)filetype=c(\s*|:|$)))");
     static const regex_code RE_SEARCH_KERNEL_FILE =
         RegexCompile(R"(\b(?:LINT_KERNEL_FILE))");
-    for (const std::string& line : lines) {
-        if (RegexSearch(RE_SEARCH_C_FILE, line, m_re_result_temp))
-            m_error_suppressions.AddDefaultCSuppressions();
-        if (RegexSearch(RE_SEARCH_KERNEL_FILE, line, m_re_result_temp))
-            m_error_suppressions.AddDefaultKernelSuppressions();
-    }
+    if (RegexSearch(RE_SEARCH_C_FILE, line, m_re_result_temp))
+        m_error_suppressions.AddDefaultCSuppressions();
+    if (RegexSearch(RE_SEARCH_KERNEL_FILE, line, m_re_result_temp))
+        m_error_suppressions.AddDefaultKernelSuppressions();
 }
 
 // Make a path relative from a repository path specified with --repository
@@ -3915,24 +3916,26 @@ void FileLinter::ProcessFileData(std::vector<std::string>& lines) {
     FunctionState function_state = FunctionState();
     NestingState nesting_state = NestingState();
 
+    m_error_suppressions.Clear();
+
     CheckForCopyright(lines);
     RemoveMultiLineComments(lines);
     CleansedLines clean_lines = CleansedLines(lines, m_options);
 
     {
         // Set error suppressions
-        m_error_suppressions.Clear();
         size_t linenum = 0;
         for (const std::string& line : lines) {
-            if (clean_lines.HasComment(linenum))
+            if (clean_lines.HasComment(linenum)) {
                 ParseNolintSuppressions(line, linenum);
+                ProcessGlobalSuppressions(line);
+            }
             linenum++;
         }
         if (m_error_suppressions.HasOpenBlock()) {
             Error(m_error_suppressions.GetOpenBlockStart(), "readability/nolint", 5,
                   "NONLINT block never ended");
         }
-        ProcessGlobalSuppressions(lines);
     }
 
     bool is_header_extension = InStrSet(m_header_extensions, m_file_extension);

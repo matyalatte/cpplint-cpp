@@ -371,7 +371,7 @@ class FileLinter {
 
     // Updates the list of global error suppressions.
     // Parses any lint directives in the file that have global effect.
-    void ProcessGlobalSuppressions(const std::vector<std::string>& lines);
+    void ProcessGlobalSuppressions(const std::string& lines);
 
     // Calculates some member variables
     void CacheVariables();

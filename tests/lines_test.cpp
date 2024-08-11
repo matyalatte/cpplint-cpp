@@ -2777,6 +2777,18 @@ TEST_F(LinesLinterTest, LintCFile) {
     EXPECT_EQ(2, cpplint_state.ErrorCount("runtime/int"));
 }
 
+TEST_F(LinesLinterTest, LintCFileMultiline) {
+    ProcessLines({
+        // This suppress readability/casting
+        "/* LINT_C_FILE",
+        "*/",
+        "long a = (int64) 65;",
+        "long a = (int64) 65;",
+    });
+    EXPECT_EQ(2, cpplint_state.ErrorCount());
+    EXPECT_EQ(2, cpplint_state.ErrorCount("runtime/int"));
+}
+
 TEST_F(LinesLinterTest, VimMode) {
     ProcessLines({
         // This suppress readability/casting
