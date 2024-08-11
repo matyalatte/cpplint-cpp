@@ -13,6 +13,9 @@ std::string StrAfterChar(const std::string& str, char c);
 // Strips leading and tailing white spaces from a string.
 std::string StrStrip(const std::string &str);
 
+// Strips leading and tailing characters from a string.
+std::string StrStrip(const std::string &str, char c);
+
 // Strips tailing white spaces from a string.
 std::string StrRstrip(const std::string &str);
 
@@ -25,11 +28,8 @@ std::string StrLstrip(const std::string &str);
 // Strips leading characters from a string.
 std::string StrLstrip(const std::string &str, char c);
 
-// Strips StrLstrip(str).size()
+// StrLstrip(str).size()
 size_t StrLstripSize(const std::string &str);
-
-// Strips leading and tailing characters from a string.
-std::string StrStripChar(const std::string &str, char c);
 
 // Split string by white spaces. Empty strings are removed from return value.
 std::vector<std::string> StrSplit(const std::string& str, size_t max_size = INDEX_MAX);
@@ -113,14 +113,15 @@ std::string StrToLower(const std::string &str);
 
 std::string StrToUpper(const std::string &str);
 
-// Returns true if the first non-space character is the specified character.
-bool CheckFirstNonSpace(const std::string& str, char c) noexcept;
+// Returns the first non-space character or a null terminator.
+char GetFirstNonSpace(const std::string& str) noexcept;
 
+// Returns index to the first non-space character or INDEX_NONE.
 size_t GetFirstNonSpacePos(const std::string& str) noexcept;
 
 // Returns true if the string is empty or consists of only white spaces.
 inline bool StrIsBlank(const std::string& str) noexcept {
-    return CheckFirstNonSpace(str, '\0');
+    return GetFirstNonSpace(str) == '\0';
 }
 
 // Returns true if the string consists of only digits.

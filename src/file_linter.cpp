@@ -620,7 +620,7 @@ void FileLinter::CheckBraces(const CleansedLines& clean_lines,
         // within the 80 character limit of the preceding line.
         const std::string& prevline = GetPreviousNonBlankLine(clean_lines, linenum);
         if (!RegexSearch(R"([,;:}{(]\s*$)", prevline, m_re_result_temp) &&
-            !CheckFirstNonSpace(prevline, '#') &&
+            GetFirstNonSpace(prevline) != '#' &&
             !(GetLineWidth(prevline) > m_options.LineLength() - 2 && StrContain(prevline, "[]"))) {
             Error(linenum, "whitespace/braces", 4,
                   "{ should almost always be at the end of the previous line");
@@ -717,7 +717,7 @@ void FileLinter::CheckBraces(const CleansedLines& clean_lines,
     static const regex_code RE_PATTERN_IF_ELSE =
         RegexCompile(R"(\b(if\s*(|constexpr)\s*\(|else\b))");
     bool if_else_match = RegexSearch(RE_PATTERN_IF_ELSE, line, m_re_result);
-    if (if_else_match && !CheckFirstNonSpace(line, '#')) {
+    if (if_else_match && GetFirstNonSpace(line) != '#') {
         size_t if_indent = GetIndentLevel(line);
         std::string endline = line;
         size_t endlinenum = linenum;
@@ -739,7 +739,7 @@ void FileLinter::CheckBraces(const CleansedLines& clean_lines,
         if (!RegexMatch(R"(\s*(?:\[\[(?:un)?likely\]\]\s*)?{)", endline_sub, m_re_result_temp) &&
             !(StrIsBlank(endline_sub) &&
               endlinenum < (clean_lines.NumLines() - 1) &&
-              CheckFirstNonSpace(clean_lines.GetElidedAt(endlinenum + 1), '{'))) {
+              GetFirstNonSpace(clean_lines.GetElidedAt(endlinenum + 1)) == '{')) {
             while (endlinenum < clean_lines.NumLines() &&
                    !(endpos != INDEX_NONE &&
                      StrContain(clean_lines.GetElidedAt(endlinenum).substr(endpos), ';'))) {
@@ -924,7 +924,7 @@ void FileLinter::CheckTrailingSemicolon(const CleansedLines& clean_lines,
         size_t endpos = GetMatchEnd(m_re_result, 1);
         const std::string& endline = CloseExpression(
                                         clean_lines, &endlinenum, &endpos);
-        if (endpos != INDEX_NONE && CheckFirstNonSpace(endline.substr(endpos), ';')) {
+        if (endpos != INDEX_NONE && GetFirstNonSpace(endline.substr(endpos)) == ';') {
             // Current {} pair is eligible for semicolon check, and we have found
             // the redundant semicolon, output warning here.
             //
@@ -979,7 +979,7 @@ void FileLinter::CheckEmptyBlockBody(const CleansedLines& clean_lines,
             size_t opening_linenum = end_linenum;
             std::string opening_line_fragment = end_line.substr(end_pos);
             // Loop until EOF or find anything that's not whitespace or opening {.
-            while (!CheckFirstNonSpace(opening_line_fragment, '{')) {
+            while (GetFirstNonSpace(opening_line_fragment) != '{') {
                 if (RegexSearch(R"(^(?!\s*$))", opening_line_fragment, m_re_result_temp)) {
                     // Conditional has no brackets.
                     return;
@@ -1205,7 +1205,7 @@ void FileLinter::CheckSpacing(const CleansedLines& clean_lines,
         if (linenum + 1 < clean_lines.NumLines()) {
             const std::string& next_line = clean_lines.GetLineWithoutRawStringAt(linenum + 1);
             if (!next_line.empty() &&
-                CheckFirstNonSpace(next_line, '}') &&
+                GetFirstNonSpace(next_line) == '}' &&
                 next_line.find("} else ") == std::string::npos) {
                 Error(linenum, "whitespace/blank_line", 3,
                       "Redundant blank line at the end of a code block "
@@ -1866,7 +1866,7 @@ void FileLinter::CheckCheck(const CleansedLines& clean_lines,
     // If the check macro is followed by something other than a
     // semicolon, assume users will log their own custom error messages
     // and don't suggest any replacements.
-    if (!CheckFirstNonSpace(last_line.substr(end_pos), ';'))
+    if (GetFirstNonSpace(last_line.substr(end_pos)) != ';')
         return;
 
     std::string expression = "";
@@ -1975,7 +1975,7 @@ void FileLinter::CheckCheck(const CleansedLines& clean_lines,
 void FileLinter::CheckAltTokens(const std::string& elided_line, size_t linenum) {
     const std::string& line = elided_line;
     // Avoid preprocessor lines
-    if (CheckFirstNonSpace(line, '#'))
+    if (GetFirstNonSpace(line) == '#')
         return;
 
     // Last ditch effort to avoid multi-line comments.  This will not help

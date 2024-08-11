@@ -302,7 +302,7 @@ static void PrintCategories() {
 // and removes leading and tailing double-quotations.
 static std::string ArgToValue(const std::string& arg) {
     std::string val = StrAfterChar(arg, '=');
-    return StrStripChar(val, '"');
+    return StrStrip(val, '"');
 }
 
 // Gets a value of "--opt=value" format as an integer.

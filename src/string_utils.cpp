@@ -50,6 +50,17 @@ std::string StrStrip(const std::string &str) {
     return str.substr(TO_SIZE(start - &str[0]), TO_SIZE(end - start) + 1);
 }
 
+std::string StrStrip(const std::string &str, char c) {
+    if (str.empty()) return str;
+    const char* start = &str[0];
+    while (*start == c)
+        start++;
+    const char* end = &str[str.size() - 1];
+    while (start < end && *end == c)
+        end--;
+    return str.substr(TO_SIZE(start - &str[0]), TO_SIZE(end - start) + 1);
+}
+
 std::string StrRstrip(const std::string &str) {
     if (str.empty()) return str;
     const char* start = &str[0];
@@ -93,17 +104,6 @@ size_t StrLstripSize(const std::string &str) {
     while (IS_SPACE(*start))
         start++;
     return &str[0] + str.size() - start;
-}
-
-std::string StrStripChar(const std::string &str, char c) {
-    if (str.empty()) return str;
-    const char* start = &str[0];
-    while (*start == c)
-        start++;
-    const char* end = &str[str.size() - 1];
-    while (start < end && *end == c)
-        end--;
-    return str.substr(TO_SIZE(start - &str[0]), TO_SIZE(end - start) + 1);
 }
 
 std::vector<std::string> StrSplit(const std::string& str, size_t max_size) {
@@ -176,8 +176,6 @@ std::string SetToStr(const std::set<std::string>& set,
                      const std::string& prefix,
                      const std::string& delim,
                      const std::string& suffix) {
-    if (set.empty())
-        return "";
     std::string ret = prefix;
     size_t i = 0;
     for (const std::string& s : set) {
@@ -197,20 +195,23 @@ std::string SetToStr(const std::set<std::string>& set,
 size_t StrToUint(const std::string& val) noexcept {
     const char* val_p = &val[0];
     size_t ret = 0;
-    size_t old_ret = 0;
     while (*val_p != '\0') {
         if (!IS_DIGIT(*val_p))
-            return INDEX_NONE;
-        old_ret = ret;
-        ret = ret * 10 + TO_SIZE(*val_p - '0');
-        if (ret < old_ret)
-            return INDEX_NONE;
+            return INDEX_NONE;  // negative or non-numeric
+        if (ret > INDEX_MAX / 10)
+            return INDEX_NONE;  // overflow
+        ret *= 10;
+        size_t digit = TO_SIZE(*val_p - '0');
+        if (INDEX_MAX - ret < digit)
+            return INDEX_NONE;  // overflow
+        ret += digit;
         val_p++;
     }
     return ret;
 }
 
 int StrCount(const std::string& str, const std::string& target) noexcept {
+    if (target.empty()) return 0;
     int occurrences = 0;
     std::string::size_type pos = 0;
     while ((pos = str.find(target, pos)) != std::string::npos) {
@@ -260,11 +261,11 @@ std::string StrToUpper(const std::string &str) {
     return upper;
 }
 
-bool CheckFirstNonSpace(const std::string& str, char c) noexcept {
+char GetFirstNonSpace(const std::string& str) noexcept {
     const char* start = &str[0];
     while (IS_SPACE(*start))
         start++;
-    return *start == c;
+    return *start;
 }
 
 size_t GetFirstNonSpacePos(const std::string& str) noexcept {
