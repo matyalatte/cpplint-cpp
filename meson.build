@@ -32,7 +32,7 @@ if cpplint_compiler == 'msvc'
 else
     if cpplint_os == 'windows'
 		# don't require shipping the MinGW-w64 DLLs
-		libui_project_link_args += [
+		cpplint_link_args += [
 			'-static',
 			'-static-libgcc',
 			'-static-libstdc++',

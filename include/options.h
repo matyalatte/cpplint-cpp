@@ -55,8 +55,8 @@ class Options {
         m_valid_extensions({}),
         m_hpp_headers({}),
         m_include_order("default"),
-        m_filters(DEFAULT_FILTERS),
-        m_timing(false)
+        m_timing(false),
+        m_filters(DEFAULT_FILTERS)
         {}
 
     /*Parses the command line arguments.

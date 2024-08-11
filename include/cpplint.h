@@ -17,7 +17,7 @@ static_assert(std::string::npos == SIZE_MAX,
               "std::string::npos should be equal to SIZE_MAX");
 
 // Ensures that npos is -1
-static_assert(std::string::npos == -1,
+static_assert(std::string::npos == static_cast<size_t>(-1),
               "std::string::npos should be equal to -1");
 
 // Maximum valid value
