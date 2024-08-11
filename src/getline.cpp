@@ -64,7 +64,8 @@ std::string GetLine(std::istream& stream, std::stringstream& ss,
         c = stream.get();
 
         if (c == EOF) {
-            break;
+            *status |= LINE_EOF;
+            return ss.str();
         } else if (c <= ASCII_MAX) {
             // ascii
             if (c == '\n') {
@@ -97,6 +98,7 @@ std::string GetLine(std::istream& stream, std::stringstream& ss,
             c = stream.get();
             if (c == EOF) {
                 rune_size = 0;
+                *status |= LINE_EOF;
                 break;
             } else if (is_multibyte_seq(c)) {
                 rune[pos] = (unsigned char)c;
@@ -115,7 +117,6 @@ std::string GetLine(std::istream& stream, std::stringstream& ss,
             ss << rune;
         }
     }
-    *status |= LINE_EOF;
     return ss.str();
 }
 

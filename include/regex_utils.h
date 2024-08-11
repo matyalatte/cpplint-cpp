@@ -136,6 +136,10 @@ void RegexReplace(const regex_code& regex, const std::string& fmt,
                   std::string* str,
                   regex_match& match_data, bool replace_all = true);
 
+void RegexReplace(const regex_code& regex, const std::string& fmt,
+                  std::string* str,
+                  regex_match& match_data, bool* replaced, bool replace_all = true);
+
 
 std::string RegexEscape(const std::string& str);
 
