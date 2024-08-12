@@ -9,6 +9,36 @@ C++ reimplementation of [cpplint 1.7](https://github.com/cpplint/cpplint/commit/
 [Cpplint](https://github.com/cpplint/cpplint) is a command-line tool to check C/C++ files for style issues according to [Google's C++ style guide](http://google.github.io/styleguide/cppguide.html).
 It used to be developed and maintained by Google Inc. One of its forks now maintains the project.
 
+## cpplint-cpp vs. cpplint.py
+
+Here is an analysis of the execution times between `cpplint-cpp` and `cpplint.py` against two repositories:
+[`googletest`](https://github.com/google/googletest) and `cpplint-cpp`.
+Measurements were taken on an Ubuntu runner with [`benchmark.yml`](.github/workflows/benchmark.yml).
+
+| App         | googletest-1.14.0 (s) | cpplint-cpp (s) |
+| ----------- | --------------------- | --------------- |
+| cpplint-cpp | 1.490815              | 0.327613        |
+| cpplint.py  | 14.333434             | 3.449577        |
+
+## Changes from cpplint.py
+
+Basically, `cpplint-cpp` uses the same algorithm as `cpplint.py`, but some changes have been made to reduce processing time.
+
+- Added concurrent file processing.
+- Removed some redundant function calls.
+- Combined some regex patterns.
+- And other minor changes for optimization...
+
+## Unimplemented features
+
+cpplint-cpp is a WIP project. Please note that the following features are not implemented yet.
+
+- Glob patterns for `--exclude` option.
+- JUnit style outputs.
+- Multibyte characters in stdin on Windows.
+- UNIX convention of using "-" for stdin.
+- Installation by package managers.
+
 ## Building
 
 > [!Warning]
@@ -38,25 +68,6 @@ You can use [`presets/release.ini`](./presets/release.ini) to enable options for
 meson setup build --native-file=presets/release.ini
 meson compile -C build
 ```
-
-## Changes from cpplint.py
-
-Basically, `cpplint-cpp` uses the same algorithm as `cpplint.py`, but some changes have been made to reduce processing time.
-
-- Added concurrent file processing.
-- Removed some redundant function calls.
-- Combined some regex patterns.
-- And other minor changes for optimization...
-
-## Unimplemented features
-
-cpplint-cpp is a WIP project. Please note that the following features are not implemented yet.
-
-- Glob patterns for `--exclude` option.
-- JUnit style outputs.
-- Multibyte characters in stdin on Windows.
-- UNIX convention of using "-" for stdin.
-- Installation by package managers.
 
 ## Submitting Feature Requests
 
