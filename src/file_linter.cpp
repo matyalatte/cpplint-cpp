@@ -3606,11 +3606,11 @@ void FileLinter::CheckCxxHeaders(const std::string& elided_line, size_t linenum)
 }
 
 void FileLinter::ProcessLine(bool is_header_extension,
-                             const CleansedLines& clean_lines, size_t linenum,
+                             const CleansedLines& clean_lines,
+                             const std::string& elided_line, size_t linenum,
                              IncludeState* include_state,
                              FunctionState* function_state,
                              NestingState* nesting_state) {
-    const std::string& elided_line = clean_lines.GetElidedAt(linenum);
     nesting_state->Update(clean_lines, elided_line, linenum, this);
     CheckForNamespaceIndentation(clean_lines,
                                  elided_line, linenum, nesting_state);
@@ -3765,8 +3765,9 @@ void FileLinter::CheckForIncludeWhatYouUse(const CleansedLines& clean_lines,
     // Example of required: { '<functional>': (1219, 'less<>') }
     std::map<std::string, std::pair<size_t, std::string>> required = {};
 
-    for (size_t linenum = 0; linenum < clean_lines.NumLines(); linenum++) {
-        const std::string& line = clean_lines.GetElidedAt(linenum);
+    size_t linenum = INDEX_NONE;  // -1
+    for (const std::string& line : clean_lines.GetElidedLines()) {
+        linenum++;
         if (line.empty() || line[0] == '#')
             continue;
 
@@ -3945,9 +3946,12 @@ void FileLinter::ProcessFileData(std::vector<std::string>& lines) {
         CheckForHeaderGuard(clean_lines);
     }
 
-    for (size_t linenum = 0; linenum < clean_lines.NumLines(); linenum++) {
-        ProcessLine(is_header_extension, clean_lines, linenum,
+    size_t linenum = 0;  // -1
+    for (const std::string& elided_line : clean_lines.GetElidedLines()) {
+        ProcessLine(is_header_extension, clean_lines,
+                    elided_line, linenum,
                     &include_state, &function_state, &nesting_state);
+        linenum++;
     }
 
     CheckForIncludeWhatYouUse(clean_lines, &include_state);

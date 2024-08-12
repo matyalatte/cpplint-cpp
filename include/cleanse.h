@@ -85,6 +85,9 @@ class CleansedLines {
 
     const std::string& GetLineAt(size_t id) const { return m_lines[id]; }
     const std::string& GetElidedAt(size_t id) const { return m_elided[id]; }
+    const std::vector<std::string>& GetElidedLines() const {
+        return m_elided;
+    }
     const std::string& GetRawLineAt(size_t id) const { return m_raw_lines[id]; }
     const std::string& GetLineWithoutRawStringAt(size_t id) const {
         return m_lines_without_raw_strings[id];

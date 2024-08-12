@@ -386,7 +386,8 @@ class FileLinter {
 
     // Processes a single line in the file.
     void ProcessLine(bool is_header_extension,
-                     const CleansedLines& clean_lines, size_t linenum,
+                     const CleansedLines& clean_lines,
+                     const std::string& elided_line, size_t linenum,
                      IncludeState* include_state,
                      FunctionState* function_state,
                      NestingState* nesting_state);

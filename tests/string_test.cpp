@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <set>
 #include <string>
 #include <vector>
 #include "string_utils.h"
