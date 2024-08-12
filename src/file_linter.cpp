@@ -3372,7 +3372,7 @@ void FileLinter::CheckForNonStandardConstructs(const CleansedLines& clean_lines,
         while (StrCount(constructor_arg, '<') > StrCount(constructor_arg, '>') ||
                StrCount(constructor_arg, '(') > StrCount(constructor_arg, ')')) {
             constructor_arg += "," + constructor_args[i + 1];
-            constructor_arg.erase(constructor_arg.begin() + i + 1);
+            constructor_args.erase(constructor_args.begin() + i + 1);
         }
         constructor_args[i] = constructor_arg;
         i++;

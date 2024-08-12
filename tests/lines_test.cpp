@@ -2420,6 +2420,25 @@ TEST_F(LinesLinterTest, ExplicitSingleParamFail) {
     EXPECT_EQ(10, cpplint_state.ErrorCount("runtime/explicit"));
 }
 
+TEST_F(LinesLinterTest, ExplicitSingleParamWithTemplatePass) {
+    ProcessLines({
+        "class Foo {",
+        "    explicit Foo(A<B, C> d);",
+        "};",
+    });
+    EXPECT_EQ(0, cpplint_state.ErrorCount("runtime/explicit"));
+}
+
+TEST_F(LinesLinterTest, ExplicitSingleParamWithTemplateFail) {
+    ProcessLines({
+        "class Foo {",
+        "    Foo(A<B, C> d);",
+        "};",
+    });
+    // Single-parameter constructors should be marked explicit.
+    EXPECT_EQ(1, cpplint_state.ErrorCount("runtime/explicit"));
+}
+
 TEST_F(LinesLinterTest, ExplicitCallableWithSingleParamPass) {
     ProcessLines({
         "class Foo {",
