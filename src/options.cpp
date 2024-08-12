@@ -320,7 +320,7 @@ static size_t ArgToUintValue(const std::string& arg) {
 std::vector<fs::path> Options::ParseArguments(int argc, char** argv,
                                               CppLintState* cpplint_state) {
     int verbosity = cpplint_state->VerboseLevel();
-    std::string output_format = cpplint_state->OutputFormat();
+    std::string output_format = "emacs";
     bool quiet = cpplint_state->Quiet();
     std::string counting_style = "";
     bool recursive = false;
@@ -448,9 +448,9 @@ void Options::ProcessHppHeadersOption(const std::string& val) {
 
 void Options::ProcessIncludeOrderOption(const std::string& val) {
     if (val == "" || val == "default")
-        m_include_order = "default";
+        m_include_order = INCLUDE_ORDER_DEFAULT;
     else if (val == "standardcfirst")
-        m_include_order = val;
+        m_include_order = INCLUDE_ORDER_STDCFIRST;
     else
         PrintUsage("Invalid includeorder value " + val + ". Expected default|standardcfirst");
 }

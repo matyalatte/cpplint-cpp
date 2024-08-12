@@ -8,28 +8,20 @@
 #include <vector>
 #include "string_utils.h"
 
-// keywords to use with --outputs which generate stdout for machine processing
-const char* const MACHINE_OUTPUTS[] = {
-    "junit",
-    "sed",
-    "gsed",
-    nullptr,
-};
-
 CppLintState::CppLintState() :
     m_verbose_level(1),
     m_error_count(0),
-    m_counting("total"),
+    m_counting(COUNT_TOTAL),
     m_errors_by_category({}),
     m_quiet(false),
-    m_output_format("emacs") {}
+    m_output_format(OUTPUT_EMACS) {}
 
 void CppLintState::IncrementErrorCount(const std::string& category) {
     std::string cat = category;
     m_error_count += 1;
-    if (m_counting != "toplevel" && m_counting != "detailed")
+    if (m_counting == COUNT_TOTAL)
         return;  // No need for detailed error counts.
-    if (m_counting != "detailed")
+    if (m_counting == COUNT_TOPLEVEL)
         cat = StrBeforeChar(cat, '/');
     auto it = m_errors_by_category.find(cat);
     if (it == m_errors_by_category.end())
@@ -40,9 +32,9 @@ void CppLintState::IncrementErrorCount(const std::string& category) {
 
 int CppLintState::ErrorCount(const std::string& category) const {
     std::string cat = category;
-    if (m_counting != "toplevel" && m_counting != "detailed")
+    if (m_counting == COUNT_TOTAL)
         return 0;
-    if (m_counting != "detailed")
+    if (m_counting == COUNT_TOPLEVEL)
         cat = StrBeforeChar(cat, '/');
     auto it = m_errors_by_category.find(cat);
     if (it == m_errors_by_category.end())
@@ -66,14 +58,16 @@ void CppLintState::PrintInfo(const std::string& message) {
 
     // _quiet does not represent --quiet flag.
     // Hide infos from stdout to keep stdout pure for machine consumption
-    if (!InStrVec(MACHINE_OUTPUTS, m_output_format))
+    if (m_output_format != OUTPUT_JUNIT &&
+        m_output_format != OUTPUT_SED &&
+        m_output_format != OUTPUT_GSED)
         std::cout << message;
 }
 
 void CppLintState::PrintError(const std::string& message) {
     std::lock_guard<std::mutex> lock(m_mtx);
 
-    if (m_output_format == "junit") {
+    if (m_output_format == OUTPUT_JUNIT) {
         // m_junit_errors.push_back(message);
     } else {
         std::cerr << message;
@@ -101,21 +95,25 @@ void CppLintState::Error(const std::string& filename, size_t linenum,
     std::lock_guard<std::mutex> lock(m_mtx);
 
     IncrementErrorCount(category);
-    const std::string& output_format = OutputFormat();
-    if (output_format == "vs7") {
+    if (m_output_format == OUTPUT_VS7) {
         std::cerr << filename << "(" << linenum << "): error cpplint: [" <<
                      category << "] " << message << " [" << confidence << "]\n";
-    } else if (output_format == "eclipse") {
+    } else if (m_output_format == OUTPUT_ECLIPSE) {
         std::cerr << filename << ":" << linenum << ": warning: " <<
                      message << "  [" << category << "] [" << confidence << "]\n";
-    } else if (output_format == "junit") {
+    } else if (m_output_format == OUTPUT_JUNIT) {
         bool res = AddJUnitFailure(filename, linenum, message, category, confidence);
         if (!res)
             std::cerr << "Failed to add a JUnit failure\n";
-    } else if (output_format == "sed" || output_format == "gsed") {
+    } else if (m_output_format == OUTPUT_SED ||
+               m_output_format == OUTPUT_GSED) {
         auto it = SED_FIXUPS.find(message);
         if (it == SED_FIXUPS.end()) {
-            std::cout << output_format << " -i" <<
+            if (m_output_format == OUTPUT_SED)
+                std::cout << "sed";
+            else
+                std::cout << "gsed";
+            std::cout << " -i" <<
                          " '" << linenum << it->second << "' " << filename <<
                          " # " << message << "  [" << category << "] [" << confidence << "]\n";
         } else {

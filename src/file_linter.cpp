@@ -2237,14 +2237,15 @@ fs::path FileLinter::DropCommonSuffixes(const fs::path& file) {
 int FileLinter::ClassifyInclude(const fs::path& path_from_repo,
                                 const fs::path& include,
                                 bool used_angle_brackets) {
-    const std::string& include_order = m_options.IncludeOrder();
+    int include_order = m_options.IncludeOrder();
     std::string include_str = include.string();
     // This is a list of all standard c++ header files, except
     // those already checked for above.
     bool is_cpp_header = InStrVec(CPP_HEADERS, include_str);
 
     // Mark include as C header if in list or in a known folder for standard-ish C headers.
-    bool is_std_c_header = (include_order == "default") || (InStrVec(C_HEADERS, include_str) ||
+    bool is_std_c_header = (include_order == INCLUDE_ORDER_DEFAULT) ||
+                            (InStrVec(C_HEADERS, include_str) ||
                             // additional linux glibc header folders
                             RegexSearch(GetHeaderFoldersPattern(), include_str, m_re_result_temp));
 
@@ -3835,7 +3836,7 @@ void FileLinter::CheckForIncludeWhatYouUse(const CleansedLines& clean_lines,
 
     // All the lines have been processed, report the errors found.
     for (const auto& required_header_unstripped : required) {
-        size_t linenum = required_header_unstripped.second.first;
+        linenum = required_header_unstripped.second.first;
         const std::string& func = required_header_unstripped.second.second;
         const std::string& header = required_header_unstripped.first;
         if (include_state->FindHeader(header) == INDEX_NONE) {

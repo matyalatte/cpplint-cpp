@@ -49,7 +49,7 @@ int main(int argc, char** argv) {
     if (!cpplint_state.Quiet() || cpplint_state.ErrorCount() > 0)
         cpplint_state.PrintErrorCounts();
 
-    if (cpplint_state.OutputFormat() == "junit")
+    if (cpplint_state.OutputFormat() == OUTPUT_JUNIT)
         std::cerr << cpplint_state.FormatJUnitXML();
 
     if (global_options.Timing()) {

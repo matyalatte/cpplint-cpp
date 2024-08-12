@@ -15,6 +15,12 @@ const std::vector<std::string> DEFAULT_FILTERS = {
     "-build/include_alpha",
 };
 
+enum : int {
+    INCLUDE_ORDER_DEFAULT,
+    INCLUDE_ORDER_STDCFIRST,
+    INCLUDE_ORDER_MAX,
+};
+
 class Options {
  private:
     fs::path m_root;
@@ -23,7 +29,7 @@ class Options {
     std::string m_config_filename;
     std::set<std::string> m_valid_extensions;
     std::set<std::string> m_hpp_headers;
-    std::string m_include_order;
+    int m_include_order;
     bool m_timing;
 
     // filters to apply when emitting error messages
@@ -54,7 +60,7 @@ class Options {
         m_config_filename("CPPLINT.cfg"),
         m_valid_extensions({}),
         m_hpp_headers({}),
-        m_include_order("default"),
+        m_include_order(INCLUDE_ORDER_DEFAULT),
         m_timing(false),
         m_filters(DEFAULT_FILTERS)
         {}
@@ -80,7 +86,7 @@ class Options {
 
     void PrintUsage(const std::string& message = "");
 
-    const std::string& IncludeOrder() const { return m_include_order; }
+    int IncludeOrder() const { return m_include_order; }
 
     const std::vector<std::string>& Filters() const { return m_filters; }
 

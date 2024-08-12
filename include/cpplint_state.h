@@ -6,13 +6,30 @@
 #include <vector>
 #include "common.h"
 
+enum : int {
+    COUNT_TOTAL,
+    COUNT_TOPLEVEL,
+    COUNT_DETAILED,
+    COUNT_MAX,
+};
+
+enum : int {
+    OUTPUT_EMACS,
+    OUTPUT_VS7,
+    OUTPUT_ECLIPSE,
+    OUTPUT_JUNIT,
+    OUTPUT_SED,
+    OUTPUT_GSED,
+    OUTPUT_MAX,
+};
+
 class CppLintState {
     // Maintains module-wide state..
  private:
     int m_verbose_level;  // global setting
     int m_error_count;  // global count of reported errors
 
-    std::string m_counting;  // In what way are we counting errors?
+    int m_counting;  // In what way are we counting errors?
     // string to int dict storing error counts
     std::map<std::string, int> m_errors_by_category;
     bool m_quiet;  // Suppress non-error messagess?
@@ -25,7 +42,7 @@ class CppLintState {
      * "sed" - returns a gnu sed command to fix the problem
      * "gsed" - like sed, but names the command gsed, e.g. for macOS homebrew users
      */
-    std::string m_output_format;
+    int m_output_format;
 
     // TODO(matyalatte): Support JUnit output
     // For JUnit output, save errors and failures until the end so that they
@@ -38,10 +55,21 @@ class CppLintState {
  public:
     CppLintState();
 
-    const std::string& OutputFormat() const { return m_output_format; }
+    int OutputFormat() const { return m_output_format; }
     void SetOutputFormat(const std::string& output_format) {
         // Sets the output format for errors.
-        m_output_format = output_format;
+        if (output_format == "vs7")
+            m_output_format = OUTPUT_VS7;
+        else if (output_format == "eclipse")
+            m_output_format = OUTPUT_ECLIPSE;
+        else if (output_format == "junit")
+            m_output_format = OUTPUT_JUNIT;
+        else if (output_format == "sed")
+            m_output_format = OUTPUT_SED;
+        else if (output_format == "gsed")
+            m_output_format = OUTPUT_GSED;
+        else
+            m_output_format = OUTPUT_EMACS;
     }
 
     bool Quiet() const { return m_quiet; }
@@ -62,7 +90,12 @@ class CppLintState {
 
     void SetCountingStyle(const std::string& counting_style) {
         // Sets the module's counting options.
-        m_counting = counting_style;
+        if (counting_style == "toplevel")
+            m_counting = COUNT_TOPLEVEL;
+        else if (counting_style == "detailed")
+            m_counting = COUNT_DETAILED;
+        else
+            m_counting = COUNT_TOTAL;
     }
 
     void ResetErrorCounts() {
