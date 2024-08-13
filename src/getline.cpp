@@ -49,16 +49,12 @@ size_t GetLineWidth(const std::string& line) noexcept {
     return length;
 }
 
-std::string GetLine(std::istream& stream, std::stringstream& ss,
-                    int* status) {
+std::string GetLine(std::istream& stream, int* status) {
     *status = LINE_OK;
     int c = 0;
     unsigned char rune[5];
     std::string buffer;
-
-    // Initialize stringstream
-    ss.str("");
-    ss.clear();
+    buffer.reserve(120);
 
     while (c != EOF) {
         size_t rune_size = 0;
@@ -66,14 +62,14 @@ std::string GetLine(std::istream& stream, std::stringstream& ss,
 
         if (c == EOF) {
             *status |= LINE_EOF;
-            ss << buffer;
-            return ss.str();
+            buffer.shrink_to_fit();
+            return buffer;
         } else if (c <= ASCII_MAX) {
             // ascii
             if (c == '\n') {
                 // a line found
-                ss << buffer;
-                return ss.str();
+                buffer.shrink_to_fit();
+                return buffer;
             } else if (c == '\0') {
                 // replace null byte with a bad rune
                 *status |= LINE_NULL;
@@ -121,8 +117,8 @@ std::string GetLine(std::istream& stream, std::stringstream& ss,
         }
     }
 
-    ss << buffer;
-    return ss.str();
+    buffer.shrink_to_fit();
+    return buffer;
 }
 
 /* An inclusive range of characters. */

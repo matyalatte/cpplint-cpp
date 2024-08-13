@@ -433,6 +433,8 @@ void FileLinter::CheckForHeaderGuard(const CleansedLines& clean_lines) {
 }
 
 bool FileLinter::IsForwardClassDeclaration(const std::string& elided_line) {
+    if (!StrContain(elided_line, "class"))
+        return false;
     static const regex_code RE_PATTERN_CLASS_DECL =
         RegexCompile(R"(^\s*(\btemplate\b)*.*class\s+\w+;\s*$)");
     return RegexMatch(RE_PATTERN_CLASS_DECL, elided_line, m_re_result_temp);
@@ -443,9 +445,8 @@ bool FileLinter::IsMacroDefinition(const CleansedLines& clean_lines,
     if (elided_line.starts_with("#define"))
         return true;
 
-    if (linenum > 0 && RegexSearch(R"(\\$)",
-                                   clean_lines.GetElidedAt(linenum - 1),
-                                   m_re_result_temp))
+    if (linenum > 0 &&
+            clean_lines.GetElidedAt(linenum - 1).ends_with('\\'))
         return true;
 
     return false;
@@ -536,8 +537,7 @@ void FileLinter::CheckForFunctionLengths(const CleansedLines& clean_lines, size_
 
 void FileLinter::CheckForMultilineCommentsAndStrings(const std::string& elided_line,
                                                      size_t linenum) {
-    // Remove all \\ (escaped backslashes) from the line. They are OK, and the
-    // second (escaped) slash may trigger later \" detection erroneously.
+    // Checks the number of ", /*, and */
     bool escaped = false;
     char last_char = ' ';
     int quote_count = 0;  // counter for "
@@ -549,8 +549,7 @@ void FileLinter::CheckForMultilineCommentsAndStrings(const std::string& elided_l
             escaped = false;
             last_char = ' ';
             continue;
-        }
-        if (c == '\\') {
+        } else if (c == '\\') {
             escaped = true;
             continue;
         } else if (c == '"') {
@@ -870,8 +869,10 @@ void FileLinter::CheckTrailingSemicolon(const CleansedLines& clean_lines,
                 RegexCompile(R"(\b([A-Z_][A-Z0-9_]*)\s*$)");
             thread_local regex_match macro_m = RegexCreateMatchData(RE_PATTERN_MACRO);
             bool macro = RegexSearch(RE_PATTERN_MACRO, line_prefix, macro_m);
-            thread_local regex_match func_m = RegexCreateMatchData(1);
-            bool func = RegexMatch(R"(^(.*\])\s*$)", line_prefix, func_m);
+            static const regex_code RE_PATTERN_FUNC =
+                RegexCompile(R"(^(.*\])\s*$)");
+            thread_local regex_match func_m = RegexCreateMatchData(RE_PATTERN_FUNC);
+            bool func = RegexMatch(RE_PATTERN_FUNC, line_prefix, func_m);
             if ((macro && !InStrVec({
                             "TEST", "TEST_F", "MATCHER", "MATCHER_P", "TYPED_TEST",
                             "EXCLUSIVE_LOCKS_REQUIRED", "SHARED_LOCKS_REQUIRED",
@@ -961,7 +962,7 @@ void FileLinter::CheckEmptyBlockBody(const CleansedLines& clean_lines,
         // Output warning if what follows the condition expression is a semicolon.
         // No warning for all other cases, including whitespace or newline, since we
         // have a separate check for semicolons preceded by whitespace.
-        if (end_pos != INDEX_NONE && end_line.substr(end_pos).starts_with(';')) {
+        if (end_pos != INDEX_NONE && end_line[end_pos] == ';') {
             if (GetMatchStr(m_re_result, line, 1) == "if") {
                 Error(end_linenum, "whitespace/empty_conditional_body", 5,
                       "Empty conditional bodies should use {}");
@@ -1066,10 +1067,21 @@ void FileLinter::CheckComment(const std::string& line,
     size_t commentpos = line.find("//");
     if (commentpos == std::string::npos)
         return;
-    // Check if the // may be in quotes.  If so, ignore it
-    std::string substr = line.substr(0, commentpos);
-    if ((StrCount(substr, '"') - StrCount(substr, "\\\"")) % 2 != 0)
-        return;
+
+    // Count the number of quotes
+    bool escaped = false;
+    int quote_count = 0;
+    for (const char* c = &line[0]; c < &line[0] + commentpos; c++) {
+        if (escaped || *c == '\\') {
+            escaped = !escaped;
+            continue;
+        } else if (*c == '"') {
+            quote_count++;
+        }
+    }
+
+    if (quote_count % 2 != 0)
+        return;  // the found "//" is in quotes.
 
     // Allow one space for new scopes, two spaces otherwise:
     static const regex_code RE_PATTERN_SPACE_FOR_SCOPE =
@@ -1089,20 +1101,20 @@ void FileLinter::CheckComment(const std::string& line,
     bool match = RegexMatch(RE_PATTERN_TODO, comment, m_re_result);
     if (match) {
         // One whitespace is correct; zero whitespace is handled elsewhere.
-        const std::string& leading_whitespace = GetMatchStr(m_re_result, comment, 1);
-        if (leading_whitespace.size() > 1) {
+        size_t leading_whitespace_size = GetMatchSize(m_re_result, 1);
+        if (leading_whitespace_size > 1) {
             Error(linenum, "whitespace/todo", 2,
                   "Too many spaces before TODO");
         }
 
-        const std::string& username = GetMatchStr(m_re_result, comment, 2);
-        if (username.empty()) {
+        size_t username_size = GetMatchSize(m_re_result, 2);
+        if (username_size == INDEX_NONE) {
             Error(linenum, "readability/todo", 2,
                   "Missing username in TODO; it should look like "
                   "\"// TODO(my_username): Stuff.\"");
         }
 
-        const std::string& middle_whitespace = GetMatchStr(m_re_result, comment, 3);
+        std::string middle_whitespace = GetMatchStr(m_re_result, comment, 3);
         // Comparisons made explicit for correctness
         //  -- pylint: disable=g-explicit-bool-comparison
         if (!IsMatched(m_re_result, 3) ||
@@ -1116,7 +1128,9 @@ void FileLinter::CheckComment(const std::string& line,
     // If the comment contains an alphanumeric character, there
     // should be a space somewhere between it and the // unless
     // it's a /// or //! Doxygen comment.
-    if (RegexMatch(R"(//[^ ]*\w)", comment, m_re_result) &&
+    static const regex_code RE_PATTERN_COMMENT_NOSPACE =
+        RegexCompile(R"(//[^ ]*\w)");
+    if (RegexMatch(RE_PATTERN_COMMENT_NOSPACE, comment, m_re_result) &&
         !RegexMatch(R"((///|//\!)(\s+|$))", comment, m_re_result)) {
         Error(linenum, "whitespace/comments", 4,
               "Should have a space between // and comment");
@@ -1826,7 +1840,7 @@ macro_map_t InitializeMacroMap() {
 
 macro_map_t CHECK_REPLACEMENT = InitializeMacroMap();
 
-static std::string FindCheckMacro(const std::string& line, size_t* start_pos,
+static const std::string& FindCheckMacro(const std::string& line, size_t* start_pos,
                                   regex_match& re_result) {
     // Find a replaceable CHECK-like macro.
     for (const std::string& macro : CHECK_MACROS) {
@@ -1845,14 +1859,15 @@ static std::string FindCheckMacro(const std::string& line, size_t* start_pos,
         }
     }
     *start_pos = INDEX_NONE;
-    return "";
+    static const std::string empty = "";
+    return empty;
 }
 
 void FileLinter::CheckCheck(const CleansedLines& clean_lines,
                             const std::string& elided_line, size_t linenum) {
     // Decide the set of replacement macros that should be suggested
     size_t start_pos;
-    std::string check_macro = FindCheckMacro(elided_line, &start_pos, m_re_result);
+    const std::string& check_macro = FindCheckMacro(elided_line, &start_pos, m_re_result);
     if (check_macro.empty())
         return;
 
@@ -2031,7 +2046,9 @@ void FileLinter::CheckSectionSpacing(const CleansedLines& clean_lines,
         return;
 
     const std::string& line = clean_lines.GetLineAt(linenum);
-    bool matched = RegexMatch(R"(\s*(public|protected|private):)",
+    static const regex_code RE_PATTERN_CLASS_SECTION =
+        RegexCompile(R"(\s*(public|protected|private):)");
+    bool matched = RegexMatch(RE_PATTERN_CLASS_SECTION,
                               line, m_re_result);
     if (!matched)
         return;
@@ -2308,9 +2325,11 @@ void FileLinter::CheckIncludeLine(const CleansedLines& clean_lines, size_t linen
     //
     // We also make an exception for Lua headers, which follow google
     // naming convention but not the include convention.
-    bool match = RegexMatch(R"---(#include\s*"([^/]+\.(.*))")---", line, m_re_result);
+    static const regex_code RE_PATTERN_INCLUDE_SUBDIR =
+        RegexCompile(R"---(#include\s*"([^/]+\.(.*))")---");
     static const regex_code RE_PATTERN_INCLUDE_EXT =
         RegexCompile(R"(^(?:[^/]*[A-Z][^/]*\.h|lua\.h|lauxlib\.h|lualib\.h)$)");
+    bool match = RegexMatch(RE_PATTERN_INCLUDE_SUBDIR, line, m_re_result);
     if (match) {
         if (m_options.IsHeaderExtension(GetMatchStr(m_re_result, line, 2)) &&
             !RegexMatch(RE_PATTERN_INCLUDE_EXT,
@@ -3004,7 +3023,9 @@ static bool IsOutOfLineMethodDefinition(const CleansedLines& clean_lines, size_t
     for (size_t i = linenum;; i--) {
         const std::string& line = clean_lines.GetElidedAt(i);
         if (RegexMatch(RE_PATTERN_FUNC_START, line, re_result_temp)) {
-            return RegexMatch(R"(^[^()]*\w+::\w+\()", line, re_result_temp);
+            static const regex_code RE_PATTERN_OUT_OF_LINE =
+                RegexCompile(R"(^[^()]*\w+::\w+\()");
+            return RegexMatch(RE_PATTERN_OUT_OF_LINE, line, re_result_temp);
         }
         if (i == min_line) break;
     }
@@ -3273,12 +3294,25 @@ void FileLinter::CheckForNonStandardConstructs(const CleansedLines& clean_lines,
         }
     }
 
-    // Remove escaped backslashes before looking for undefined escapes.
-    std::string line_removed_escape = StrReplaceAll(line, "\\\\", "");
+    // Search \%, \[, \(, and \{ in strings
+    bool escaped = false;
+    bool printf_unescape = false;
+    bool inside_str = false;
+    for (const char c : line) {
+        if (escaped) {
+            escaped = false;
+            if (inside_str && (c == '%' || c == '[' || c == '(' || c == '{')) {
+                printf_unescape = true;
+                break;
+            }
+        } else if (c == '\\') {
+            escaped = true;
+        } else if (c == '"' || c == '\'') {
+            inside_str = true;
+        }
+    }
 
-    static const regex_code RE_PATTERN_PRINTF_UNESCAPE =
-        RegexCompile(R"(("|\').*\\(%|\[|\(|{))");
-    if (RegexSearch(RE_PATTERN_PRINTF_UNESCAPE, line_removed_escape, m_re_result_temp)) {
+    if (printf_unescape) {
         Error(linenum, "build/printf_format", 3,
               "%, [, (, and { are undefined character escapes.  Unescape them.");
     }
@@ -3342,7 +3376,7 @@ void FileLinter::CheckForNonStandardConstructs(const CleansedLines& clean_lines,
 
     // The class may have been declared with namespace or classname qualifiers.
     // The constructor and destructor will not have those qualifiers.
-    std::string base_classname = classinfo->Basename();
+    const std::string& base_classname = classinfo->Basename();
 
     if (!StrContain(elided, base_classname))
         return;
@@ -3994,10 +4028,9 @@ void FileLinter::ProcessFile() {
         std::string line;
         size_t linenum = 0;
         int status = LINE_OK;
-        std::stringstream ss;
         // Note: We can't use getline cause it trims NUL bytes and a linefeed at EOF.
         while ((status & LINE_EOF) == 0) {
-            line = GetLine(file, ss, &status);
+            line = GetLine(file, &status);
             if (!line.empty() && line.back() == '\r') {
                 // line ends with \r.
                 crlf_lines.push_back(linenum + 1);
