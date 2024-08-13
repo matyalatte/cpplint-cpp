@@ -55,11 +55,21 @@ PCRE2_SIZE GetMatchSize(regex_match& match, int i) noexcept;
 pcre2_code* RegexCompileBase(const std::string& regex,
                              uint32_t options = REGEX_OPTIONS_DEFAULT) noexcept;
 
+// get pcre2_code as a unique pointer
 inline regex_code RegexCompile(const std::string& regex,
                                uint32_t options = REGEX_OPTIONS_DEFAULT) noexcept {
     pcre2_code* ret = RegexCompileBase(regex, options);
     return regex_code(ret);
 }
+
+#ifdef SUPPORT_JIT
+// Uses jit compiler for regex
+// It makes matching faster when using complex patterns in RegexSearch.
+regex_code RegexJitCompile(const std::string& regex,
+                           uint32_t options = REGEX_OPTIONS_DEFAULT) noexcept;
+#else
+#define RegexJitCompile(...) RegexCompile(__VA_ARGS__)
+#endif
 
 // ovecsize is the number of groups plus one.
 inline regex_match RegexCreateMatchData(uint32_t ovecsize) noexcept {

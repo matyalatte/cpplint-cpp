@@ -1137,6 +1137,9 @@ void FileLinter::CheckComment(const std::string& line,
     }
 }
 
+static const regex_code RE_PATTERN_CLASS_SECTION =
+    RegexCompile(R"(\s*(public|protected|private):)");
+
 void FileLinter::CheckSpacing(const CleansedLines& clean_lines,
                               const std::string& elided_line, size_t linenum,
                               NestingState* nesting_state) {
@@ -1227,7 +1230,7 @@ void FileLinter::CheckSpacing(const CleansedLines& clean_lines,
             }
         }
 
-        bool matched = RegexMatch(R"(\s*(public|protected|private):)",
+        bool matched = RegexMatch(RE_PATTERN_CLASS_SECTION,
                                   prev_line, m_re_result);
         if (matched) {
             Error(linenum, "whitespace/blank_line", 3,
@@ -2046,8 +2049,6 @@ void FileLinter::CheckSectionSpacing(const CleansedLines& clean_lines,
         return;
 
     const std::string& line = clean_lines.GetLineAt(linenum);
-    static const regex_code RE_PATTERN_CLASS_SECTION =
-        RegexCompile(R"(\s*(public|protected|private):)");
     bool matched = RegexMatch(RE_PATTERN_CLASS_SECTION,
                               line, m_re_result);
     if (!matched)
@@ -2490,9 +2491,9 @@ void FileLinter::CheckCasts(const CleansedLines& clean_lines,
     // Parameterless conversion functions, such as bool(), are allowed as they are
     // probably a member operator declaration or default constructor.
     static const regex_code RE_PATTERN_CAST =
-        RegexCompile(R"((\bnew\s+(?:const\s+)?|\S<\s*(?:const\s+)?)?\b)"
-                     R"((int|float|double|bool|char|int32|uint32|int64|uint64))"
-                     R"((\([^)].*))");
+        RegexJitCompile(R"((\bnew\s+(?:const\s+)?|\S<\s*(?:const\s+)?)?\b)"
+                        R"((int|float|double|bool|char|int32|uint32|int64|uint64))"
+                        R"((\([^)].*))");
     bool match = RegexSearch(RE_PATTERN_CAST, line, m_re_result);
     bool expecting_function = ExpectingFunctionArgs(clean_lines, elided_line, linenum);
     if (match && !expecting_function) {
@@ -2575,8 +2576,8 @@ void FileLinter::CheckCasts(const CleansedLines& clean_lines,
     // This is not a cast:
     //   reference_type&(int* function_param);
     static const regex_code RE_PATTERN_CAST_TYPE =
-        RegexCompile(R"((?:[^\w]&\(([^)*][^)]*)\)[\w(])|)"
-                     R"((?:[^\w]&(static|dynamic|down|reinterpret)_cast\b))");
+        RegexJitCompile(R"((?:[^\w]&\(([^)*][^)]*)\)[\w(])|)"
+                        R"((?:[^\w]&(static|dynamic|down|reinterpret)_cast\b))");
     match = RegexSearch(RE_PATTERN_CAST_TYPE, line, m_re_result_temp);
     if (match) {
         // Try a better error message when the & is bound to something
@@ -2667,9 +2668,9 @@ void FileLinter::CheckGlobalStatic(const std::string& elided_line, size_t linenu
     }
 
     static const regex_code RE_PATTERN_INIT_WITH_ITSELF =
-        RegexCompile(R"(\b([A-Za-z0-9_]*_)\(\1\))");
+        RegexJitCompile(R"(\b([A-Za-z0-9_]*_)\(\1\))");
     static const regex_code RE_PATTERN_INIT_WITH_ITSELF2 =
-        RegexCompile(R"(\b([A-Za-z0-9_]*_)\(CHECK_NOTNULL\(\1\)\))");
+        RegexJitCompile(R"(\b([A-Za-z0-9_]*_)\(CHECK_NOTNULL\(\1\)\))");
     if (RegexSearch(RE_PATTERN_INIT_WITH_ITSELF, line, m_re_result_temp) ||
         RegexSearch(RE_PATTERN_INIT_WITH_ITSELF2, line, m_re_result_temp)) {
         Error(linenum, "runtime/init", 4,
@@ -3720,7 +3721,7 @@ static const header_patterns_t CompileContainingTemplatesPatterns() {
     patterns.reserve(HEADERS_CONTAINING_TEMPLATES.size());
     for (const std::pair<std::string, std::set<std::string>>& p : HEADERS_CONTAINING_TEMPLATES) {
         std::string regex = SetToStr(p.second, R"(((^|(^|\s|((^|\W)::))std::)|[^>.:]\b)()", "|", R"()\s*\<)");
-        patterns.emplace_back(p.first, std::move(RegexCompile(regex)));
+        patterns.emplace_back(p.first, std::move(RegexJitCompile(regex)));
     }
     return patterns;
 }
@@ -3740,7 +3741,7 @@ static const header_patterns_t CompileMaybeTemplatesPatterns() {
         // Match max<type>(..., ...), max(..., ...), but not foo->max, foo.max or
         // 'type::max()'.
         std::string regex = SetToStr(p.second, R"(((\bstd::)|[^>.:])\b()", "|", R"()(<.*?>)?\([^\)])");
-        patterns.emplace_back(p.first, std::move(RegexCompile(regex)));
+        patterns.emplace_back(p.first, std::move(RegexJitCompile(regex)));
     }
     return patterns;
 }
@@ -3762,7 +3763,7 @@ static const header_patterns_t CompileTypesOrObjsPatterns() {
     patterns.reserve(HEADERS_TYPES_OR_OBJS.size());
     for (const std::pair<std::string, std::set<std::string>>& p : HEADERS_TYPES_OR_OBJS) {
         std::string regex = SetToStr(p.second, "\\b(", "|", ")\\b");
-        patterns.emplace_back(p.first, std::move(RegexCompile(regex)));
+        patterns.emplace_back(p.first, std::move(RegexJitCompile(regex)));
     }
     return patterns;
 }
@@ -3788,7 +3789,7 @@ static const regex_code CompileCstdioPatterns() {
     std::string regex = SetToStr(HEADERS_CSTDIO_FUNCTIONS,
                                  R"(([^>.]|^)\b()", "|", R"()\([^\)])");
 
-    return RegexCompile(regex);
+    return RegexJitCompile(regex);
 }
 
 static const regex_code RE_PATTERN_CSTDIO_FUNCTIONS =
@@ -3849,7 +3850,7 @@ void FileLinter::CheckForIncludeWhatYouUse(const CleansedLines& clean_lines,
         // Map is often overloaded. Only check, if it is fully qualified.
         // Match 'std::map<type>(...)', but not 'map<type>(...)''
         static const regex_code RE_PATTERNS_MAP_TEMPLATES =
-            RegexCompile(R"((std\b::\bmap\s*\<)|(^(std\b::\b)map\b\(\s*\<))");
+            RegexJitCompile(R"((std\b::\bmap\s*\<)|(^(std\b::\b)map\b\(\s*\<))");
         if (RegexSearch(RE_PATTERNS_MAP_TEMPLATES, line, m_re_result_temp))
             required["map"] = { linenum, "map<>" };
 

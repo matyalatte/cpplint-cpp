@@ -62,6 +62,15 @@ elif cpplint_os == 'darwin'
     endif
 endif
 
+# enable JIT compiler in pcre2
+cpu_jit_supported = [ 'aarch64', 'arm', 'mips', 'mips64', 'ppc', 'ppc64', 'riscv32', 'riscv64', 's390x', 'x86', 'x86_64' ]
+pcre2_jit_supported = (target_machine.cpu_family() in cpu_jit_supported and
+                       meson.get_compiler('c').get_id() != 'tcc' and
+                       target_machine.system() != 'darwin')
+if pcre2_jit_supported
+    add_global_arguments('/DSUPPORT_JIT', language: ['c', 'cpp'])
+endif
+
 # get pcre2
 pcre2_options = [
     'grep=false',

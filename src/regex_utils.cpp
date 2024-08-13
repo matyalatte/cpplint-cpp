@@ -27,6 +27,19 @@ pcre2_code* RegexCompileBase(const std::string& regex, uint32_t options) noexcep
     return code_ptr;
 }
 
+regex_code RegexJitCompile(const std::string& regex, uint32_t options) noexcept {
+    pcre2_code* ret = RegexCompileBase(regex, options);
+
+    int result = pcre2_jit_compile(ret, PCRE2_JIT_COMPLETE);
+    if (result != 0) {
+        std::cerr << "PCRE2 JIT compilation failed. " <<
+            " Error: " << result << ", Pattern: " << regex << std::endl;
+        exit(1);
+    }
+
+    return regex_code(ret);
+}
+
 static inline bool pcre2_match_priv(const pcre2_code* re, const std::string& str,
                                     pcre2_match_data* match, uint32_t flags = REGEX_FLAGS_DEFAULT) {
     int rc = pcre2_match(

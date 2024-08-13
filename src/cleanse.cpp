@@ -249,7 +249,7 @@ std::string CleansedLines::CollapseStrings(const std::string& elided) {
             like "0.'3" (gcc 4.9.0 will not allow this literal).
             */
             static const regex_code RE_PATTERN_DIGIT =
-                RegexCompile(R"(\b(?:0[bBxX]?|[1-9])[0-9a-fA-F]*$)");
+                RegexJitCompile(R"(\b(?:0[bBxX]?|[1-9])[0-9a-fA-F]*$)");
             if (RegexSearch(RE_PATTERN_DIGIT, head, m_re_result)) {
                 std::string subject = "'" + tail;
                 static const regex_code RE_PATTERN_DIGIT2 =
