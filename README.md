@@ -15,10 +15,10 @@ Here is an analysis of the execution times between `cpplint-cpp` and `cpplint.py
 [`googletest`](https://github.com/google/googletest) and `cpplint-cpp`.
 Measurements were taken on an Ubuntu runner with [`benchmark.yml`](.github/workflows/benchmark.yml).
 
-| App         | googletest-1.14.0 (s) | cpplint-cpp (s) |
+|             | googletest-1.14.0 (s) | cpplint-cpp (s) |
 | ----------- | --------------------- | --------------- |
-| cpplint-cpp | 1.490815              | 0.327613        |
-| cpplint.py  | 14.333434             | 3.449577        |
+| cpplint-cpp | 0.785884              | 0.188663        |
+| cpplint.py  | 14.165049             | 3.439704        |
 
 ## Changes from cpplint.py
 
