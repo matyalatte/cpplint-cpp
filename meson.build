@@ -19,18 +19,18 @@ cpplint_os = host_machine.system()
 cpplint_compiler = meson.get_compiler('c').get_id()
 cpplint_is_debug = get_option('buildtype').startswith('debug')
 
-if cpplint_compiler == 'msvc'
-    cpplint_link_args += [
-        '/LARGEADDRESSAWARE',
-        '/INCREMENTAL:NO'
-    ]
-    if (not cpplint_is_debug)
-        # enable lto
-        cpplint_c_args += ['/GL']
-        cpplint_link_args += ['/OPT:ICF', '/LTCG']
-    endif
-else
-    if cpplint_os == 'windows'
+if cpplint_os == 'windows'
+    if cpplint_compiler == 'msvc'
+        cpplint_link_args += [
+            '/LARGEADDRESSAWARE',
+            '/INCREMENTAL:NO'
+        ]
+        if (not cpplint_is_debug)
+            # enable lto
+            cpplint_c_args += ['/GL']
+            cpplint_link_args += ['/OPT:ICF', '/LTCG']
+        endif
+    else
 		# don't require shipping the MinGW-w64 DLLs
 		cpplint_link_args += [
 			'-static',
@@ -38,6 +38,27 @@ else
 			'-static-libstdc++',
 		]
 	endif
+elif cpplint_os == 'darwin'
+    # Set deployment targets
+    languages = ['c', 'cpp']
+    macosx_version_min = '-mmacosx-version-min=' + get_option('macosx_version_min')
+    add_global_arguments(macosx_version_min, language: languages)
+    add_global_link_arguments(macosx_version_min, language: languages)
+
+    # Check if SDKs support universal binaries or not.
+    arch = ['-arch', 'x86_64', '-arch', 'arm64']
+    c_compiler = meson.get_compiler('c')
+    result = c_compiler.run(
+        'int main(void) { return 0; }',
+        name : 'universal binary test',
+        args: arch)
+    if result.compiled()
+        # set options for universal build
+        add_global_arguments(arch, language: languages)
+        add_global_link_arguments(arch, language: languages)
+    else
+        warning('Universal build is disabled since your SDKs do not support it.')
+    endif
 endif
 
 # get pcre2
