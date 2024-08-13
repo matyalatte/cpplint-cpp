@@ -10,6 +10,7 @@ project('cpplint-cpp', ['c', 'cpp'],
         'cpp_std=c++20',                # strict C++20
         'cpp_eh=sc',                    # shut the compiler up in some cases
         'cpp_winlibs=',                 # likewise as with c_winlibs
+        'wrap_mode=forcefallback'       # we don't use installed libraries.
     ],
     version: '0.1.0')
 
