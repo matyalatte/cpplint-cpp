@@ -16,12 +16,12 @@ class LinesLinterTest : public ::testing::Test {
     LinesLinterTest() = default;
     ~LinesLinterTest() override = default;
 
-    virtual void SetUp() {
+    void SetUp() override {
         filename = "test/test.cpp";
         ResetFilters("-legal/copyright,-whitespace/ending_newline,+build/include_alpha");
     }
 
-    virtual void TearDown() {}
+    void TearDown() override {}
 
     void ProcessLines(std::vector<std::string> lines) {
         linter.CacheVariables(filename);

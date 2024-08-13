@@ -17,12 +17,12 @@ class FileLinterTest : public ::testing::Test {
     FileLinterTest() = default;
     ~FileLinterTest() override = default;
 
-    virtual void SetUp() {
+    void SetUp() override {
         filename = "";
         filters = "-legal/copyright,-whitespace/ending_newline,+build/include_alpha";
     }
 
-    virtual void TearDown() {}
+    void TearDown() override {}
 
     void ProcessFile() {
         ResetFilters();
