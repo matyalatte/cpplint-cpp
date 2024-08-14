@@ -7,7 +7,8 @@
 
 extern const regex_code RE_PATTERN_INCLUDE;
 
-extern const regex_code RE_PATTERN_ALT_TOKEN_REPLACEMENT;
+// Get regex pattern for RE_PATTERN_ALT_TOKEN_REPLACEMENT
+std::string GetReAltTokenReplacement();
 
 // ALT_TOKEN_REPLACEMENT[alt_token]
 const std::string& AltTokenToToken(const std::string& alt_token);

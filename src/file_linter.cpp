@@ -721,7 +721,9 @@ void FileLinter::CheckBraces(const CleansedLines& clean_lines,
         std::string endline = line;
         size_t endlinenum = linenum;
         size_t endpos = GetMatchEnd(m_re_result, 0);
-        bool if_match = RegexSearch(R"(\bif\s*(|constexpr)\s*\()", line, m_re_result);
+        static const regex_code RE_PATTERN_IF_BRACE =
+            RegexCompile(R"(\bif\s*(|constexpr)\s*\()");
+        bool if_match = RegexSearch(RE_PATTERN_IF_BRACE, line, m_re_result);
         if (if_match) {
             // This could be a multiline if condition, so find the end first.
             size_t pos = GetMatchEnd(m_re_result, 0) - 1;
@@ -735,7 +737,9 @@ void FileLinter::CheckBraces(const CleansedLines& clean_lines,
         }
         // Check for an opening brace, either directly after the if or on the next
         // line. If found, this isn't a single-statement conditional.
-        if (!RegexMatch(R"(\s*(?:\[\[(?:un)?likely\]\]\s*)?{)", endline_sub, m_re_result_temp) &&
+        static const regex_code RE_PATTERN_IF_OPEN_BRACE =
+            RegexCompile(R"(\s*(?:\[\[(?:un)?likely\]\]\s*)?{)");
+        if (!RegexMatch(RE_PATTERN_IF_OPEN_BRACE, endline_sub, m_re_result_temp) &&
             !(StrIsBlank(endline_sub) &&
               endlinenum < (clean_lines.NumLines() - 1) &&
               GetFirstNonSpace(clean_lines.GetElidedAt(endlinenum + 1)) == '{')) {
@@ -1333,7 +1337,7 @@ void FileLinter::CheckOperatorSpacing(const CleansedLines& clean_lines,
     // many false positives due to RValue references.
 
     static const regex_code RE_PATTERN_OPERATOR_SPACING2 =
-        RegexCompile(R"([^<>=!\s](==|!=|<=|>=|\|\|)[^<>=!\s,;\)])");
+        RegexJitCompile(R"([^<>=!\s](==|!=|<=|>=|\|\|)[^<>=!\s,;\)])");
     match = RegexSearch(RE_PATTERN_OPERATOR_SPACING2, line, m_re_result);
     if (match) {
         // TODO(unknown): support alternate operators
@@ -1413,7 +1417,7 @@ void FileLinter::CheckOperatorSpacing(const CleansedLines& clean_lines,
 
     // There shouldn't be space around unary operators
     static const regex_code RE_PATTERN_OPERATOR_SPACING3 =
-        RegexCompile(R"((!\s|~\s|[\s]--[\s;]|[\s]\+\+[\s;]))");
+        RegexJitCompile(R"((!\s|~\s|[\s]--[\s;]|[\s]\+\+[\s;]))");
     match = RegexSearch(RE_PATTERN_OPERATOR_SPACING3, line, m_re_result);
     if (match) {
         Error(linenum, "whitespace/operators", 4,
@@ -1787,7 +1791,7 @@ void FileLinter::CheckSpacingForFunctionCallBase(const std::string& line,
     // Return if the ) is followed only by a newline or a { + newline, assume it's
     // part of a control statement (if/while/etc), and don't complain
     static const regex_code RE_PATTERN_EOL_BRACE =
-        RegexCompile(R"([^)]\s+\)\s*[^{\s])");
+        RegexJitCompile(R"([^)]\s+\)\s*[^{\s])");
     if (!RegexSearch(RE_PATTERN_EOL_BRACE, fncall, m_re_result_temp))
         return;
 
@@ -2007,6 +2011,9 @@ void FileLinter::CheckAltTokens(const std::string& elided_line, size_t linenum) 
     if ((line.find("/*") != std::string::npos) || (line.find("*/") != std::string::npos))
         return;
 
+    static const regex_code RE_PATTERN_ALT_TOKEN_REPLACEMENT =
+        RegexJitCompile(GetReAltTokenReplacement());
+
     if (!RegexSearch(RE_PATTERN_ALT_TOKEN_REPLACEMENT, line, m_re_result))
         return;
 
@@ -2184,9 +2191,12 @@ void FileLinter::CheckStyle(const CleansedLines& clean_lines,
         }
     }
 
+    static const regex_code RE_PATTERN_LAMBDA =
+        RegexCompile(R"(^[^{};]*\[[^\[\]]*\][^{}]*\{[^{}\n\r]*\})");
+
     if (StrCount(cleansed_line, ';') > 1 &&
             // allow simple single line lambdas
-            !RegexMatch(R"(^[^{};]*\[[^\[\]]*\][^{}]*\{[^{}\n\r]*\})", line, m_re_result_temp) &&
+            !RegexMatch(RE_PATTERN_LAMBDA, line, m_re_result_temp) &&
             // for loops are allowed two ;'s (and may run over two lines).
             !StrContain(cleansed_line, "for")) {
         const std::string& prev_line = GetPreviousNonBlankLine(clean_lines, linenum);
@@ -3322,7 +3332,7 @@ void FileLinter::CheckForNonStandardConstructs(const CleansedLines& clean_lines,
     const std::string& elided = elided_line;
 
     static const regex_code RE_PATTERN_STORAGE_CLASS =
-        RegexCompile(R"(\b(const|volatile|void|char|short|int|long)"
+        RegexJitCompile(R"(\b(const|volatile|void|char|short|int|long)"
                      "|float|double|signed|unsigned"
                      "|schar|u?int8|u?int16|u?int32|u?int64)"
                      R"(\s+(register|static|extern|typedef)\b)");
@@ -3489,7 +3499,7 @@ void FileLinter::CheckPosixThreading(const std::string& elided_line, size_t line
     // member function calls.
 
     static const regex_code RE_PATTERN_UNSAFE_FUNC =
-        RegexCompile(R"((?:[-+*/=%^&|(<]\s*|>\s+))"
+        RegexJitCompile(R"((?:[-+*/=%^&|(<]\s*|>\s+))"
                     "(asctime|ctime|getgrgid|getgrnam|getlogin|getpwnam|"
                     "getpwuid|gmtime|localtime|rand|strtok|ttyname)"
                     R"(\([^)]*\))");

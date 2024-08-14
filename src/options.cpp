@@ -759,14 +759,14 @@ static void ParseFilterSelector(const std::string& filter,
         Filename is either a filename or empty if all files are meant.
         Line is either a line in filename or -1 if all lines are meant.
     */
-    size_t colon_pos = filter.find(':');
+    size_t colon_pos = filter.find(':', 1);
     if (colon_pos == std::string::npos) {
-        category = filter;
+        category = filter.substr(1);
         file = "";
         *line = INDEX_NONE;
         return;
     }
-    category = filter.substr(0, colon_pos);
+    category = filter.substr(1, colon_pos - 1);
     size_t second_colon_pos = filter.find(':', colon_pos + 1);
     if (second_colon_pos == std::string::npos) {
         file = filter.substr(colon_pos + 1, std::string::npos);
@@ -782,27 +782,24 @@ static void ParseFilterSelector(const std::string& filter,
 bool Options::ShouldPrintError(const std::string& category,
                                const std::string& filename, size_t linenum) {
     bool is_filtered = false;
-    for (const std::string& one_filter : Filters()) {
-        std::string filter_without_dot = &one_filter[1];
+    for (const std::string& filter : Filters()) {
         std::string filter_cat;
         std::string filter_file;
         size_t filter_line;
-        ParseFilterSelector(filter_without_dot, filter_cat, filter_file, &filter_line);
+        ParseFilterSelector(filter, filter_cat, filter_file, &filter_line);
         bool category_match = category.starts_with(filter_cat);
         bool file_match = filter_file.empty() || filter_file == filename;
         bool line_match = filter_line == linenum || filter_line == INDEX_NONE;
 
-        if (one_filter.starts_with('-')) {
+        if (filter.starts_with('-')) {
             if (category_match && file_match && line_match)
                 is_filtered = true;
-        } else if (one_filter.starts_with('+')) {
+        } else if (filter.starts_with('+')) {
             if (category_match && file_match && line_match)
                 is_filtered = false;
         } else {
             assert(false);  // should have been checked for in SetFilter.
         }
     }
-    if (is_filtered)
-        return false;
-    return true;
+    return !is_filtered;
 }

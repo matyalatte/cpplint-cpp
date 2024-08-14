@@ -86,6 +86,10 @@ inline bool StrContain(const std::string& str, const std::string& target) {
     return str.find(target) != std::string::npos;
 }
 
+inline bool StrContain(const std::string& str, const char* target) {
+    return str.find(target) != std::string::npos;
+}
+
 inline bool StrContain(const std::string& str, const char c) {
     return str.find(c) != std::string::npos;
 }

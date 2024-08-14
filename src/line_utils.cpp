@@ -114,10 +114,11 @@ void FindEndOfExpressionInLine(const std::string& line,
 
 const std::string& CloseExpression(const CleansedLines& clean_lines, size_t* linenum, size_t* pos) {
     const std::string& line = clean_lines.GetElidedAt(*linenum);
-    char c = line[*pos];
-    std::string exp = line.substr(*pos);
+    const char* cp = &line[*pos];
+    const char c = *cp;
+    const char c2 = *(cp + 1);
     if (!(c == '(' || c == '{' || c == '[' || c == '<') ||
-        (exp.starts_with("<<") || exp.starts_with("<="))) {
+        (c == '<' && (c2 == '<' || c2 == '='))) {
         *linenum = clean_lines.NumLines();
         *pos = INDEX_NONE;
         return line;

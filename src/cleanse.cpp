@@ -54,7 +54,8 @@ std::string GetReAltTokenReplacement() {
 }
 
 const regex_code RE_PATTERN_INCLUDE = RegexCompile(R"(^\s*#\s*include\s*([<"])([^>"]*)[>"].*$)");
-const regex_code RE_PATTERN_ALT_TOKEN_REPLACEMENT = RegexCompile(GetReAltTokenReplacement());
+static const regex_code RE_PATTERN_ALT_TOKEN_REPLACEMENT =
+    RegexCompile(GetReAltTokenReplacement());
 
 std::vector<std::string>
 CleansedLines::CleanseRawStrings(const std::vector<std::string>& raw_lines) {
