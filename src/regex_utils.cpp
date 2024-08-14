@@ -27,6 +27,7 @@ pcre2_code* RegexCompileBase(const std::string& regex, uint32_t options) noexcep
     return code_ptr;
 }
 
+#ifdef SUPPORT_JIT
 regex_code RegexJitCompile(const std::string& regex, uint32_t options) noexcept {
     pcre2_code* ret = RegexCompileBase(regex, options);
 
@@ -39,6 +40,7 @@ regex_code RegexJitCompile(const std::string& regex, uint32_t options) noexcept 
 
     return regex_code(ret);
 }
+#endif
 
 static inline bool pcre2_match_priv(const pcre2_code* re, const std::string& str,
                                     pcre2_match_data* match, uint32_t flags = REGEX_FLAGS_DEFAULT) {

@@ -17,6 +17,7 @@ project('cpplint-cpp', ['c', 'cpp'],
 cpplint_link_args = []
 cpplint_c_args = []
 cpplint_os = host_machine.system()
+cpplint_cpu = host_machine.cpu_family()
 cpplint_compiler = meson.get_compiler('c').get_id()
 cpplint_is_debug = get_option('buildtype').startswith('debug')
 
@@ -64,11 +65,15 @@ endif
 
 # enable JIT compiler in pcre2
 cpu_jit_supported = [ 'aarch64', 'arm', 'mips', 'mips64', 'ppc', 'ppc64', 'riscv32', 'riscv64', 's390x', 'x86', 'x86_64' ]
-pcre2_jit_supported = (target_machine.cpu_family() in cpu_jit_supported and
-                       meson.get_compiler('c').get_id() != 'tcc' and
-                       target_machine.system() != 'darwin')
+pcre2_jit_supported = (cpplint_cpu in cpu_jit_supported and
+                       cpplint_compiler != 'tcc' and
+                       cpplint_os != 'darwin')
 if pcre2_jit_supported
-    add_global_arguments('/DSUPPORT_JIT', language: ['c', 'cpp'])
+    if cpplint_compiler == 'msvc'
+        add_global_arguments('/DSUPPORT_JIT', language: ['c', 'cpp'])
+    else
+        add_global_arguments('-DSUPPORT_JIT', language: ['c', 'cpp'])
+    endif
 endif
 
 # get pcre2
