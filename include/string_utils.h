@@ -94,6 +94,10 @@ inline bool StrContain(const std::string& str, const char c) {
     return str.find(c) != std::string::npos;
 }
 
+inline bool StrContain(const std::string& str, const char c, size_t pos) {
+    return str.find(c, pos) != std::string::npos;
+}
+
 inline bool StrIsChar(const std::string& str, char c) {
     return str.size() == 1 && str[0] == c;
 }
@@ -118,10 +122,10 @@ std::string StrToLower(const std::string &str);
 std::string StrToUpper(const std::string &str);
 
 // Returns the first non-space character or a null terminator.
-char GetFirstNonSpace(const std::string& str) noexcept;
+char GetFirstNonSpace(const std::string& str, size_t pos = 0) noexcept;
 
 // Returns index to the first non-space character or INDEX_NONE.
-size_t GetFirstNonSpacePos(const std::string& str) noexcept;
+size_t GetFirstNonSpacePos(const std::string& str, size_t pos = 0) noexcept;
 
 // Returns true if the string is empty or consists of only white spaces.
 inline bool StrIsBlank(const std::string& str) noexcept {

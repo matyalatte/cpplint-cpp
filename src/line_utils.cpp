@@ -6,10 +6,9 @@
 #include "string_utils.h"
 
 size_t GetIndentLevel(const std::string& line) {
-    regex_match m;
     static const regex_code RE_PATTERN_INDENT =
         RegexCompile(R"(^( *)\S)");
-    regex_match re_result = RegexCreateMatchData(RE_PATTERN_INDENT);
+    thread_local regex_match re_result = RegexCreateMatchData(RE_PATTERN_INDENT);
     bool indent = RegexMatch(RE_PATTERN_INDENT, line, re_result);
     if (indent)
         return GetMatchSize(re_result, 1);
@@ -39,7 +38,7 @@ void FindEndOfExpressionInLine(const std::string& line,
                         return;
                     }
                 }
-            } else if (i > 0 && RegexSearch(RE_PATTERN_OPERATOR, line.substr(0, i))) {
+            } else if (i > 0 && RegexSearchWithRange(RE_PATTERN_OPERATOR, line, 0, i)) {
                 // operator<, don't add to stack
                 continue;
             } else {
@@ -78,7 +77,7 @@ void FindEndOfExpressionInLine(const std::string& line,
 
             // Ignore "->" and operator functions
             if (i > 0 &&
-                (line[i - 1] == '-' || RegexSearch(RE_PATTERN_OPERATOR, line.substr(0, i - 1))))
+                (line[i - 1] == '-' || RegexSearchWithRange(RE_PATTERN_OPERATOR, line, 0, i - 1)))
                 continue;
 
             // Pop the stack if there is a matching '<'.  Otherwise, ignore
@@ -154,6 +153,8 @@ const std::string& CloseExpression(const CleansedLines& clean_lines, size_t* lin
 void FindStartOfExpressionInLine(const std::string& line,
                                  size_t* endpos,
                                  std::stack<char>* stack) {
+    regex_match re_result = RegexCreateMatchData(RE_PATTERN_OPERATOR);
+
     size_t i = *endpos;
     while (i != INDEX_NONE) {
         char c = line[i];
@@ -167,7 +168,7 @@ void FindStartOfExpressionInLine(const std::string& line,
             if (i > 0 &&
                 (line[i - 1] == '-' ||
                  RegexMatch(R"(\s>=\s)", line.substr(i - 1)) ||
-                 RegexSearch(RE_PATTERN_OPERATOR, line.substr(0, i))))
+                 RegexSearchWithRange(RE_PATTERN_OPERATOR, line, 0, i)))
                 i--;
             else
                 stack->push('>');

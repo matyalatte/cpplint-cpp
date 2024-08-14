@@ -83,8 +83,7 @@ bool IncludeState::IsInAlphabeticalOrder(const CleansedLines& clean_lines,
         RegexCompile(R"(^\s*#\s*include\b)");
     if ((m_last_header.compare(header_path) > 0) &&
         RegexMatch(RE_PATTERN_INCLUDE_ORDER,
-                   clean_lines.GetElidedAt(linenum - 1),
-                   m_re_result))
+                   clean_lines.GetElidedAt(linenum - 1)))
         return false;
     return true;
 }
@@ -259,11 +258,11 @@ void NestingState::UpdatePreprocessor(const std::string& line) {
         RegexCompile(R"(^\s*#\s*(else|elif)\b)");
     static const regex_code RE_PATTERN_ENDIF_MACRO =
         RegexCompile(R"(^\s*#\s*endif\b)");
-    if (RegexMatch(RE_PATTERN_IF_MACRO, line, m_re_result_temp)) {
+    if (RegexMatch(RE_PATTERN_IF_MACRO, line)) {
         // Beginning of #if block, save the nesting stack here.  The saved
         // stack will allow us to restore the parsing state in the #else case.
         m_pp_stack.push(PreprocessorInfo(m_stack));
-    } else if (RegexMatch(RE_PATTERN_ELSE_MACRO, line, m_re_result_temp)) {
+    } else if (RegexMatch(RE_PATTERN_ELSE_MACRO, line)) {
         // Beginning of #else block
         if (!m_pp_stack.empty()) {
             PreprocessorInfo& pp = m_pp_stack.top();
@@ -280,7 +279,7 @@ void NestingState::UpdatePreprocessor(const std::string& line) {
         } else {
             // TODO(unknown): unexpected #else, issue warning?
         }
-    } else if (RegexMatch(RE_PATTERN_ENDIF_MACRO, line, m_re_result_temp)) {
+    } else if (RegexMatch(RE_PATTERN_ENDIF_MACRO, line)) {
         // End of #if or #else blocks.
         if (!m_pp_stack.empty()) {
             PreprocessorInfo& pp = m_pp_stack.top();
@@ -336,7 +335,7 @@ void NestingState::Update(const CleansedLines& clean_lines,
         if (inline_asm == NO_ASM || inline_asm == END_ASM) {
             if (depth_change != 0 &&
                 inner_block->OpenParentheses() == 1 &&
-                RegexMatch(RE_PATTERN_ASM, line, m_re_result_temp)) {
+                RegexMatch(RE_PATTERN_ASM, line)) {
                 // Enter assembly block
                 inner_block->SetInlineAsm(INSIDE_ASM);
             } else {
@@ -463,13 +462,13 @@ void NestingState::Update(const CleansedLines& clean_lines,
                 RegexCompile(R"(^extern\s*"[^"]*"\s*\{)");
             if (!SeenOpenBrace()) {
                 m_stack.back()->SetSeenOpenBrace(true);
-            } else if (RegexMatch(RE_PATTERN_EXTERN, line, m_re_result_temp)) {
+            } else if (RegexMatch(RE_PATTERN_EXTERN, line)) {
                 m_block_info_buffer.push(new ExternCInfo(linenum));
                 m_stack.push_back(m_block_info_buffer.top());
             } else {
                 m_block_info_buffer.push(new BlockInfo(linenum, true));
                 m_stack.push_back(m_block_info_buffer.top());
-                if (RegexMatch(RE_PATTERN_ASM, line, m_re_result_temp))
+                if (RegexMatch(RE_PATTERN_ASM, line))
                     m_stack.back()->SetInlineAsm(BLOCK_ASM);
             }
         } else if (token[0] == ';' || token[0] == ')') {

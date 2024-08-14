@@ -54,7 +54,7 @@ void ClassInfo::CheckBegin(const CleansedLines& clean_lines,
         RegexCompile("(^|[^:]):($|[^:])");
 
     // Look for a bare ':'
-    if (RegexSearch(RE_PATTERN_CHECK_BEGIN, clean_lines.GetElidedAt(linenum), m_re_result))
+    if (RegexSearch(RE_PATTERN_CHECK_BEGIN, clean_lines.GetElidedAt(linenum)))
         m_is_derived = true;
 }
 

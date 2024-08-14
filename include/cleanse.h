@@ -27,8 +27,7 @@ const std::string& AltTokenToToken(const std::string& alt_token);
 bool IsCppString(const std::string& line);
 
 // Removes //-comments and single-line C-style /* */ comments.
-std::string CleanseComments(const std::string& line, bool* is_comment,
-                            regex_match& re_result_temp);
+std::string CleanseComments(const std::string& line, bool* is_comment);
 
 class CleansedLines {
     /*Holds 4 copies of all lines with different preprocessing applied to them.

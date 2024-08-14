@@ -121,12 +121,9 @@ TEST(RegexTest, RegexReplace2) {
             R"(\s+)" RE_PATTERN_C_COMMENTS R"((?=\W)|)"
             RE_PATTERN_C_COMMENTS ")");
 
-    regex_match re_result =
-        RegexCreateMatchData(RE_PATTERN_CLEANSE_LINE_C_COMMENTS);
-
     bool replaced;
     std::string res = RegexReplace(RE_PATTERN_CLEANSE_LINE_C_COMMENTS, "",
-                                   "        /*foo=*/true, /*bar=*/true);", re_result, &replaced);
+                                   "        /*foo=*/true, /*bar=*/true);", &replaced);
     EXPECT_EQ(true, replaced);
     EXPECT_STREQ("        true, true);", res.c_str());
 }

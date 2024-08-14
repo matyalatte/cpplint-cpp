@@ -37,14 +37,12 @@ class IncludeState {
     int m_section;
     std::string m_last_header;
     std::vector<std::vector<std::pair<std::string, size_t>>> m_include_list;
-    regex_match m_re_result;
 
  public:
     IncludeState() :
         m_section(0),
         m_last_header(""),
-        m_include_list({{}}),
-        m_re_result(RegexCreateMatchData(8)) {
+        m_include_list({{}}) {
         ResetSection("");
     }
 
@@ -157,15 +155,13 @@ class NestingState {
     // Stack of _PreprocessorInfo objects.
     std::stack<PreprocessorInfo> m_pp_stack;
     regex_match m_re_result;
-    regex_match m_re_result_temp;
 
  public:
     NestingState() :
         m_stack({}),
         m_previous_stack_top(nullptr),
         m_pp_stack(),
-        m_re_result(RegexCreateMatchData(16)),
-        m_re_result_temp(RegexCreateMatchData(16)) {}
+        m_re_result(RegexCreateMatchData(16)) {}
 
     ~NestingState() {
         // Free block info objects

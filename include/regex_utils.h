@@ -38,16 +38,19 @@ inline constexpr uint32_t REGEX_OPTIONS_MULTILINE = PCRE2_MULTILINE | REGEX_OPTI
 inline constexpr uint32_t REGEX_FLAGS_DEFAULT = 0;
 
 // std::smatch.str(i) for pcre2
-std::string GetMatchStr(regex_match& match, const std::string &subject, int i);
+std::string GetMatchStr(regex_match& match, const std::string &subject, int i,
+                        size_t startoffset = 0);
 
 // std::smatch[i].matched
 bool IsMatched(regex_match& match, int i) noexcept;
 
 // std::smatch.position(i)
-PCRE2_SIZE GetMatchStart(regex_match& match, int i) noexcept;
+PCRE2_SIZE GetMatchStart(regex_match& match, int i,
+                         size_t startoffset = 0) noexcept;
 
 // std::smatch.position(i) + std::smatch.str(i).size()
-PCRE2_SIZE GetMatchEnd(regex_match& match, int i) noexcept;
+PCRE2_SIZE GetMatchEnd(regex_match& match, int i,
+                       size_t startoffset = 0) noexcept;
 
 // std::smatch.str(i).size()
 PCRE2_SIZE GetMatchSize(regex_match& match, int i) noexcept;
@@ -83,21 +86,59 @@ inline regex_match RegexCreateMatchData(const regex_code& regex) noexcept {
     return regex_match(ret);
 }
 
-bool RegexSearch(const std::string& regex, const std::string& str,
-                 uint32_t options = REGEX_OPTIONS_DEFAULT,
-                 uint32_t flags = REGEX_FLAGS_DEFAULT) noexcept;
-
 bool RegexSearch(const regex_code& regex, const std::string& str,
-                 uint32_t flags = REGEX_FLAGS_DEFAULT) noexcept;
-
-bool RegexSearch(const std::string& regex, const std::string& str,
-                 regex_match& result,
-                 uint32_t options = REGEX_OPTIONS_DEFAULT,
                  uint32_t flags = REGEX_FLAGS_DEFAULT) noexcept;
 
 bool RegexSearch(const regex_code& regex, const std::string& str,
                  regex_match& result,
                  uint32_t flags = REGEX_FLAGS_DEFAULT) noexcept;
+
+inline bool RegexSearch(
+        const std::string& regex, const std::string& str,
+        uint32_t options = REGEX_OPTIONS_DEFAULT,
+        uint32_t flags = REGEX_FLAGS_DEFAULT) noexcept {
+    regex_code re = RegexCompile(regex, options);
+    return RegexSearch(re, str, flags);
+}
+
+inline bool RegexSearch(
+        const std::string& regex, const std::string& str,
+        regex_match& result,
+        uint32_t options = REGEX_OPTIONS_DEFAULT,
+        uint32_t flags = REGEX_FLAGS_DEFAULT) noexcept {
+    regex_code re = RegexCompile(regex, options);
+    return RegexSearch(re, str, result, flags);
+}
+
+// RegexSearch(regex, str.substr(startoffset, length))
+// without creating string objects for substr
+bool RegexSearchWithRange(const regex_code& regex, const std::string& str,
+                          size_t startoffset, size_t length,
+                          uint32_t flags = REGEX_FLAGS_DEFAULT) noexcept;
+
+bool RegexSearchWithRange(const regex_code& regex, const std::string& str,
+                          size_t startoffset, size_t length,
+                          regex_match& result,
+                          uint32_t flags = REGEX_FLAGS_DEFAULT) noexcept;
+
+inline bool RegexSearchWithRange(
+        const std::string& regex, const std::string& str,
+        size_t startoffset, size_t length,
+        uint32_t options = REGEX_OPTIONS_DEFAULT,
+        uint32_t flags = REGEX_FLAGS_DEFAULT) noexcept {
+    regex_code re = RegexCompile(regex, options);
+    return RegexSearchWithRange(re, str, startoffset, length, flags);
+}
+
+inline bool RegexSearchWithRange(
+        const std::string& regex, const std::string& str,
+        size_t startoffset, size_t length,
+        regex_match& result,
+        uint32_t options = REGEX_OPTIONS_DEFAULT,
+        uint32_t flags = REGEX_FLAGS_DEFAULT) noexcept {
+    regex_code re = RegexCompile(regex, options);
+    return RegexSearchWithRange(re, str, startoffset, length, result, flags);
+}
 
 inline bool RegexMatch(const std::string& regex, const std::string& str,
                        uint32_t options = REGEX_OPTIONS_DEFAULT,
@@ -123,33 +164,58 @@ inline bool RegexMatch(const regex_code& regex, const std::string& str,
     return RegexSearch(regex, str, result, flags | PCRE2_ANCHORED);
 }
 
+// RegexMatch(regex, str.substr(startoffset, length))
+// without creating string objects for substr
+inline bool RegexMatchWithRange(const regex_code& regex, const std::string& str,
+                                size_t startoffset, size_t length,
+                                uint32_t flags = REGEX_FLAGS_DEFAULT) noexcept {
+    return RegexSearchWithRange(regex, str, startoffset, length,
+                                flags | PCRE2_ANCHORED);
+}
+
+inline bool RegexMatchWithRange(const regex_code& regex, const std::string& str,
+                                size_t startoffset, size_t length,
+                                regex_match& result,
+                                uint32_t flags = REGEX_FLAGS_DEFAULT) noexcept {
+    return RegexSearchWithRange(regex, str, startoffset, length,
+                                result, flags | PCRE2_ANCHORED);
+}
+
+inline bool RegexMatchWithRange(const std::string& regex, const std::string& str,
+                                size_t startoffset, size_t length,
+                                uint32_t options = REGEX_OPTIONS_DEFAULT,
+                                uint32_t flags = REGEX_FLAGS_DEFAULT) noexcept {
+    return RegexSearchWithRange(regex, str, startoffset, length,
+                                options, flags | PCRE2_ANCHORED);
+}
+
+inline bool RegexMatchWithRange(const std::string& regex, const std::string& str,
+                                size_t startoffset, size_t length,
+                                regex_match& result,
+                                uint32_t options = REGEX_OPTIONS_DEFAULT,
+                                uint32_t flags = REGEX_FLAGS_DEFAULT) noexcept {
+    return RegexSearchWithRange(regex, str, startoffset, length,
+                                result, options, flags | PCRE2_ANCHORED);
+}
+
 std::string RegexReplace(const std::string& regex, const std::string& fmt,
                          const std::string& str, bool replace_all = true);
 
 std::string RegexReplace(const regex_code& regex, const std::string& fmt,
                          const std::string& str, bool replace_all = true);
 
-std::string RegexReplace(const std::string& regex, const std::string& fmt,
-                         const std::string& str,
-                         regex_match& match_data, bool replace_all = true);
-
 std::string RegexReplace(const regex_code& regex, const std::string& fmt,
                          const std::string& str,
-                         regex_match& match_data, bool replace_all = true);
-
-std::string RegexReplace(const regex_code& regex, const std::string& fmt,
-                         const std::string& str,
-                         regex_match& match_data, bool* replaced, bool replace_all = true);
+                         bool* replaced, bool replace_all = true);
 
 // This version is faster than others but strings should be mutable.
 void RegexReplace(const regex_code& regex, const std::string& fmt,
                   std::string* str,
-                  regex_match& match_data, bool replace_all = true);
+                  bool replace_all = true);
 
 void RegexReplace(const regex_code& regex, const std::string& fmt,
                   std::string* str,
-                  regex_match& match_data, bool* replaced, bool replace_all = true);
-
+                  bool* replaced, bool replace_all = true);
 
 std::string RegexEscape(const std::string& str);
 

@@ -261,15 +261,15 @@ std::string StrToUpper(const std::string &str) {
     return upper;
 }
 
-char GetFirstNonSpace(const std::string& str) noexcept {
-    const char* start = &str[0];
+char GetFirstNonSpace(const std::string& str, size_t pos) noexcept {
+    const char* start = &str[pos];
     while (IS_SPACE(*start))
         start++;
     return *start;
 }
 
-size_t GetFirstNonSpacePos(const std::string& str) noexcept {
-    const char* start = &str[0];
+size_t GetFirstNonSpacePos(const std::string& str, size_t pos) noexcept {
+    const char* start = &str[pos];
     while (IS_SPACE(*start))
         start++;
     if (*start == '\0')
