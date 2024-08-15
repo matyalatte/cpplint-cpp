@@ -61,6 +61,17 @@ std::string StrStrip(const std::string &str, char c) {
     return str.substr(TO_SIZE(start - &str[0]), TO_SIZE(end - start) + 1);
 }
 
+std::string StrStrip(const char* start, const char* end) {
+    if (start > end) return "";
+    while (IS_SPACE(*start))
+        start++;
+    while (start <= end && IS_SPACE(*end))
+        end--;
+    if (end < start)
+        return "";
+    return std::string(start, end + 1);
+}
+
 std::string StrRstrip(const std::string &str) {
     if (str.empty()) return str;
     const char* start = &str[0];
@@ -152,21 +163,19 @@ std::vector<std::string> StrSplitBy(const std::string &str, const std::string &d
 
 std::set<std::string> ParseCommaSeparetedList(const std::string& str) {
     std::set<std::string> set = {};
-    std::string copied = str;
-    char* str_p = &copied[0];
-    char* start = str_p;
+    const char* str_p = &str[0];
+    const char* start = str_p;
 
     while (*str_p != '\0') {
         if (*str_p == ',') {
-            *str_p = '\0';
-            std::string item = StrStrip(start);
+            std::string item = StrStrip(start, str_p - 1);
             if (item.size() > 0)
                 set.insert(item);
             start = str_p + 1;
         }
         str_p++;
     }
-    std::string item = StrStrip(start);
+    std::string item = StrStrip(start, str_p - 1);
     if (item.size() > 0)
         set.insert(item);
     return set;

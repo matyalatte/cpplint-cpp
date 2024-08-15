@@ -4031,30 +4031,36 @@ void FileLinter::ProcessFile() {
             m_cpplint_state->PrintError(
                 "Skipping input '" + m_filename + "': Can't open for reading\n");
         }
-        std::string line;
-        size_t linenum = 0;
+
+        // insert a comment line at the beginning of file.
+        lines.emplace_back("// marker so line numbers and indices both start at 1");
+
+        size_t linenum = 1;
         int status = LINE_OK;
         // Note: We can't use getline cause it trims NUL bytes and a linefeed at EOF.
         while ((status & LINE_EOF) == 0) {
-            line = GetLine(file, &status);
+            std::string line = GetLine(file, &status);
             if (!line.empty() && line.back() == '\r') {
                 // line ends with \r.
-                crlf_lines.push_back(linenum + 1);
+                crlf_lines.push_back(linenum);
                 line.pop_back();
             } else {
                 lf_lines_count++;
             }
             if (status & LINE_BAD_RUNE) {
                 // line contains bad runes.
-                bad_lines.push_back(linenum + 1);
+                bad_lines.push_back(linenum);
             }
             if (status & LINE_NULL) {
                 // line contains null bytes.
-                null_lines.push_back(linenum + 1);
+                null_lines.push_back(linenum);
             }
-            lines.push_back(line);
+            lines.emplace_back(std::move(line));
             linenum++;
         }
+
+        // add a comment line to the end of file.
+        lines.emplace_back("// marker so line numbers end in a known way");
     }
 
     CacheVariables();
@@ -4065,11 +4071,6 @@ void FileLinter::ProcessFile() {
             "Ignoring " + m_filename + "; not a valid file name" +
             " (" + SetToStr(m_all_extensions) + ")\n");
     } else {
-        // insert a comment line at the beginning of file.
-        lines.insert(lines.begin(), "// marker so line numbers and indices both start at 1");
-        // add a comment line to the end of file.
-        lines.emplace_back("// marker so line numbers end in a known way");
-
         // Check lines
         ProcessFileData(lines);
 

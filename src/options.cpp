@@ -553,6 +553,34 @@ std::set<std::string> Options::GetNonHeaderExtensions() const {
     return difference;
 }
 
+// Parses filters and append them to a vector.
+// Returns false when the last filter does not start with + or -.
+static bool ParseCommaSeparetedFilters(const std::string& filters,
+                                       std::vector<std::string>& parsed) {
+    const char* str_p = &filters[0];
+    const char* start = str_p;
+
+    while (*str_p != '\0') {
+        if (*str_p == ',') {
+            std::string item = StrStrip(start, str_p - 1);
+            if (item.size() > 0) {
+                if (item[0] != '+' && item[0] != '-')
+                    return false;
+                parsed.emplace_back(std::move(item));
+            }
+            start = str_p + 1;
+        }
+        str_p++;
+    }
+    std::string item = StrStrip(start, str_p - 1);
+    if (item.size() > 0) {
+        if (item[0] != '+' && item[0] != '-')
+            return false;
+        parsed.emplace_back(std::move(item));
+    }
+    return true;
+}
+
 class CfgFile {
  public:
     bool noparent;
@@ -592,7 +620,14 @@ class CfgFile {
             if (name == "set noparent") {
                 noparent = true;
             } else if (name == "filter") {
-                filters.emplace_back(std::move(val));
+                bool result = ParseCommaSeparetedFilters(val, filters);
+                if (!result) {
+                    // The last filter does not start with + or -
+                    cpplint_state->PrintError(
+                        file.string() +
+                        ": Every filter must start with + or -"
+                        " (" + val + ")");
+                }
             } else if (name == "exclude_files") {
                 exclude_files.emplace_back(std::move(val));
             } else if (name == "linelength") {
@@ -653,17 +688,8 @@ bool Options::ProcessConfigOverrides(const fs::path& filename,
 
         noparent = cfg->noparent;
 
-        if (!cfg->filters.empty()) {
-            for (const std::string& filter : cfg->filters) {
-                bool added = AddFilters(filter);
-                if (!added) {
-                    cpplint_state->PrintError(
-                        cfg_path.string() +
-                        ": Every filter must start with + or -"
-                        " (" + filter + ")");
-                }
-            }
-        }
+        if (!cfg->filters.empty())
+            ConcatVec(m_filters, cfg->filters);
 
         if (!cfg->exclude_files.empty()) {
             for (const std::string& exclude : cfg->exclude_files) {
@@ -708,37 +734,8 @@ bool Options::ProcessConfigOverrides(const fs::path& filename,
     return true;
 }
 
-static std::vector<std::string> ParseCommaSeparetedVec(const std::string& str) {
-    std::vector<std::string> list = {};
-    std::string copied = str;
-    char* str_p = &copied[0];
-    char* start = str_p;
-
-    while (*str_p != '\0') {
-        if (*str_p == ',') {
-            *str_p = '\0';
-            std::string item = StrStrip(start);
-            if (item.size() > 0)
-                list.emplace_back(std::move(item));
-            start = str_p + 1;
-        }
-        str_p++;
-    }
-    std::string item = StrStrip(start);
-    if (item.size() > 0)
-        list.emplace_back(std::move(item));
-    return list;
-}
-
 bool Options::AddFilters(const std::string& filters) {
-    std::vector<std::string> filters_vec;
-    filters_vec = ParseCommaSeparetedVec(filters);
-    for (const std::string& filt : m_filters) {
-        if (!filt.starts_with('+') && !filt.starts_with('-'))
-            return false;
-    }
-    ConcatVec(m_filters, filters_vec);
-    return true;
+    return ParseCommaSeparetedFilters(filters, m_filters);
 }
 
 static void ParseFilterSelector(const std::string& filter,

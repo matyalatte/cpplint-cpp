@@ -16,6 +16,9 @@ std::string StrStrip(const std::string &str);
 // Strips leading and tailing characters from a string.
 std::string StrStrip(const std::string &str, char c);
 
+// Strips leading spaces from start and tailing spaces from end.
+std::string StrStrip(const char* start, const char* end);
+
 // Strips tailing white spaces from a string.
 std::string StrRstrip(const std::string &str);
 
