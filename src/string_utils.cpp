@@ -24,7 +24,7 @@ std::string StrBeforeChar(const std::string& str, char c) {
         }
         str_p++;
     }
-    return str.substr(0, TO_SIZE(end - start));
+    return std::string(start, end);
 }
 
 std::string StrAfterChar(const std::string& str, char c) {
@@ -47,7 +47,7 @@ std::string StrStrip(const std::string &str) {
         end--;
     if (end < start)
         return "";
-    return str.substr(TO_SIZE(start - &str[0]), TO_SIZE(end - start) + 1);
+    return std::string(start, end + 1);
 }
 
 std::string StrStrip(const std::string &str, char c) {
@@ -58,7 +58,7 @@ std::string StrStrip(const std::string &str, char c) {
     const char* end = &str[str.size() - 1];
     while (start < end && *end == c)
         end--;
-    return str.substr(TO_SIZE(start - &str[0]), TO_SIZE(end - start) + 1);
+    return std::string(start, end + 1);
 }
 
 std::string StrStrip(const char* start, const char* end) {
@@ -80,7 +80,7 @@ std::string StrRstrip(const std::string &str) {
         end--;
     if (end < start)
         return "";
-    return str.substr(0, TO_SIZE(end - start) + 1);
+    return std::string(start, end + 1);
 }
 
 std::string StrRstrip(const std::string &str, char c) {
@@ -91,7 +91,7 @@ std::string StrRstrip(const std::string &str, char c) {
         end--;
     if (end < start)
         return "";
-    return str.substr(0, TO_SIZE(end - start) + 1);
+    return std::string(start, end + 1);
 }
 
 std::string StrLstrip(const std::string &str) {
@@ -99,7 +99,7 @@ std::string StrLstrip(const std::string &str) {
     while (IS_SPACE(*start))
         start++;
     const char* end = &str[str.size()];
-    return str.substr(TO_SIZE(start - &str[0]), TO_SIZE(end - start));
+    return std::string(start, end);
 }
 
 std::string StrLstrip(const std::string &str, char c) {
@@ -107,7 +107,7 @@ std::string StrLstrip(const std::string &str, char c) {
     while (*start == c)
         start++;
     const char* end = &str[str.size()];
-    return str.substr(TO_SIZE(start - &str[0]), TO_SIZE(end - start));
+    return std::string(start, end);
 }
 
 size_t StrLstripSize(const std::string &str) {
@@ -138,7 +138,7 @@ std::vector<std::string> StrSplit(const std::string& str, size_t max_size) {
             str_p++;
         }
         const char* end = str_p;
-        split.emplace_back(str.substr(TO_SIZE(start - &str[0]), TO_SIZE(end - start)));
+        split.emplace_back(start, end);
         if (split.size() >= max_size) {
             break;
         }
