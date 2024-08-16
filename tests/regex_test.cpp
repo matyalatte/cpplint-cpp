@@ -127,3 +127,24 @@ TEST(RegexTest, RegexReplace2) {
     EXPECT_EQ(true, replaced);
     EXPECT_STREQ("        true, true);", res.c_str());
 }
+
+TEST(RegexTest, RegexReplaceNoCopy) {
+    regex_code RE_PATTERN_CLEANSE_LINE_C_COMMENTS =
+        RegexCompile(
+            R"((\s*)" RE_PATTERN_C_COMMENTS R"(\s*$|)"
+            RE_PATTERN_C_COMMENTS R"(\s+|)"
+            R"(\s+)" RE_PATTERN_C_COMMENTS R"((?=\W)|)"
+            RE_PATTERN_C_COMMENTS ")");
+
+    bool replaced;
+    std::string res = "        /*foo=*/true, /*bar=*/true);";
+    RegexReplace(RE_PATTERN_CLEANSE_LINE_C_COMMENTS, "",
+                 &res, &replaced);
+    EXPECT_EQ(true, replaced);
+    EXPECT_STREQ("        true, true);", res.c_str());
+}
+
+TEST(RegexTest, RegexMatchWithRange) {
+    bool match = RegexMatchWithRange("^test$", "rangetest", 5, 4);
+    EXPECT_EQ(true, match);
+}

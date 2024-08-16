@@ -134,6 +134,11 @@ TEST(StringTest, StrSplitTwo) {
     }
 }
 
+TEST(StringTest, StrSplitLast) {
+    std::string res = StrSplitLast("test foo bar");
+    EXPECT_STREQ("bar", res.c_str());
+}
+
 TEST(StringTest, StrSplitBy) {
     const std::vector<std::string> expected =
         { "test", "foo", "bar" };

@@ -34,7 +34,6 @@ void FindEndOfExpressionInLine(const std::string& line,
                     stack->pop();
                     if (stack->empty()) {
                         *startpos = INDEX_NONE;
-                        *stack = {};
                         return;
                     }
                 }
@@ -54,7 +53,6 @@ void FindEndOfExpressionInLine(const std::string& line,
                 stack->pop();
             if (stack->empty()) {
                 *startpos = INDEX_NONE;
-                *stack = {};
                 return;
             }
             if ((stack->top() == '(' && c == ')') ||
@@ -63,7 +61,6 @@ void FindEndOfExpressionInLine(const std::string& line,
                 stack->pop();
                 if (stack->empty()) {
                     *startpos = i + 1;
-                    *stack = {};
                     return;
                 }
             } else {
@@ -87,7 +84,6 @@ void FindEndOfExpressionInLine(const std::string& line,
                     stack->pop();
                     if (stack->empty()) {
                         *startpos = i + 1;
-                        *stack = {};
                         return;
                     }
                 }
@@ -100,7 +96,6 @@ void FindEndOfExpressionInLine(const std::string& line,
                 stack->pop();
             if (stack->empty()) {
                 *startpos = INDEX_NONE;
-                *stack = {};
                 return;
             }
         }
@@ -184,7 +179,6 @@ void FindStartOfExpressionInLine(const std::string& line,
                     stack->pop();
                     if (stack->empty()) {
                         *endpos = i;
-                        *stack = {};
                         return;
                     }
                 }
@@ -198,7 +192,6 @@ void FindStartOfExpressionInLine(const std::string& line,
                 stack->pop();
             if (stack->empty()) {
                 *endpos = INDEX_NONE;
-                *stack = {};
                 return;
             }
             if ((c == '(' && stack->top() == ')') ||
@@ -207,7 +200,6 @@ void FindStartOfExpressionInLine(const std::string& line,
                 stack->pop();
                 if (stack->empty()) {
                     *endpos = i;
-                    *stack = {};
                     return;
                 }
             } else {
@@ -224,7 +216,6 @@ void FindStartOfExpressionInLine(const std::string& line,
                 stack->pop();
             if (stack->empty()) {
                 *endpos = INDEX_NONE;
-                *stack = {};
                 return;
             }
         }

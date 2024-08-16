@@ -97,29 +97,28 @@ CleansedLines::CleanseRawStrings(const std::vector<std::string>& raw_lines) {
                 we don't want to check comments that are inside raw strings.
             */
             static const regex_code RE_PATTERN_RAW_STR =
-                RegexCompile(R"---(^(.*?)\b(?:R|u8R|uR|UR|LR)"([^\s\\()]*)\((.*)$)---");
+                RegexJitCompile(R"---(^(.*?)\b(?:R|u8R|uR|UR|LR)"([^\s\\()]*)\((.*)$)---");
             static const regex_code RE_PATTERN_RAW_STR_SINGLE_LINE =
                 RegexCompile(R"---(^([^\'"]|\'(\\.|[^\'])*\'|"(\\.|[^"])*")*//)---");
-            thread_local regex_match re_result_raw_str_single_line =
-                RegexCreateMatchData(RE_PATTERN_RAW_STR_SINGLE_LINE);
 
-            bool matched = RegexMatch(RE_PATTERN_RAW_STR,
-                                      new_line, m_re_result);
-            if (matched &&
-                !RegexMatch(RE_PATTERN_RAW_STR_SINGLE_LINE,
-                            GetMatchStr(m_re_result, new_line, 1),
-                            re_result_raw_str_single_line)) {
+            bool matched = RegexJitSearch(RE_PATTERN_RAW_STR,
+                                          new_line, m_re_result);
+            if (matched) {
+                std::string match_str_1 = GetMatchStr(m_re_result, new_line, 1);
+                if (RegexMatch(RE_PATTERN_RAW_STR_SINGLE_LINE, match_str_1))
+                    break;
+
                 delimiter = ")" + GetMatchStr(m_re_result, new_line, 2) + "\"";
-
-                size_t end = GetMatchStr(m_re_result, new_line, 3).find(delimiter);
+                std::string match_str_3 = GetMatchStr(m_re_result, new_line, 3);
+                size_t end = match_str_3.find(delimiter);
                 if (end != std::string::npos) {
                     // Raw string ended on same line
-                    new_line = GetMatchStr(m_re_result, new_line, 1) + "\"\"" +
-                               GetMatchStr(m_re_result, new_line, 3).substr(end + delimiter.size());
+                    new_line = match_str_1 + "\"\"" +
+                               match_str_3.substr(end + delimiter.size());
                     delimiter = "";
                 } else {
                     // Start of a multi-line raw string
-                    new_line = GetMatchStr(m_re_result, new_line, 1) + "\"\"";
+                    new_line = match_str_1 + "\"\"";
                 }
             } else {
                 break;
@@ -220,10 +219,10 @@ std::string CleansedLines::CollapseStrings(const std::string& elided) {
             break;
         }
         std::string head = GetMatchStr(m_re_result, new_elided, 1);
-        std::string quote = GetMatchStr(m_re_result, new_elided, 2);
+        bool has_double_quote = new_elided[GetMatchStart(m_re_result, 2)] == '"';
         std::string tail = GetMatchStr(m_re_result, new_elided, 3);
 
-        if (StrIsChar(quote, '"')) {
+        if (has_double_quote) {
             // Collapse double quoted strings
             size_t second_quote = tail.find('"');
             if (second_quote != std::string::npos) {
@@ -245,7 +244,7 @@ std::string CleansedLines::CollapseStrings(const std::string& elided) {
             */
             static const regex_code RE_PATTERN_DIGIT =
                 RegexJitCompile(R"(\b(?:0[bBxX]?|[1-9])[0-9a-fA-F]*$)");
-            if (RegexSearch(RE_PATTERN_DIGIT, head)) {
+            if (RegexJitSearch(RE_PATTERN_DIGIT, head)) {
                 std::string subject = "'" + tail;
                 static const regex_code RE_PATTERN_DIGIT2 =
                     RegexCompile(R"(^((?:\'?[0-9a-zA-Z_])*)(.*)$)");

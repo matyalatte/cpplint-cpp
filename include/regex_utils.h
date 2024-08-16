@@ -65,15 +65,6 @@ inline regex_code RegexCompile(const std::string& regex,
     return regex_code(ret);
 }
 
-#ifdef SUPPORT_JIT
-// Uses jit compiler for regex
-// It makes matching faster when using complex patterns in RegexSearch.
-regex_code RegexJitCompile(const std::string& regex,
-                           uint32_t options = REGEX_OPTIONS_DEFAULT) noexcept;
-#else
-#define RegexJitCompile(...) RegexCompile(__VA_ARGS__)
-#endif
-
 // ovecsize is the number of groups plus one.
 inline regex_match RegexCreateMatchData(uint32_t ovecsize) noexcept {
     pcre2_match_data* ret = pcre2_match_data_create(ovecsize, nullptr);
@@ -198,26 +189,66 @@ inline bool RegexMatchWithRange(const std::string& regex, const std::string& str
                                 result, options, flags | PCRE2_ANCHORED);
 }
 
-std::string RegexReplace(const std::string& regex, const std::string& fmt,
-                         const std::string& str, bool replace_all = true);
-
-std::string RegexReplace(const regex_code& regex, const std::string& fmt,
-                         const std::string& str, bool replace_all = true);
-
 std::string RegexReplace(const regex_code& regex, const std::string& fmt,
                          const std::string& str,
                          bool* replaced, bool replace_all = true);
 
+inline std::string RegexReplace(const regex_code& regex, const std::string& fmt,
+                                const std::string& str, bool replace_all = true) {
+    bool replaced = false;
+    return RegexReplace(regex, fmt, str, &replaced, replace_all);
+}
+
+inline std::string RegexReplace(const std::string& regex, const std::string& fmt,
+                                const std::string& str, bool replace_all = true) {
+    regex_code re = RegexCompile(regex);
+    return RegexReplace(re, fmt, str, replace_all);
+}
+
 // This version is faster than others but strings should be mutable.
 void RegexReplace(const regex_code& regex, const std::string& fmt,
                   std::string* str,
-                  bool replace_all = true);
-
-void RegexReplace(const regex_code& regex, const std::string& fmt,
-                  std::string* str,
                   bool* replaced, bool replace_all = true);
+
+inline void RegexReplace(const regex_code& regex, const std::string& fmt,
+                         std::string* str,
+                         bool replace_all = true) {
+    bool replaced = false;
+    RegexReplace(regex, fmt, str, &replaced, replace_all);
+}
 
 std::string RegexEscape(const std::string& str);
 
 // Split a string by a regex pattern.
 std::vector<std::string> RegexSplit(const std::string& regex, const std::string& str);
+
+#ifdef SUPPORT_JIT
+// Uses jit compiler for regex
+// It makes matching faster when using complex patterns in RegexSearch.
+regex_code RegexJitCompile(const std::string& regex,
+                           uint32_t options = REGEX_OPTIONS_DEFAULT) noexcept;
+
+// This function is 10% faster than RegexSearch
+// but it crashes when regex_code is not JIT compiled.
+bool RegexJitSearch(const regex_code& regex, const std::string& str,
+                    uint32_t flags = REGEX_FLAGS_DEFAULT) noexcept;
+
+bool RegexJitSearch(const regex_code& regex, const std::string& str,
+                    regex_match& result,
+                    uint32_t flags = REGEX_FLAGS_DEFAULT) noexcept;
+
+void RegexJitReplace(const regex_code& regex, const std::string& fmt,
+                    std::string* str,
+                    bool* replaced, bool replace_all = true);
+
+inline void RegexJitReplace(const regex_code& regex, const std::string& fmt,
+                            std::string* str,
+                            bool replace_all = true) {
+    bool replaced = false;
+    RegexJitReplace(regex, fmt, str, &replaced, replace_all);
+}
+#else
+#define RegexJitCompile(...) RegexCompile(__VA_ARGS__)
+#define RegexJitSearch(...) RegexSearch(__VA_ARGS__)
+#define RegexJitReplace(...) RegexReplace(__VA_ARGS__)
+#endif

@@ -146,6 +146,27 @@ std::vector<std::string> StrSplit(const std::string& str, size_t max_size) {
     return split;
 }
 
+std::string StrSplitLast(const std::string& str) {
+    if (str.empty())
+        return "";
+
+    const char* start = &str[0];
+    const char* str_p = &str[str.size() - 1];
+    // skip white spaces
+    while (IS_SPACE(*str_p) && str_p >= start)
+        str_p--;
+
+    if (str_p < start)
+        return "";  // All characters are white spaces.
+
+    const char* end = str_p + 1;
+
+    while (!IS_SPACE(*str_p) && str_p >= start)
+        str_p--;
+
+    return std::string(str_p + 1, end);
+}
+
 std::vector<std::string> StrSplitBy(const std::string &str, const std::string &delimiter) {
     std::string copied = str;
     std::vector<std::string> tokens = {};

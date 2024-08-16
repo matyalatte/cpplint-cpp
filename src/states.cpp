@@ -444,17 +444,20 @@ void NestingState::Update(const CleansedLines& clean_lines,
     }
 
     // Consume braces or semicolons from what's left of the line
-    while (1) {
+    size_t pos = 0;
+    while (pos < line.size()) {
         // Match first brace, semicolon, or closed parenthesis.
         static const regex_code RE_PATTERN_TOKEN =
             RegexCompile("^[^{;)}]*([{;)}])(.*)$");
-        bool matched = RegexMatch(RE_PATTERN_TOKEN, line, m_re_result);
+        size_t length = line.size() - pos;
+        bool matched = RegexMatchWithRange(RE_PATTERN_TOKEN, line,
+                                           pos, length, m_re_result);
         if (!matched)
             break;
 
-        const std::string& token = GetMatchStr(m_re_result, line, 1);
-        assert(token.size() == 1);
-        if (token[0] == '{') {
+        const char token = line[GetMatchStart(m_re_result, 1, pos)];
+        assert(GetMatchSize(m_re_result, 1) == 1);
+        if (token == '{') {
             // If namespace or class hasn't seen a opening brace yet, mark
             // namespace/class head as complete.  Push a new block onto the
             // stack otherwise.
@@ -462,16 +465,16 @@ void NestingState::Update(const CleansedLines& clean_lines,
                 RegexCompile(R"(^extern\s*"[^"]*"\s*\{)");
             if (!SeenOpenBrace()) {
                 m_stack.back()->SetSeenOpenBrace(true);
-            } else if (RegexMatch(RE_PATTERN_EXTERN, line)) {
+            } else if (RegexMatchWithRange(RE_PATTERN_EXTERN, line, pos, length)) {
                 m_block_info_buffer.push(new ExternCInfo(linenum));
                 m_stack.push_back(m_block_info_buffer.top());
             } else {
                 m_block_info_buffer.push(new BlockInfo(linenum, true));
                 m_stack.push_back(m_block_info_buffer.top());
-                if (RegexMatch(RE_PATTERN_ASM, line))
+                if (RegexMatchWithRange(RE_PATTERN_ASM, line, pos, length))
                     m_stack.back()->SetInlineAsm(BLOCK_ASM);
             }
-        } else if (token[0] == ';' || token[0] == ')') {
+        } else if (token == ';' || token == ')') {
             // If we haven't seen an opening brace yet, but we already saw
             // a semicolon, this is probably a forward declaration.  Pop
             // the stack for these.
@@ -489,7 +492,7 @@ void NestingState::Update(const CleansedLines& clean_lines,
                 m_stack.pop_back();
             }
         }
-        line = GetMatchStr(m_re_result, line, 2);
+        pos = GetMatchStart(m_re_result, 2, pos);
     }
 }
 
