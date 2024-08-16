@@ -15,6 +15,10 @@ static void ProcessFile(const fs::path& filename,
                         const Options& global_options) {
     FileLinter linter(filename, cpplint_state, global_options);
     linter.ProcessFile();
+
+    // All outputs are stored in thread local streams.
+    // We flush them here.
+    cpplint_state->FlushThreadStream();
 }
 
 int main(int argc, char** argv) {
@@ -49,9 +53,6 @@ int main(int argc, char** argv) {
     if (!cpplint_state.Quiet() || cpplint_state.ErrorCount() > 0)
         cpplint_state.PrintErrorCounts();
 
-    if (cpplint_state.OutputFormat() == OUTPUT_JUNIT)
-        std::cerr << cpplint_state.FormatJUnitXML();
-
     if (global_options.Timing()) {
         end = std::chrono::system_clock::now();
         std::chrono::milliseconds::rep elapsed_ms =
@@ -60,6 +61,11 @@ int main(int argc, char** argv) {
         cpplint_state.PrintInfo(
             "Runtime: " + std::to_string(elapsed_sec) + "(s)\n");
     }
+
+    cpplint_state.FlushThreadStream();
+
+    if (cpplint_state.OutputFormat() == OUTPUT_JUNIT)
+        std::cerr << cpplint_state.FormatJUnitXML();
 
     return cpplint_state.ErrorCount() > 0;
 }
