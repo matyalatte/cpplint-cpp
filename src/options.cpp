@@ -556,7 +556,7 @@ std::set<std::string> Options::GetNonHeaderExtensions() const {
 // Parses filters and append them to a vector.
 // Returns false when the last filter does not start with + or -.
 static bool ParseCommaSeparetedFilters(const std::string& filters,
-                                       std::vector<std::string>& parsed) {
+                                       std::vector<Filter>& parsed) {
     const char* str_p = &filters[0];
     const char* start = str_p;
 
@@ -566,7 +566,7 @@ static bool ParseCommaSeparetedFilters(const std::string& filters,
             if (item.size() > 0) {
                 if (item[0] != '+' && item[0] != '-')
                     return false;
-                parsed.emplace_back(std::move(item));
+                parsed.emplace_back(item);
             }
             start = str_p + 1;
         }
@@ -576,7 +576,7 @@ static bool ParseCommaSeparetedFilters(const std::string& filters,
     if (item.size() > 0) {
         if (item[0] != '+' && item[0] != '-')
             return false;
-        parsed.emplace_back(std::move(item));
+        parsed.emplace_back(item);
     }
     return true;
 }
@@ -584,7 +584,7 @@ static bool ParseCommaSeparetedFilters(const std::string& filters,
 class CfgFile {
  public:
     bool noparent;
-    std::vector<std::string> filters;
+    std::vector<Filter> filters;
     std::vector<std::string> exclude_files;
     size_t line_length;
     std::set<std::string> extensions;
@@ -738,10 +738,7 @@ bool Options::AddFilters(const std::string& filters) {
     return ParseCommaSeparetedFilters(filters, m_filters);
 }
 
-static void ParseFilterSelector(const std::string& filter,
-                                std::string& category,
-                                std::string& file,
-                                size_t* line) {
+void Filter::ParseFilterSelector(const std::string& filter) {
     /*Parses the given command line parameter for file- and line-specific
     exclusions.
     readability/casting:file.cpp
@@ -756,46 +753,44 @@ static void ParseFilterSelector(const std::string& filter,
         Filename is either a filename or empty if all files are meant.
         Line is either a line in filename or -1 if all lines are meant.
     */
+    if (filter[0] == '+') {
+        m_sign = true;
+    } else if (filter[0] == '-') {
+        m_sign = false;
+    } else {
+        m_category = "";
+        m_file = "";
+        m_linenum = INDEX_NONE;
+        return;
+    }
+
     size_t colon_pos = filter.find(':', 1);
     if (colon_pos == std::string::npos) {
-        category = filter.substr(1);
-        file = "";
-        *line = INDEX_NONE;
+        m_category = filter.substr(1);
+        m_file = "";
+        m_linenum = INDEX_NONE;
         return;
     }
-    category = filter.substr(1, colon_pos - 1);
+    m_category = filter.substr(1, colon_pos - 1);
     size_t second_colon_pos = filter.find(':', colon_pos + 1);
     if (second_colon_pos == std::string::npos) {
-        file = filter.substr(colon_pos + 1, std::string::npos);
-        *line = INDEX_NONE;
+        m_file = filter.substr(colon_pos + 1, std::string::npos);
+        m_linenum = INDEX_NONE;
         return;
     }
-    file = filter.substr(colon_pos + 1, second_colon_pos - colon_pos);
+    m_file = filter.substr(colon_pos + 1, second_colon_pos - colon_pos);
     std::string line_str = filter.substr(second_colon_pos + 1, std::string::npos);
-    *line = StrToUint(line_str);
+    m_linenum = StrToUint(line_str);
     return;
 }
 
 bool Options::ShouldPrintError(const std::string& category,
-                               const std::string& filename, size_t linenum) {
+                               const std::string& filename, size_t linenum) const {
     bool is_filtered = false;
-    for (const std::string& filter : Filters()) {
-        std::string filter_cat;
-        std::string filter_file;
-        size_t filter_line;
-        ParseFilterSelector(filter, filter_cat, filter_file, &filter_line);
-        bool category_match = category.starts_with(filter_cat);
-        bool file_match = filter_file.empty() || filter_file == filename;
-        bool line_match = filter_line == linenum || filter_line == INDEX_NONE;
-
-        if (filter.starts_with('-')) {
-            if (category_match && file_match && line_match)
-                is_filtered = true;
-        } else if (filter.starts_with('+')) {
-            if (category_match && file_match && line_match)
-                is_filtered = false;
-        } else {
-            assert(false);  // should have been checked for in SetFilter.
+    for (const Filter& filter : Filters()) {
+        if (filter.IsMatched(category, filename, linenum)) {
+            // true with "-" filters, false with "+" filters
+            is_filtered = !filter.IsPositive();
         }
     }
     return !is_filtered;

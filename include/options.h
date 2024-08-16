@@ -7,12 +7,43 @@
 
 namespace fs = std::filesystem;
 
+// Class for filters options e.g., "-build/c++11"
+class Filter {
+    bool m_sign;  // + or -
+    std::string m_category;
+    std::string m_file;
+    size_t m_linenum;
+
+ public:
+    Filter() :
+        m_sign(false),
+        m_category(""),
+        m_file(""),
+        m_linenum(INDEX_NONE) {}
+
+    explicit Filter(const std::string& filter) {
+        ParseFilterSelector(filter);
+    }
+
+    void ParseFilterSelector(const std::string& filter);
+
+    bool IsPositive() const { return m_sign; }
+
+    bool IsMatched(const std::string& category,
+                   const std::string& file,
+                   size_t linenum) const {
+        return category.starts_with(m_category) &&
+               (m_file.empty() || m_file == file) &&
+               (m_linenum == linenum || m_linenum == INDEX_NONE);
+    }
+};
+
 // The default state of the category filter. This is overridden by the --filter=
 // flag. By default all errors are on, so only add here categories that should be
 // off by default (i.e., categories that must be enabled by the --filter= flags).
 // All entries here should start with a '-' or '+', as in the --filter= flag.
-const std::vector<std::string> DEFAULT_FILTERS = {
-    "-build/include_alpha",
+const std::vector<Filter> DEFAULT_FILTERS = {
+    Filter("-build/include_alpha"),
 };
 
 enum : int {
@@ -33,7 +64,7 @@ class Options {
     bool m_timing;
 
     // filters to apply when emitting error messages
-    std::vector<std::string> m_filters;
+    std::vector<Filter> m_filters;
 
     // Parse --extensions option
     void ProcessExtensionsOption(const std::string& val);
@@ -88,14 +119,14 @@ class Options {
 
     int IncludeOrder() const { return m_include_order; }
 
-    const std::vector<std::string>& Filters() const { return m_filters; }
+    const std::vector<Filter>& Filters() const { return m_filters; }
 
     // Adds filters to the existing list of error-message filters.
     bool AddFilters(const std::string& filters);
 
     // Checks if the error is filtered or not.
     bool ShouldPrintError(const std::string& category,
-                          const std::string& filename, size_t linenum);
+                          const std::string& filename, size_t linenum) const;
 
     bool Timing() const { return m_timing; }
 };

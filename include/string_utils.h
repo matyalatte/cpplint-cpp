@@ -47,7 +47,8 @@ std::vector<std::string> StrSplitBy(const std::string &str, const std::string &d
 std::set<std::string> ParseCommaSeparetedList(const std::string& str);
 
 // Concat vec2 to vec1.
-inline void ConcatVec(std::vector<std::string>& vec1, std::vector<std::string>& vec2) {
+template <typename T>
+inline void ConcatVec(std::vector<T>& vec1, std::vector<T>& vec2) {
     vec1.insert(vec1.end(), vec2.begin(), vec2.end());
 }
 

@@ -274,7 +274,7 @@ CleansedLines::CleansedLines(std::vector<std::string>& lines,
                              m_raw_lines(lines),
                              m_has_comment(lines.size(), false),
                              m_re_result(RegexCreateMatchData(16)) {
-    if (InStrVec(options.Filters(), "-readability/alt_tokens")) {
+    if (!options.ShouldPrintError("readability/alt_tokens", "", INDEX_NONE)) {
         for (std::string& line : m_raw_lines) {
             line = ReplaceAlternateTokens(line);
         }
