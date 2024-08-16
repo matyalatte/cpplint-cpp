@@ -473,7 +473,6 @@ void FileLinter::CheckForNamespaceIndentation(const CleansedLines& clean_lines,
 void FileLinter::CheckForFunctionLengths(const CleansedLines& clean_lines, size_t linenum,
                                          FunctionState* function_state) {
     const std::string& line = clean_lines.GetLineAt(linenum);
-    std::string joined_line = "";
 
     bool starting_func = false;
     // decls * & space::name( ...
@@ -494,6 +493,7 @@ void FileLinter::CheckForFunctionLengths(const CleansedLines& clean_lines, size_
         RegexCompile(R"(^\}\s*$)");
     if (starting_func) {
         bool body_found = false;
+        std::string joined_line = "";
         for (size_t start_linenum = linenum;
                 start_linenum < clean_lines.NumLines(); start_linenum++) {
             const std::string& start_line = clean_lines.GetLineAt(start_linenum);
@@ -2674,11 +2674,8 @@ void FileLinter::CheckGlobalStatic(const std::string& elided_line, size_t linenu
     }
 
     static const regex_code RE_PATTERN_INIT_WITH_ITSELF =
-        RegexJitCompile(R"(\b([A-Za-z0-9_]*_)\(\1\))");
-    static const regex_code RE_PATTERN_INIT_WITH_ITSELF2 =
-        RegexJitCompile(R"(\b([A-Za-z0-9_]*_)\(CHECK_NOTNULL\(\1\)\))");
-    if (RegexJitSearch(RE_PATTERN_INIT_WITH_ITSELF, line) ||
-        RegexJitSearch(RE_PATTERN_INIT_WITH_ITSELF2, line)) {
+        RegexJitCompile(R"(\b([A-Za-z0-9_]*_)\((\1|CHECK_NOTNULL\(\1\))\))");
+    if (RegexJitSearch(RE_PATTERN_INIT_WITH_ITSELF, line)) {
         Error(linenum, "runtime/init", 4,
               "You seem to be initializing a member variable with itself.");
     }
@@ -3534,10 +3531,15 @@ void FileLinter::CheckMakePairUsesDeduction(const std::string& elided_line, size
 
 void FileLinter::CheckRedundantVirtual(const CleansedLines& clean_lines,
                                        const std::string& elided_line, size_t linenum) {
+    // Since RE_PATTERN_VIRTUAL is slow,
+    // we check if the line has "virtual" or not.
+    if (!StrContain(elided_line, "virtual"))
+        return;
+
     // Look for "virtual" on current line.
     static const regex_code RE_PATTERN_VIRTUAL =
-        RegexJitCompile(R"(^(.*)(\bvirtual\b)(.*)$)");
-    bool match = RegexJitSearch(RE_PATTERN_VIRTUAL, elided_line, m_re_result);
+        RegexCompile(R"(^(.*)(\bvirtual\b)(.*)$)");
+    bool match = RegexSearch(RE_PATTERN_VIRTUAL, elided_line, m_re_result);
     if (!match) return;
 
     // Ignore "virtual" keywords that are near access-specifiers.  These
