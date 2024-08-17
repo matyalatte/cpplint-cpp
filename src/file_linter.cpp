@@ -3383,7 +3383,7 @@ void FileLinter::CheckForNonStandardConstructs(const CleansedLines& clean_lines,
     const std::string& base_classname = classinfo->Basename();
 
     // Since the next regex function can be a bottleneck,
-    // we check if the calss name exists or not.
+    // we check if the class name exists or not.
     if (!StrContain(elided, base_classname))
         return;
 
