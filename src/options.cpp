@@ -19,7 +19,7 @@
 namespace fs = std::filesystem;
 
 // The version of cpplint.cpp
-static const char* CPPLINT_CPP_VERSION = "0.1.0";
+static const char* CPPLINT_CPP_VERSION = "0.2.0";
 
 // The version of cpplint.py
 static const char* ORIGINAL_VERSION = "1.7";
