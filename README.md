@@ -11,14 +11,27 @@ It used to be developed and maintained by Google Inc. One of its forks now maint
 
 ## cpplint-cpp vs. cpplint.py
 
-Here is an analysis of the execution times between `cpplint-cpp` and `cpplint.py` against two repositories:
+Here is an analysis of the performance differences between `cpplint-cpp` and `cpplint.py` against two repositories:
 [`googletest`](https://github.com/google/googletest) and `cpplint-cpp`.
 Measurements were taken on an Ubuntu runner with [`benchmark.yml`](.github/workflows/benchmark.yml).
 
+### Execution time
+
+You can see `cpplint-cpp` has significantly better performance, being over 30 times faster than `cpplint.py`.
+
 |             | googletest-1.14.0 (s) | cpplint-cpp (s) |
 | ----------- | --------------------- | --------------- |
-| cpplint-cpp | 0.785884              | 0.188663        |
-| cpplint.py  | 14.165049             | 3.439704        |
+| cpplint-cpp | 0.530342              | 0.106502        |
+| cpplint.py  | 25.555369             | 3.526787        |
+
+### Memory usage
+
+Despite using multithreading with 4 cores, `cpplint-cpp` has lower memory usage than `cpplint.py`.
+
+|             | googletest-1.14.0 | cpplint-cpp |
+| ----------- | ----------------- | ----------- |
+| cpplint-cpp | 15.61 MiB         | 10.07 MiB   |
+| cpplint.py  | 22.98 MiB         | 22.20 MiB   |
 
 ## Changes from cpplint.py
 
@@ -26,7 +39,10 @@ Basically, `cpplint-cpp` uses the same algorithm as `cpplint.py`, but some chang
 
 - Added concurrent file processing.
 - Removed some redundant function calls.
+- Used JIT compiler for some regex patterns.
 - Combined some regex patterns.
+- Added `--timing` option to display the execution time.
+- Added `--threads=` option to specify the number of threads.
 - And other minor changes for optimization...
 
 ## Unimplemented features
