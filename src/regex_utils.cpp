@@ -1,6 +1,7 @@
 #include "regex_utils.h"
 #include <ctype.h>
 #include <algorithm>
+#include <cstring>
 #include <iostream>
 #include <string>
 #include <utility>
