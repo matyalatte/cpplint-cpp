@@ -36,17 +36,25 @@ int main(int argc, char** argv) {
     filenames = global_options.ParseArguments(argc, argv, &cpplint_state);
 
     // Generate a future for each file
-    ThreadPool pool(std::thread::hardware_concurrency());
-    std::vector<std::future<void>> futures;
-    for (const fs::path& filename : filenames) {
-        futures.push_back(pool.enqueue([&filename, &cpplint_state, &global_options]() {
+    int num_threads = cpplint_state.GetNumThreads();
+    if (num_threads == 1) {
+        // Single-threading
+        for (const fs::path& filename : filenames)
             ProcessFile(filename, &cpplint_state, global_options);
-        }));
-    }
+    } else {
+        // Multi-threading
+        ThreadPool pool(num_threads);
+        std::vector<std::future<void>> futures;
+        for (const fs::path& filename : filenames) {
+            futures.push_back(pool.enqueue([&filename, &cpplint_state, &global_options]() {
+                ProcessFile(filename, &cpplint_state, global_options);
+            }));
+        }
 
-    // Wait for all futures to complete
-    for (auto&& future : futures) {
-        future.get();
+        // Wait for all futures to complete
+        for (auto&& future : futures) {
+            future.get();
+        }
     }
 
     // If --quiet is passed, suppress printing error count unless there are errors.

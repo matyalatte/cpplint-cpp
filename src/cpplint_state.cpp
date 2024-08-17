@@ -15,7 +15,8 @@ CppLintState::CppLintState() :
     m_counting(COUNT_TOTAL),
     m_errors_by_category({}),
     m_quiet(false),
-    m_output_format(OUTPUT_EMACS) {}
+    m_output_format(OUTPUT_EMACS),
+    m_num_threads(0) {}
 
 void CppLintState::IncrementErrorCount(const std::string& category) {
     std::string cat = category;

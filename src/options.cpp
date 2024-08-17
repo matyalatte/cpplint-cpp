@@ -8,6 +8,7 @@
 #include <mutex>
 #include <set>
 #include <string>
+#include <thread>
 #include <utility>
 #include <vector>
 #include "cpplint_state.h"
@@ -36,6 +37,8 @@ static const char* USAGE[] = {
     "                    [--config=filename]\n"
     "                    [--quiet]\n"
     "                    [--version]\n"
+    "                    [--timing]\n"
+    "                    [--threads=#]\n"
     "                    <file> [file] ...\n"
     "\n"
     "  Style checker for C/C++ source files.\n"
@@ -208,6 +211,13 @@ static const char* USAGE[] = {
     "    timing\n"
     "      Display elapsed processing time.\n"
     "\n"
+    "    threads=#\n"
+    "      Specify a number of threads for multithreading.\n"
+    "      You can use 0 or -1 for using all available threads."
+    "\n"
+    "      To see the number of available threads, pass no arg:\n"
+    "         --threads=\n"
+    "\n"
     "    cpplint.py supports per-directory configurations specified in CPPLINT.cfg\n"
     "    files. CPPLINT.cfg file can contain a number of key=value pairs.\n"
     "    Currently the following options are supported:\n"
@@ -298,6 +308,20 @@ static void PrintCategories() {
     exit(1);
 }
 
+static int GetNumThreads() {
+    auto num = std::thread::hardware_concurrency();
+    if (num < 1) {  // num can be zero.
+        std::cout << "Warning: Failed to get the number of available threads.\n";
+        num = 1;
+    }
+    return static_cast<int>(num);
+}
+
+static void PrintNumThreads() {
+    std::cout << "Number of threads: " << GetNumThreads() << "\n";
+    exit(0);
+}
+
 // Gets a value of "--opt=value" format.
 // and removes leading and tailing double-quotations.
 static std::string ArgToValue(const std::string& arg) {
@@ -325,6 +349,7 @@ std::vector<fs::path> Options::ParseArguments(int argc, char** argv,
     std::string counting_style = "";
     bool recursive = false;
     std::vector<fs::path> excludes = {};
+    int num_threads = -1;
     m_filters = DEFAULT_FILTERS;
 
     char** argp = argv + 1;
@@ -400,6 +425,15 @@ std::vector<fs::path> Options::ParseArguments(int argc, char** argv,
                 PrintUsage("Config file name must not include directory components.");
         } else if (opt == "--timing") {
             m_timing = true;
+        } else if (opt.starts_with("--threads=")) {
+            std::string val = ArgToValue(opt);
+            if (val.empty())
+                PrintNumThreads();
+            if (val != "-1" && val != "0") {
+                num_threads = static_cast<int>(StrToUint(val));
+                if (num_threads < 1)
+                    PrintUsage("Number of threads should be a positive integer. (" + opt+ ")");
+            }
         } else {
             PrintUsage("Invalid arguments. (" + opt + ")");
         }
@@ -426,11 +460,15 @@ std::vector<fs::path> Options::ParseArguments(int argc, char** argv,
     if (excludes.size() > 0)
         filenames = FilterExcludedFiles(std::move(filenames), excludes);
 
+    if (num_threads == -1)
+        num_threads = GetNumThreads();
+
     // Update options
     cpplint_state->SetOutputFormat(output_format);
     cpplint_state->SetQuiet(quiet);
     cpplint_state->SetVerboseLevel(verbosity);
     cpplint_state->SetCountingStyle(counting_style);
+    cpplint_state->SetNumThreads(num_threads);
 
     // sort filenames
     std::sort(filenames.begin(), filenames.end());

@@ -52,6 +52,8 @@ class CppLintState {
 
     std::mutex m_mtx;
 
+    int m_num_threads;
+
  public:
     CppLintState();
 
@@ -106,6 +108,9 @@ class CppLintState {
 
     int ErrorCount() const { return m_error_count; }
     int ErrorCount(const std::string& category) const;
+
+    void SetNumThreads(int num_threads) { m_num_threads = num_threads; }
+    int GetNumThreads() const { return m_num_threads; }
 
     // Bumps the module's error statistic.
     void IncrementErrorCount(const std::string& category);
