@@ -33,4 +33,4 @@ jobs:
         run: python benchmark.py . --cpplint_cpp="./build/cpplint-cpp"
 
       - name: Lint googletest
-        run: python benchmark.py ../googletest-${{ env.GTEST_VER }}/googletest --cpplint_cpp="./build/cpplint-cpp"
+        run: python benchmark.py ../googletest-${{ env.GTEST_VER }} --cpplint_cpp="./build/cpplint-cpp"
