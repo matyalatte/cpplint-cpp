@@ -35,7 +35,7 @@ void FileLinter::CheckForCopyright(const std::vector<std::string>& lines) {
     static const regex_code RE_PATTERN_COPYRIGHT =
         RegexCompile("Copyright", REGEX_OPTIONS_ICASE);
     for (size_t i = 1; i < MIN(lines.size(), 11); i++) {
-        if (RegexSearch(RE_PATTERN_COPYRIGHT, lines[i], m_re_result_temp)) {
+        if (RegexSearch(RE_PATTERN_COPYRIGHT, lines[i])) {
             return;
         }
     }
@@ -205,9 +205,9 @@ void FileLinter::ProcessGlobalSuppressions(const std::string& line) {
                      R"(vim?:\s*.*(\s*|:)filetype=c(\s*|:|$)))");
     static const regex_code RE_SEARCH_KERNEL_FILE =
         RegexCompile(R"(\b(?:LINT_KERNEL_FILE))");
-    if (RegexSearch(RE_SEARCH_C_FILE, line, m_re_result_temp))
+    if (RegexSearch(RE_SEARCH_C_FILE, line))
         m_error_suppressions.AddDefaultCSuppressions();
-    if (RegexSearch(RE_SEARCH_KERNEL_FILE, line, m_re_result_temp))
+    if (RegexSearch(RE_SEARCH_KERNEL_FILE, line))
         m_error_suppressions.AddDefaultKernelSuppressions();
 }
 
@@ -300,10 +300,10 @@ std::string FileLinter::GetHeaderGuardCPPVariable() {
     // flymake.
     static const regex_code RE_PATTERN_FLYMAKE =
         RegexCompile(R"(_flymake\.h$)");
-    RegexReplace(RE_PATTERN_FLYMAKE, ".h", &new_filename, m_re_result_temp);
+    RegexReplace(RE_PATTERN_FLYMAKE, ".h", &new_filename);
     static const regex_code RE_PATTERN_FLYMAKE2 =
         RegexCompile(R"(/\.flymake/([^/]*)$)");
-    RegexReplace(RE_PATTERN_FLYMAKE2, R"(/\1)", &new_filename, m_re_result_temp);
+    RegexReplace(RE_PATTERN_FLYMAKE2, R"(/\1)", &new_filename);
 
     // Replace 'c++' with 'cpp'.
     new_filename = StrReplaceAll(new_filename, "C++", "cpp");
@@ -315,7 +315,7 @@ std::string FileLinter::GetHeaderGuardCPPVariable() {
     std::string root_str = file_path_from_root.string();
     static const regex_code RE_PATTERN_ALPHANUM =
         RegexCompile("[^a-zA-Z0-9]");
-    RegexReplace(RE_PATTERN_ALPHANUM, "_", &root_str, m_re_result_temp);
+    RegexReplace(RE_PATTERN_ALPHANUM, "_", &root_str);
     cppvar = StrToUpper(root_str) + "_";
     return cppvar;
 }
@@ -331,7 +331,7 @@ void FileLinter::CheckForHeaderGuard(const CleansedLines& clean_lines) {
     static const regex_code RE_PATTERN_NOLINT_HEADER =
         RegexCompile(R"(//\s*NOLINT\(build/header_guard\))");
     for (const std::string& line : raw_lines) {
-        if (RegexSearch(RE_PATTERN_NOLINT_HEADER, line, m_re_result_temp))
+        if (RegexSearch(RE_PATTERN_NOLINT_HEADER, line))
             return;
     }
 
@@ -339,7 +339,7 @@ void FileLinter::CheckForHeaderGuard(const CleansedLines& clean_lines) {
     static const regex_code RE_PATTERN_PRAGMA_ONCE =
         RegexCompile(R"(^\s*#pragma\s+once)");
     for (const std::string& line : raw_lines) {
-        if (RegexSearch(RE_PATTERN_PRAGMA_ONCE, line, m_re_result_temp))
+        if (RegexSearch(RE_PATTERN_PRAGMA_ONCE, line))
             return;
     }
 
@@ -408,7 +408,7 @@ void FileLinter::CheckForHeaderGuard(const CleansedLines& clean_lines) {
     bool no_single_line_comments = true;
     for (size_t i = 1; i < raw_lines.size() - 1; i++) {
         const std::string& line = raw_lines[i];
-        if (RegexMatch(RE_PATTERN_MULTILINE_COMMENT, line, m_re_result_temp)) {
+        if (RegexMatch(RE_PATTERN_MULTILINE_COMMENT, line)) {
             no_single_line_comments = false;
             break;
         }
@@ -437,7 +437,7 @@ bool FileLinter::IsForwardClassDeclaration(const std::string& elided_line) {
         return false;
     static const regex_code RE_PATTERN_CLASS_DECL =
         RegexCompile(R"(^\s*(\btemplate\b)*.*class\s+\w+;\s*$)");
-    return RegexMatch(RE_PATTERN_CLASS_DECL, elided_line, m_re_result_temp);
+    return RegexMatch(RE_PATTERN_CLASS_DECL, elided_line);
 }
 
 bool FileLinter::IsMacroDefinition(const CleansedLines& clean_lines,
@@ -473,7 +473,6 @@ void FileLinter::CheckForNamespaceIndentation(const CleansedLines& clean_lines,
 void FileLinter::CheckForFunctionLengths(const CleansedLines& clean_lines, size_t linenum,
                                          FunctionState* function_state) {
     const std::string& line = clean_lines.GetLineAt(linenum);
-    std::string joined_line = "";
 
     bool starting_func = false;
     // decls * & space::name( ...
@@ -484,9 +483,9 @@ void FileLinter::CheckForFunctionLengths(const CleansedLines& clean_lines, size_
     if (match) {
         // If the name is all caps and underscores, figure it's a macro and
         // ignore it, unless it's TEST or TEST_F.
-        std::string function_name = StrSplit(GetMatchStr(m_re_result, line, 1)).back();
+        std::string function_name = StrSplitLast(GetMatchStr(m_re_result, line, 1));
         if (function_name == "TEST" || function_name == "TEST_F" ||
-                !RegexMatch("[A-Z_]+$", function_name, m_re_result_temp))
+                !RegexMatch("[A-Z_]+$", function_name))
             starting_func = true;
     }
 
@@ -494,6 +493,7 @@ void FileLinter::CheckForFunctionLengths(const CleansedLines& clean_lines, size_
         RegexCompile(R"(^\}\s*$)");
     if (starting_func) {
         bool body_found = false;
+        std::string joined_line = "";
         for (size_t start_linenum = linenum;
                 start_linenum < clean_lines.NumLines(); start_linenum++) {
             const std::string& start_line = clean_lines.GetLineAt(start_linenum);
@@ -505,7 +505,9 @@ void FileLinter::CheckForFunctionLengths(const CleansedLines& clean_lines, size_
             }
             if (StrContain(start_line, '{')) {
                 body_found = true;
-                bool search = RegexSearch(R"(((\w|:)*)\()",
+                static const regex_code RE_PATTERN_FUNC_BRACE =
+                    RegexCompile(R"(((\w|:)*)\()");
+                bool search = RegexSearch(RE_PATTERN_FUNC_BRACE,
                                           line, m_re_result);
                 if (!search)
                     break;
@@ -527,7 +529,7 @@ void FileLinter::CheckForFunctionLengths(const CleansedLines& clean_lines, size_
             Error(linenum, "readability/fn_size", 5,
                   "Lint failed to find start of function body.");
         }
-    } else if (RegexMatch(RE_PATTERN_FUNC_END, line, m_re_result_temp)) {  // function end
+    } else if (RegexMatch(RE_PATTERN_FUNC_END, line)) {  // function end
         function_state->Check(this, linenum, m_cpplint_state->VerboseLevel());
         function_state->End();
     } else if (!StrIsBlank(line)) {
@@ -607,7 +609,7 @@ void FileLinter::CheckBraces(const CleansedLines& clean_lines,
 
     static const regex_code RE_PATTERN_OPEN_BRACE =
         RegexCompile(R"(\s*{\s*$)");
-    if (RegexMatch(RE_PATTERN_OPEN_BRACE, line, m_re_result_temp)) {
+    if (RegexMatch(RE_PATTERN_OPEN_BRACE, line)) {
         // We allow an open brace to start a line in the case where someone is using
         // braces in a block to explicitly create a new scope, which is commonly used
         // to control the lifetime of stack-allocated variables.  Braces are also
@@ -618,7 +620,7 @@ void FileLinter::CheckBraces(const CleansedLines& clean_lines,
         // following line if it is part of an array initialization and would not fit
         // within the 80 character limit of the preceding line.
         const std::string& prevline = GetPreviousNonBlankLine(clean_lines, linenum);
-        if (!RegexSearch(R"([,;:}{(]\s*$)", prevline, m_re_result_temp) &&
+        if (!RegexSearch(R"([,;:}{(]\s*$)", prevline) &&
             GetFirstNonSpace(prevline) != '#' &&
             !(GetLineWidth(prevline) > m_options.LineLength() - 2 && StrContain(prevline, "[]"))) {
             Error(linenum, "whitespace/braces", 4,
@@ -626,52 +628,52 @@ void FileLinter::CheckBraces(const CleansedLines& clean_lines,
         }
     }
 
-    // An else clause should be on the same line as the preceding closing brace.
-    static const regex_code RE_PATTERN_ELSE_AFTER_BRACE =
-        RegexCompile(R"(\s*else\b\s*(?:if\b|\{|$))");
-    bool last_wrong = RegexMatch(RE_PATTERN_ELSE_AFTER_BRACE, line, m_re_result);
-    if (last_wrong) {
-        const std::string& prevline = GetPreviousNonBlankLine(clean_lines, linenum);
-        if (RegexMatch(R"(\s*}\s*$)", prevline, m_re_result_temp)) {
-            Error(linenum, "whitespace/newline", 4,
-                  "An else should appear on the same line as the preceding }");
-        } else {
-            last_wrong = false;
-        }
-    }
-
-    // If braces come on one side of an else, they should be on both.
-    // However, we have to worry about "else if" that spans multiple lines!
-    static const regex_code RE_PATTERN_ELSE_IF =
-        RegexCompile(R"(else if\s*\()");
-    static const regex_code RE_PATTERN_ELSE_BRACE_L =
-        RegexCompile(R"(}\s*else[^{]*$)");
-    static const regex_code RE_PATTERN_ELSE_BRACE_R =
-        RegexCompile(R"([^}]*else\s*{)");
-    if (RegexSearch(RE_PATTERN_ELSE_IF, line, m_re_result_temp)) {       // could be multi-line if
-        bool brace_on_left = RegexSearch(R"(}\s*else if\s*\()", line, m_re_result_temp);
-        // find the ( after the if
-        size_t pos = line.find("else if");
-        pos = line.find('(', pos);
-        if (pos > 0 && pos != std::string::npos) {
-            size_t endlinenum = linenum;
-            size_t endpos = pos;
-            const std::string& endline = CloseExpression(clean_lines, &endlinenum, &endpos);
-            bool brace_on_right = endpos != INDEX_NONE &&
-                                  endline.substr(endpos).find('{') != std::string::npos;
-            if (brace_on_left != brace_on_right) {    // must be brace after if
-                Error(linenum, "readability/braces", 5,
-                      "If an else has a brace on one side, it should have it on both");
+    if (StrContain(line, "else")) {
+        // An else clause should be on the same line as the preceding closing brace.
+        static const regex_code RE_PATTERN_ELSE_AFTER_BRACE =
+            RegexCompile(R"(\s*else\b\s*(?:if\b|\{|$))");
+        bool last_wrong = RegexMatch(RE_PATTERN_ELSE_AFTER_BRACE, line, m_re_result);
+        if (last_wrong) {
+            const std::string& prevline = GetPreviousNonBlankLine(clean_lines, linenum);
+            if (RegexMatch(R"(\s*}\s*$)", prevline)) {
+                Error(linenum, "whitespace/newline", 4,
+                    "An else should appear on the same line as the preceding }");
+            } else {
+                last_wrong = false;
             }
         }
 
-    // Prevent detection if statement has { and we detected an improper newline after }
-    } else if (RegexSearch(RE_PATTERN_ELSE_BRACE_L, line,
-                           m_re_result_temp) ||
-               (RegexMatch(RE_PATTERN_ELSE_BRACE_R, line,
-                           m_re_result_temp) && !last_wrong)) {
-        Error(linenum, "readability/braces", 5,
-              "If an else has a brace on one side, it should have it on both");
+        // If braces come on one side of an else, they should be on both.
+        // However, we have to worry about "else if" that spans multiple lines!
+        static const regex_code RE_PATTERN_ELSE_IF =
+            RegexCompile(R"(else if\s*\()");
+        static const regex_code RE_PATTERN_ELSE_BRACE_L =
+            RegexCompile(R"(}\s*else[^{]*$)");
+        static const regex_code RE_PATTERN_ELSE_BRACE_R =
+            RegexCompile(R"([^}]*else\s*{)");
+        if (RegexSearch(RE_PATTERN_ELSE_IF, line)) {       // could be multi-line if
+            bool brace_on_left = RegexSearch(R"(}\s*else if\s*\()", line);
+            // find the ( after the if
+            size_t pos = line.find("else if");
+            pos = line.find('(', pos);
+            if (pos > 0 && pos != std::string::npos) {
+                size_t endlinenum = linenum;
+                size_t endpos = pos;
+                const std::string& endline = CloseExpression(clean_lines, &endlinenum, &endpos);
+                bool brace_on_right = endpos != INDEX_NONE &&
+                    endline.find('{', endpos) != std::string::npos;
+                if (brace_on_left != brace_on_right) {    // must be brace after if
+                    Error(linenum, "readability/braces", 5,
+                        "If an else has a brace on one side, it should have it on both");
+                }
+            }
+
+            // Prevent detection if statement has { and we detected an improper newline after }
+        } else if (RegexSearch(RE_PATTERN_ELSE_BRACE_L, line) ||
+            (RegexMatch(RE_PATTERN_ELSE_BRACE_R, line) && !last_wrong)) {
+            Error(linenum, "readability/braces", 5,
+                "If an else has a brace on one side, it should have it on both");
+        }
     }
 
     // No control clauses with braces should have its contents on the same line
@@ -721,7 +723,9 @@ void FileLinter::CheckBraces(const CleansedLines& clean_lines,
         std::string endline = line;
         size_t endlinenum = linenum;
         size_t endpos = GetMatchEnd(m_re_result, 0);
-        bool if_match = RegexSearch(R"(\bif\s*(|constexpr)\s*\()", line, m_re_result);
+        static const regex_code RE_PATTERN_IF_BRACE =
+            RegexCompile(R"(\bif\s*(|constexpr)\s*\()");
+        bool if_match = RegexSearch(RE_PATTERN_IF_BRACE, line, m_re_result);
         if (if_match) {
             // This could be a multiline if condition, so find the end first.
             size_t pos = GetMatchEnd(m_re_result, 0) - 1;
@@ -735,13 +739,15 @@ void FileLinter::CheckBraces(const CleansedLines& clean_lines,
         }
         // Check for an opening brace, either directly after the if or on the next
         // line. If found, this isn't a single-statement conditional.
-        if (!RegexMatch(R"(\s*(?:\[\[(?:un)?likely\]\]\s*)?{)", endline_sub, m_re_result_temp) &&
+        static const regex_code RE_PATTERN_IF_OPEN_BRACE =
+            RegexCompile(R"(\s*(?:\[\[(?:un)?likely\]\]\s*)?{)");
+        if (!RegexMatch(RE_PATTERN_IF_OPEN_BRACE, endline_sub) &&
             !(StrIsBlank(endline_sub) &&
               endlinenum < (clean_lines.NumLines() - 1) &&
               GetFirstNonSpace(clean_lines.GetElidedAt(endlinenum + 1)) == '{')) {
             while (endlinenum < clean_lines.NumLines() &&
                    !(endpos != INDEX_NONE &&
-                     StrContain(clean_lines.GetElidedAt(endlinenum).substr(endpos), ';'))) {
+                     StrContain(clean_lines.GetElidedAt(endlinenum), ';', endpos))) {
                 endlinenum += 1;
                 endpos = 0;
             }
@@ -750,11 +756,11 @@ void FileLinter::CheckBraces(const CleansedLines& clean_lines,
                 // We allow a mix of whitespace and closing braces (e.g. for one-liner
                 // methods) and a single \ after the semicolon (for macros)
                 endpos = endline.find(';');
-                if (!RegexMatch(R"(;[\s}]*(\\?)$)", endline.substr(endpos), m_re_result_temp)) {
+                if (!RegexMatchWithRange(R"(;[\s}]*(\\?)$)", endline, endpos, endline.size() - endpos)) {
                     // Semicolon isn't the last character, there's something trailing.
                     // Output a warning if the semicolon is not contained inside
                     // a lambda expression.
-                    if (!RegexMatch(R"(^[^{};]*\[[^\[\]]*\][^{}]*\{[^{}]*\}\s*\)*[;,]\s*$)", endline, m_re_result_temp)) {
+                    if (!RegexMatch(R"(^[^{};]*\[[^\[\]]*\][^{}]*\{[^{}]*\}\s*\)*[;,]\s*$)", endline)) {
                         Error(linenum, "readability/braces", 4,
                               "If/else bodies with multiple statements require braces");
                     }
@@ -765,7 +771,7 @@ void FileLinter::CheckBraces(const CleansedLines& clean_lines,
                     // With ambiguous nested if statements, this will error out on the
                     // if that *doesn't* match the else, regardless of whether it's the
                     // inner one or outer one.
-                    if (if_match && RegexMatch(R"(\s*else\b)", next_line, m_re_result_temp) &&
+                    if (if_match && RegexMatch(R"(\s*else\b)", next_line) &&
                         next_indent != if_indent) {
                         Error(linenum, "readability/braces", 4,
                               "Else clause should be indented at the same level as if. "
@@ -879,16 +885,16 @@ void FileLinter::CheckTrailingSemicolon(const CleansedLines& clean_lines,
                             "LOCKS_EXCLUDED", "INTERFACE_DEF"},
                             GetMatchStr(macro_m, line_prefix, 1))) ||
                     (func && !RegexSearch(R"(\boperator\s*\[\s*\])",
-                                GetMatchStr(func_m, line_prefix, 1), m_re_result_temp)) ||
-                    RegexSearch(R"(\b(?:struct|union)\s+alignas\s*$)", line_prefix, m_re_result_temp) ||
-                    RegexSearch(R"(\bdecltype$)", line_prefix, m_re_result_temp) ||
-                    RegexSearch(R"(\s+=\s*$)", line_prefix, m_re_result_temp)) {
+                                GetMatchStr(func_m, line_prefix, 1))) ||
+                    RegexSearch(R"(\b(?:struct|union)\s+alignas\s*$)", line_prefix) ||
+                    RegexSearch(R"(\bdecltype$)", line_prefix) ||
+                    RegexSearch(R"(\s+=\s*$)", line_prefix)) {
                 match = false;
             }
         }
         if (match &&
                 endlinenum > 1 &&
-                RegexSearch(R"(\]\s*$)", clean_lines.GetElidedAt(endlinenum - 1), m_re_result_temp)) {
+                RegexSearch(R"(\]\s*$)", clean_lines.GetElidedAt(endlinenum - 1))) {
             // Multi-line lambda-expression
             match = false;
         }
@@ -912,8 +918,7 @@ void FileLinter::CheckTrailingSemicolon(const CleansedLines& clean_lines,
                 RegexCompile(R"([;{}]\s*$)");
             static const regex_code RE_PATTERN_BLOCK_START =
                 RegexCompile(R"(^(\s*)\{)");
-            if (!prevline.empty() && RegexSearch(RE_PATTERN_TRAIL_SPACE, prevline,
-                                                 m_re_result_temp)) {
+            if (!prevline.empty() && RegexSearch(RE_PATTERN_TRAIL_SPACE, prevline)) {
                 match = RegexMatch(RE_PATTERN_BLOCK_START, line, m_re_result);
             }
         }
@@ -925,7 +930,7 @@ void FileLinter::CheckTrailingSemicolon(const CleansedLines& clean_lines,
         size_t endpos = GetMatchEnd(m_re_result, 1);
         const std::string& endline = CloseExpression(
                                         clean_lines, &endlinenum, &endpos);
-        if (endpos != INDEX_NONE && GetFirstNonSpace(endline.substr(endpos)) == ';') {
+        if (endpos != INDEX_NONE && GetFirstNonSpace(endline, endpos) == ';') {
             // Current {} pair is eligible for semicolon check, and we have found
             // the redundant semicolon, output warning here.
             //
@@ -981,7 +986,7 @@ void FileLinter::CheckEmptyBlockBody(const CleansedLines& clean_lines,
             std::string opening_line_fragment = end_line.substr(end_pos);
             // Loop until EOF or find anything that's not whitespace or opening {.
             while (GetFirstNonSpace(opening_line_fragment) != '{') {
-                if (RegexSearch(R"(^(?!\s*$))", opening_line_fragment, m_re_result_temp)) {
+                if (RegexSearch(R"(^(?!\s*$))", opening_line_fragment)) {
                     // Conditional has no brackets.
                     return;
                 }
@@ -1015,8 +1020,7 @@ void FileLinter::CheckEmptyBlockBody(const CleansedLines& clean_lines,
             // and the portion of the closing line before the }.
             bool dummy;
             if (clean_lines.GetRawLineAt(opening_linenum) !=
-                CleanseComments(clean_lines.GetRawLineAt(opening_linenum),
-                                &dummy, m_re_result_temp)) {
+                CleanseComments(clean_lines.GetRawLineAt(opening_linenum), &dummy)) {
                 // Opening line ends with a comment, so conditional isn't empty.
                 return;
             }
@@ -1044,8 +1048,8 @@ void FileLinter::CheckEmptyBlockBody(const CleansedLines& clean_lines,
             std::string current_line_fragment = closing_line.substr(closing_pos);
             // Loop until EOF or find anything that's not whitespace or else clause.
             while (RegexSearch(R"(^\s*$|^(?=\s*else))",
-                               current_line_fragment, m_re_result_temp)) {
-                if (RegexSearch(R"(^(?=\s*else))", current_line_fragment, m_re_result_temp)) {
+                               current_line_fragment)) {
+                if (RegexSearch(R"(^(?=\s*else))", current_line_fragment)) {
                     // Found an else clause, so don't log an error.
                     return;
                 }
@@ -1086,8 +1090,8 @@ void FileLinter::CheckComment(const std::string& line,
     // Allow one space for new scopes, two spaces otherwise:
     static const regex_code RE_PATTERN_SPACE_FOR_SCOPE =
         RegexCompile(R"(^.*{ *//)");
-    if (!(RegexMatch(RE_PATTERN_SPACE_FOR_SCOPE, line,
-                     m_re_result_temp) && next_line_start == commentpos) &&
+    if (!(RegexMatch(RE_PATTERN_SPACE_FOR_SCOPE, line)
+            && next_line_start == commentpos) &&
         ((commentpos >= 1 && !IS_SPACE(line[commentpos-1])) ||
          (commentpos >= 2 && !IS_SPACE(line[commentpos-2])))) {
         Error(linenum, "whitespace/comments", 2,
@@ -1095,10 +1099,10 @@ void FileLinter::CheckComment(const std::string& line,
     }
 
     // Checks for common mistakes in TODO comments.
-    std::string comment = line.substr(commentpos);
     static const regex_code RE_PATTERN_TODO =
         RegexCompile(R"(^//(\s*)TODO(\(.+?\))?:?(\s|$)?)");
-    bool match = RegexMatch(RE_PATTERN_TODO, comment, m_re_result);
+    bool match = RegexMatchWithRange(RE_PATTERN_TODO, line,
+                                     commentpos, line.size() - commentpos, m_re_result);
     if (match) {
         // One whitespace is correct; zero whitespace is handled elsewhere.
         size_t leading_whitespace_size = GetMatchSize(m_re_result, 1);
@@ -1114,7 +1118,7 @@ void FileLinter::CheckComment(const std::string& line,
                   "\"// TODO(my_username): Stuff.\"");
         }
 
-        std::string middle_whitespace = GetMatchStr(m_re_result, comment, 3);
+        std::string middle_whitespace = GetMatchStr(m_re_result, line, 3, commentpos);
         // Comparisons made explicit for correctness
         //  -- pylint: disable=g-explicit-bool-comparison
         if (!IsMatched(m_re_result, 3) ||
@@ -1130,12 +1134,16 @@ void FileLinter::CheckComment(const std::string& line,
     // it's a /// or //! Doxygen comment.
     static const regex_code RE_PATTERN_COMMENT_NOSPACE =
         RegexCompile(R"(//[^ ]*\w)");
-    if (RegexMatch(RE_PATTERN_COMMENT_NOSPACE, comment, m_re_result) &&
-        !RegexMatch(R"((///|//\!)(\s+|$))", comment, m_re_result)) {
+    if (RegexMatchWithRange(RE_PATTERN_COMMENT_NOSPACE, line,
+                            commentpos, line.size() - commentpos) &&
+        !RegexMatch(R"((///|//\!)(\s+|$))", line)) {
         Error(linenum, "whitespace/comments", 4,
               "Should have a space between // and comment");
     }
 }
+
+static const regex_code RE_PATTERN_CLASS_SECTION =
+    RegexCompile(R"(\s*(public|protected|private):)");
 
 void FileLinter::CheckSpacing(const CleansedLines& clean_lines,
                               const std::string& elided_line, size_t linenum,
@@ -1170,7 +1178,7 @@ void FileLinter::CheckSpacing(const CleansedLines& clean_lines,
         //                This ignores whitespace at the start of a namespace block
         //                because those are not usually indented.
         if (prevbrace != std::string::npos &&
-            prev_line.substr(prevbrace).find('}') == std::string::npos) {
+            prev_line.find('}', prevbrace) == std::string::npos) {
             // OK, we have a blank line at the start of a code block.  Before we
             // complain, we check if it is an exception to the rule: The previous
             // non-empty line has the parameters of a function header that are indented
@@ -1179,13 +1187,12 @@ void FileLinter::CheckSpacing(const CleansedLines& clean_lines,
             // the previous line is indented 6 spaces, which may happen when the
             // initializers of a constructor do not fit into a 80 column line.
             bool exception = false;
-            if (RegexMatch(R"( {6}\w)", prev_line, m_re_result_temp)) {  // Initializer list?
+            if (RegexMatch(R"( {6}\w)", prev_line)) {  // Initializer list?
                 // We are looking for the opening column of initializer list, which
                 // should be indented 4 spaces to cause 6 space indentation afterwards.
                 size_t search_position = (linenum >= 2) ? linenum - 2 : INDEX_NONE;
                 while (search_position != INDEX_NONE &&
-                       RegexMatch(R"( {6}\w)", clean_lines.GetElidedAt(search_position),
-                                  m_re_result_temp)) {
+                       RegexMatch(R"( {6}\w)", clean_lines.GetElidedAt(search_position))) {
                     search_position--;
                 }
                 exception = (search_position != INDEX_NONE &&
@@ -1198,8 +1205,8 @@ void FileLinter::CheckSpacing(const CleansedLines& clean_lines,
                 // a function header.  If we have a colon indented 4 spaces, it is an
                 // initializer list.
                 exception = (RegexMatch(R"( {4}\w[^\(]*\)\s*(const\s*)?(\{\s*$|:))",
-                                           prev_line, m_re_result_temp) ||
-                             RegexMatch(R"( {4}:)", prev_line, m_re_result_temp));
+                                           prev_line) ||
+                             RegexMatch(R"( {4}:)", prev_line));
             }
 
             if (!exception) {
@@ -1227,7 +1234,7 @@ void FileLinter::CheckSpacing(const CleansedLines& clean_lines,
             }
         }
 
-        bool matched = RegexMatch(R"(\s*(public|protected|private):)",
+        bool matched = RegexMatch(RE_PATTERN_CLASS_SECTION,
                                   prev_line, m_re_result);
         if (matched) {
             Error(linenum, "whitespace/blank_line", 3,
@@ -1253,8 +1260,8 @@ void FileLinter::CheckSpacing(const CleansedLines& clean_lines,
         RegexCompile(R"(\w\s+\[(?!\[))");
     static const regex_code RE_PATTERN_ATTRIBUTES =
         RegexCompile(R"((?:auto&?|delete|return)\s+\[)");
-    if (RegexSearch(RE_PATTERN_BRACKETS, elided, m_re_result_temp) &&
-        !RegexSearch(RE_PATTERN_ATTRIBUTES, elided, m_re_result_temp)) {
+    if (RegexSearch(RE_PATTERN_BRACKETS, elided) &&
+        !RegexSearch(RE_PATTERN_ATTRIBUTES, elided)) {
         Error(linenum, "whitespace/braces", 5,
               "Extra space before [");
     }
@@ -1265,8 +1272,8 @@ void FileLinter::CheckSpacing(const CleansedLines& clean_lines,
         RegexCompile(R"(for *\(.*[^:]:[^: ])");
     static const regex_code RE_PATTERN_FORCOLON2 =
         RegexCompile(R"(for *\(.*[^: ]:[^:])");
-    if (RegexSearch(RE_PATTERN_FORCOLON, elided, m_re_result_temp) ||
-        RegexSearch(RE_PATTERN_FORCOLON2, elided, m_re_result_temp)) {
+    if (RegexSearch(RE_PATTERN_FORCOLON, elided) ||
+        RegexSearch(RE_PATTERN_FORCOLON2, elided)) {
         Error(linenum, "whitespace/forcolon", 2,
               "Missing space around colon in range-based for loop");
     }
@@ -1330,8 +1337,8 @@ void FileLinter::CheckOperatorSpacing(const CleansedLines& clean_lines,
     // many false positives due to RValue references.
 
     static const regex_code RE_PATTERN_OPERATOR_SPACING2 =
-        RegexCompile(R"([^<>=!\s](==|!=|<=|>=|\|\|)[^<>=!\s,;\)])");
-    match = RegexSearch(RE_PATTERN_OPERATOR_SPACING2, line, m_re_result);
+        RegexJitCompile(R"([^<>=!\s](==|!=|<=|>=|\|\|)[^<>=!\s,;\)])");
+    match = RegexJitSearch(RE_PATTERN_OPERATOR_SPACING2, line, m_re_result);
     if (match) {
         // TODO(unknown): support alternate operators
         Error(linenum, "whitespace/operators", 3,
@@ -1410,8 +1417,8 @@ void FileLinter::CheckOperatorSpacing(const CleansedLines& clean_lines,
 
     // There shouldn't be space around unary operators
     static const regex_code RE_PATTERN_OPERATOR_SPACING3 =
-        RegexCompile(R"((!\s|~\s|[\s]--[\s;]|[\s]\+\+[\s;]))");
-    match = RegexSearch(RE_PATTERN_OPERATOR_SPACING3, line, m_re_result);
+        RegexJitCompile(R"((!\s|~\s|[\s]--[\s;]|[\s]\+\+[\s;]))");
+    match = RegexJitSearch(RE_PATTERN_OPERATOR_SPACING3, line, m_re_result);
     if (match) {
         Error(linenum, "whitespace/operators", 4,
               "Extra space for operator " + GetMatchStr(m_re_result, line, 1));
@@ -1444,7 +1451,7 @@ void FileLinter::CheckParenthesisSpacing(const std::string& elided_line, size_t 
         if (str2_size != GetMatchSize(m_re_result, 4)) {
             if (!((StrIsChar(GetMatchStr(m_re_result, line, 3), ';') &&
                 (str2_size == 1 + GetMatchSize(m_re_result, 4))) ||
-                (str2_size == 0 && RegexSearch(R"(\bfor\s*\(.*; \))", line, m_re_result_temp)))) {
+                (str2_size == 0 && RegexSearch(R"(\bfor\s*\(.*; \))", line)))) {
                 Error(linenum, "whitespace/parens", 5,
                       "Mismatching spaces inside () in " + GetMatchStr(m_re_result, line, 1));
             }
@@ -1483,16 +1490,13 @@ void FileLinter::CheckCommaSpacing(const CleansedLines& clean_lines,
     if (StrContain(line, "operator") || StrContain(line, "__VA_OPT__")) {
         match = RegexSearch(RE_PATTERN_COMMA_SPACING,
             RegexReplace(RE_PATTERN_VA_OPT, "",
-                RegexReplace(RE_PATTERN_OPERATOR, "F(", line, m_re_result_temp),
-                m_re_result_temp),
-            m_re_result_temp);
+                RegexReplace(RE_PATTERN_OPERATOR, "F(", line)));
     } else {
-        match = RegexSearch(RE_PATTERN_COMMA_SPACING, line, m_re_result_temp);
+        match = RegexSearch(RE_PATTERN_COMMA_SPACING, line);
     }
 
     if (match && RegexSearch(RE_PATTERN_COMMA_SPACING,
-                             clean_lines.GetLineWithoutRawStringAt(linenum),
-                             m_re_result_temp)) {
+                             clean_lines.GetLineWithoutRawStringAt(linenum))) {
         Error(linenum, "whitespace/comma", 3,
                               "Missing space after ,");
     }
@@ -1503,7 +1507,7 @@ void FileLinter::CheckCommaSpacing(const CleansedLines& clean_lines,
     // space after ;
     static const regex_code RE_PATTERN_SEMICOLON_SPACING =
         RegexCompile(R"(;[^\s};\\)/])");
-    if (RegexSearch(RE_PATTERN_SEMICOLON_SPACING, line, m_re_result_temp)) {
+    if (RegexSearch(RE_PATTERN_SEMICOLON_SPACING, line)) {
         Error(linenum, "whitespace/semicolon", 3,
                               "Missing space after ;");
     }
@@ -1525,8 +1529,7 @@ const regex_code RE_PATTERN_TYPES =
 static bool IsType(const CleansedLines& clean_lines,
                    NestingState* nesting_state,
                    const std::string& expr,
-                   regex_match& re_result,
-                   regex_match& re_result_temp) {
+                   regex_match& re_result) {
     // Check if expression looks like a type name, returns true if so.
     // Keep only the last token in the expression
     bool match = RegexMatch(R"(^.*(\b\S+)$)", expr, re_result);
@@ -1537,7 +1540,7 @@ static bool IsType(const CleansedLines& clean_lines,
         token = expr;
 
     // Match native types and stdint types
-    if (RegexMatch(RE_PATTERN_TYPES, token, re_result_temp))
+    if (RegexMatch(RE_PATTERN_TYPES, token))
         return true;
 
     // Try a bit harder to match templated types.  Walk up the nesting
@@ -1577,7 +1580,7 @@ static bool IsType(const CleansedLines& clean_lines,
 
         // Look for typename in the specified range
         for (size_t i = first_line; i < last_line + 1; i++) {
-            if (RegexSearch(typename_pattern, clean_lines.GetElidedAt(i), re_result_temp))
+            if (RegexSearch(typename_pattern, clean_lines.GetElidedAt(i)))
                 return true;
         }
         block_index--;
@@ -1644,9 +1647,9 @@ void FileLinter::CheckBracesSpacing(const CleansedLines& clean_lines,
         // We also suppress warnings for `uint64_t{expression}` etc., as the style
         // guide recommends brace initialization for integral types to avoid
         // overflow/truncation.
-        if (!RegexMatch(R"(^[\s}]*[{.;,)<>\]:])", trailing_text, m_re_result_temp)
+        if (!RegexMatch(R"(^[\s}]*[{.;,)<>\]:])", trailing_text)
                 && !IsType(clean_lines, nesting_state, leading_text,
-                           m_re_result, m_re_result_temp)) {
+                           m_re_result)) {
             Error(linenum, "whitespace/braces", 5,
                   "Missing space before {");
         }
@@ -1669,15 +1672,15 @@ void FileLinter::CheckBracesSpacing(const CleansedLines& clean_lines,
         RegexCompile(R"(\s+;\s*$)");
     static const regex_code RE_PATTERN_SEMICOLON_FOR =
         RegexCompile(R"(\bfor\b)");
-    if (RegexSearch(RE_PATTERN_SEMICOLON_EMPTY, line, m_re_result_temp)) {
+    if (RegexSearch(RE_PATTERN_SEMICOLON_EMPTY, line)) {
         Error(linenum, "whitespace/semicolon", 5,
               "Semicolon defining empty statement. Use {} instead.");
-    } else if (RegexSearch(RE_PATTERN_SEMICOLON_ONLY, line, m_re_result_temp)) {
+    } else if (RegexSearch(RE_PATTERN_SEMICOLON_ONLY, line)) {
         Error(linenum, "whitespace/semicolon", 5,
               "Line contains only semicolon. If this should be an empty statement, "
               "use {} instead.");
-    } else if (RegexSearch(RE_PATTERN_SEMICOLON_EXTRA, line, m_re_result_temp) &&
-               !RegexSearch(RE_PATTERN_SEMICOLON_FOR, line, m_re_result_temp)) {
+    } else if (RegexSearch(RE_PATTERN_SEMICOLON_EXTRA, line) &&
+               !RegexSearch(RE_PATTERN_SEMICOLON_FOR, line)) {
         Error(linenum, "whitespace/semicolon", 5,
               "Extra space before last semicolon. If this should be an empty "
               "statement, use {} instead.");
@@ -1736,21 +1739,21 @@ void FileLinter::CheckSpacingForFunctionCallBase(const std::string& line,
     static const regex_code RE_PATTERN_ARRAY_REF =
         RegexCompile(R"( \([^)]+\)\[[^\]]+\])");
     if (  // Ignore control structures.
-          RegexSearch(RE_PATTERN_CTRL_STRUCT, fncall, m_re_result_temp) ||
+          RegexSearch(RE_PATTERN_CTRL_STRUCT, fncall) ||
           // Ignore pointers/references to functions.
-          RegexSearch(RE_PATTERN_FUNC_REF, fncall, m_re_result_temp) ||
+          RegexSearch(RE_PATTERN_FUNC_REF, fncall) ||
           // Ignore pointers/references to arrays.
-          RegexSearch(RE_PATTERN_ARRAY_REF, fncall, m_re_result_temp))
+          RegexSearch(RE_PATTERN_ARRAY_REF, fncall))
         return;
 
     static const regex_code RE_PATTERN_FUNC_PARENS =
         RegexCompile(R"(\w\s*\(\s(?!\s*\\$))");
     static const regex_code RE_PATTERN_PARENS =
         RegexCompile(R"(\(\s+(?!(\s*\\)|\())");
-    if (RegexSearch(RE_PATTERN_FUNC_PARENS, fncall, m_re_result_temp)) {  // a ( used for a fn call
+    if (RegexSearch(RE_PATTERN_FUNC_PARENS, fncall)) {  // a ( used for a fn call
         Error(linenum, "whitespace/parens", 4,
               "Extra space after ( in function call");
-    } else if (RegexSearch(RE_PATTERN_PARENS, fncall, m_re_result_temp)) {
+    } else if (RegexSearch(RE_PATTERN_PARENS, fncall)) {
         Error(linenum, "whitespace/parens", 2,
               "Extra space after (");
     }
@@ -1765,14 +1768,14 @@ void FileLinter::CheckSpacingForFunctionCallBase(const std::string& line,
         RegexCompile(R"(\w\s+\((\w+::)*\*\w+\)\()");
     static const regex_code RE_PATTERN_CASE =
         RegexCompile(R"(\bcase\s+\()");
-    if (RegexSearch(RE_PATTERN_SPACE_BEFORE_PARENS, fncall, m_re_result_temp) &&
-        !RegexSearch(RE_PATTERN_ASM, fncall, m_re_result_temp) &&
-        !RegexSearch(RE_PATTERN_MACRO, fncall, m_re_result_temp) &&
-        !RegexSearch(RE_PATTERN_COLON, fncall, m_re_result_temp) &&
-        !RegexSearch(RE_PATTERN_CASE, fncall, m_re_result_temp)) {
+    if (RegexSearch(RE_PATTERN_SPACE_BEFORE_PARENS, fncall) &&
+        !RegexSearch(RE_PATTERN_ASM, fncall) &&
+        !RegexSearch(RE_PATTERN_MACRO, fncall) &&
+        !RegexSearch(RE_PATTERN_COLON, fncall) &&
+        !RegexSearch(RE_PATTERN_CASE, fncall)) {
         // TODO(unknown): Space after an operator function seem to be a common
         // error, silence those for now by restricting them to highest verbosity.
-        if (RegexSearch(R"(\boperator_*\b)", line, m_re_result_temp)) {
+        if (RegexSearch(R"(\boperator_*\b)", line)) {
             Error(linenum, "whitespace/parens", 0,
                   "Extra space before ( in function call");
         } else {
@@ -1784,15 +1787,15 @@ void FileLinter::CheckSpacingForFunctionCallBase(const std::string& line,
     // Return if the ) is followed only by a newline or a { + newline, assume it's
     // part of a control statement (if/while/etc), and don't complain
     static const regex_code RE_PATTERN_EOL_BRACE =
-        RegexCompile(R"([^)]\s+\)\s*[^{\s])");
-    if (!RegexSearch(RE_PATTERN_EOL_BRACE, fncall, m_re_result_temp))
+        RegexJitCompile(R"([^)]\s+\)\s*[^{\s])");
+    if (!RegexJitSearch(RE_PATTERN_EOL_BRACE, fncall))
         return;
 
     // If the closing parenthesis is preceded by only whitespaces,
     // try to give a more descriptive error message.
     static const regex_code RE_PATTERN_CLOSE_PARENS =
         RegexCompile(R"(^\s+\))");
-    if (RegexSearch(RE_PATTERN_CLOSE_PARENS, fncall, m_re_result_temp)) {
+    if (RegexSearch(RE_PATTERN_CLOSE_PARENS, fncall)) {
         Error(linenum, "whitespace/parens", 2,
                               "Closing ) should be moved to the previous line");
     } else {
@@ -1881,7 +1884,7 @@ void FileLinter::CheckCheck(const CleansedLines& clean_lines,
     // If the check macro is followed by something other than a
     // semicolon, assume users will log their own custom error messages
     // and don't suggest any replacements.
-    if (GetFirstNonSpace(last_line.substr(end_pos)) != ';')
+    if (GetFirstNonSpace(last_line, end_pos) != ';')
         return;
 
     std::string expression = "";
@@ -1971,8 +1974,8 @@ void FileLinter::CheckCheck(const CleansedLines& clean_lines,
     rhs = StrStrip(rhs);
     static const regex_code RE_PATTERN_MATCH_CONSTANT =
         RegexCompile(R"(^([-+]?(\d+|0[xX][0-9a-fA-F]+)[lLuU]{0,3}|".*"|\'.*\')$)");
-    if (RegexMatch(RE_PATTERN_MATCH_CONSTANT, lhs, m_re_result_temp) ||
-        RegexMatch(RE_PATTERN_MATCH_CONSTANT, rhs, m_re_result_temp)) {
+    if (RegexMatch(RE_PATTERN_MATCH_CONSTANT, lhs) ||
+        RegexMatch(RE_PATTERN_MATCH_CONSTANT, rhs)) {
         // Note: since we know both lhs and rhs, we can provide a more
         // descriptive error message like:
         //   Consider using CHECK_EQ(x, 42) instead of CHECK(x == 42)
@@ -2004,7 +2007,10 @@ void FileLinter::CheckAltTokens(const std::string& elided_line, size_t linenum) 
     if ((line.find("/*") != std::string::npos) || (line.find("*/") != std::string::npos))
         return;
 
-    if (!RegexSearch(RE_PATTERN_ALT_TOKEN_REPLACEMENT, line, m_re_result))
+    static const regex_code RE_PATTERN_ALT_TOKEN_REPLACEMENT =
+        RegexJitCompile(GetReAltTokenReplacement());
+
+    if (!RegexJitSearch(RE_PATTERN_ALT_TOKEN_REPLACEMENT, line, m_re_result))
         return;
 
     std::string str = line;
@@ -2046,8 +2052,6 @@ void FileLinter::CheckSectionSpacing(const CleansedLines& clean_lines,
         return;
 
     const std::string& line = clean_lines.GetLineAt(linenum);
-    static const regex_code RE_PATTERN_CLASS_SECTION =
-        RegexCompile(R"(\s*(public|protected|private):)");
     bool matched = RegexMatch(RE_PATTERN_CLASS_SECTION,
                               line, m_re_result);
     if (!matched)
@@ -2063,15 +2067,15 @@ void FileLinter::CheckSectionSpacing(const CleansedLines& clean_lines,
     // common when defining classes in C macros.
     const std::string& prev_line = clean_lines.GetLineAt(linenum - 1);
     if (!StrIsBlank(prev_line) &&
-        !RegexSearch(R"(\b(class|struct)\b)", prev_line, m_re_result_temp) &&
-        !RegexSearch(R"(\\$)", prev_line, m_re_result_temp)) {
+        !RegexSearch(R"(\b(class|struct)\b)", prev_line) &&
+        !RegexSearch(R"(\\$)", prev_line)) {
         // Try a bit harder to find the beginning of the class.  This is to
         // account for multi-line base-specifier lists, e.g.:
         //   class Derived
         //       : public Base {
         size_t end_class_head = classinfo->StartingLinenum();
         for (size_t i = end_class_head; i < linenum; i++) {
-            if (RegexSearch(R"(\{\s*$)", clean_lines.GetLineAt(i), m_re_result_temp)) {
+            if (RegexSearch(R"(\{\s*$)", clean_lines.GetLineAt(i))) {
                 end_class_head = i;
                 break;
             }
@@ -2125,12 +2129,11 @@ void FileLinter::CheckStyle(const CleansedLines& clean_lines,
         RegexCompile(R"(\s*(?:public|private|protected|signals)(?:\s+(?:slots\s*)?)?:\s*\\?$)");
     if (!(linenum > 0 &&
           RegexSearch(RE_PATTERN_SPACES,
-                      clean_lines.GetLineWithoutRawStringAt(linenum - 1),
-                      m_re_result_temp)) &&
+                      clean_lines.GetLineWithoutRawStringAt(linenum - 1))) &&
         (initial_spaces == 1 || initial_spaces == 3) &&
-        !RegexMatch(RE_PATTERN_SCOPE_OR_LABEL, cleansed_line, m_re_result_temp) &&
+        !RegexMatch(RE_PATTERN_SCOPE_OR_LABEL, cleansed_line) &&
         !(clean_lines.GetRawLineAt(linenum) != line &&
-          RegexMatch(R"(^\s*"")", line, m_re_result_temp))) {
+          RegexMatch(R"(^\s*"")", line))) {
         Error(linenum, "whitespace/indent", 3,
               "Weird number of spaces at line-start.  "
               "Are you using a 2-space indent?");
@@ -2171,10 +2174,10 @@ void FileLinter::CheckStyle(const CleansedLines& clean_lines,
     static const regex_code RE_PATTERN_DOC =
         RegexCompile(R"(^\s*/// [@\\](copydoc|copydetails|copybrief) .*$)");
     if (!line.starts_with("#include") && !is_header_guard &&
-        !RegexMatch(RE_PATTERN_URL, line, m_re_result_temp) &&
-        !RegexMatch(RE_PATTERN_COMMENT, line, m_re_result_temp) &&
-        !RegexMatch(RE_PATTERN_ID, line, m_re_result_temp) &&
-        !RegexMatch(RE_PATTERN_DOC, line, m_re_result_temp)) {
+        !RegexMatch(RE_PATTERN_URL, line) &&
+        !RegexMatch(RE_PATTERN_COMMENT, line) &&
+        !RegexMatch(RE_PATTERN_ID, line) &&
+        !RegexMatch(RE_PATTERN_DOC, line)) {
         size_t line_width = GetLineWidth(line);
         size_t line_length = m_options.LineLength();
         if (line_width > line_length) {
@@ -2183,9 +2186,12 @@ void FileLinter::CheckStyle(const CleansedLines& clean_lines,
         }
     }
 
+    static const regex_code RE_PATTERN_LAMBDA =
+        RegexCompile(R"(^[^{};]*\[[^\[\]]*\][^{}]*\{[^{}\n\r]*\})");
+
     if (StrCount(cleansed_line, ';') > 1 &&
             // allow simple single line lambdas
-            !RegexMatch(R"(^[^{};]*\[[^\[\]]*\][^{}]*\{[^{}\n\r]*\})", line, m_re_result_temp) &&
+            !RegexMatch(RE_PATTERN_LAMBDA, line) &&
             // for loops are allowed two ;'s (and may run over two lines).
             !StrContain(cleansed_line, "for")) {
         const std::string& prev_line = GetPreviousNonBlankLine(clean_lines, linenum);
@@ -2264,7 +2270,7 @@ int FileLinter::ClassifyInclude(const fs::path& path_from_repo,
     bool is_std_c_header = (include_order == INCLUDE_ORDER_DEFAULT) ||
                             (InStrVec(C_HEADERS, include_str) ||
                             // additional linux glibc header folders
-                            RegexSearch(GetHeaderFoldersPattern(), include_str, m_re_result_temp));
+                            RegexSearch(GetHeaderFoldersPattern(), include_str));
 
     // Headers with C++ extensions shouldn't be considered C system headers
     std::string include_ext = include.extension().string();
@@ -2331,9 +2337,9 @@ void FileLinter::CheckIncludeLine(const CleansedLines& clean_lines, size_t linen
         RegexCompile(R"(^(?:[^/]*[A-Z][^/]*\.h|lua\.h|lauxlib\.h|lualib\.h)$)");
     bool match = RegexMatch(RE_PATTERN_INCLUDE_SUBDIR, line, m_re_result);
     if (match) {
-        if (m_options.IsHeaderExtension(GetMatchStr(m_re_result, line, 2)) &&
+        if (InStrSet(m_header_extensions, GetMatchStr(m_re_result, line, 2)) &&
             !RegexMatch(RE_PATTERN_INCLUDE_EXT,
-                        GetMatchStr(m_re_result, line, 1), m_re_result_temp)) {
+                        GetMatchStr(m_re_result, line, 1))) {
             Error(linenum, "build/include_subdir", 4,
                   "Include the directory when naming header files");
         }
@@ -2380,7 +2386,7 @@ void FileLinter::CheckIncludeLine(const CleansedLines& clean_lines, size_t linen
             }
         }
 
-        if (third_src_header || !RegexMatch(RE_PATTERN_INCLUDE_EXT, include, m_re_result_temp)) {
+        if (third_src_header || !RegexMatch(RE_PATTERN_INCLUDE_EXT, include)) {
             include_state->LastIncludeList().emplace_back(include, linenum);
 
             // We want to ensure that headers appear in the right order:
@@ -2424,14 +2430,14 @@ bool FileLinter::ExpectingFunctionArgs(const CleansedLines& clean_lines,
         RegexCompile(R"(^\s*MOCK_(?:CONST_)?METHOD\d+(?:_T)?\(\s*$)");
     static const regex_code RE_PATTERN_STD_M =
         RegexCompile(R"(\bstd::m?function\s*\<\s*$)");
-    return (RegexMatch(RE_PATTERN_MOCK, elided_line, m_re_result_temp) ||
+    return (RegexMatch(RE_PATTERN_MOCK, elided_line) ||
             (linenum >= 2 &&
              (RegexMatch(RE_PATTERN_MOCK2,
-                         clean_lines.GetElidedAt(linenum - 1), m_re_result_temp) ||
+                         clean_lines.GetElidedAt(linenum - 1)) ||
               RegexMatch(RE_PATTERN_MOCK3,
-                         clean_lines.GetElidedAt(linenum - 2), m_re_result_temp) ||
+                         clean_lines.GetElidedAt(linenum - 2)) ||
               RegexSearch(RE_PATTERN_STD_M,
-                          clean_lines.GetElidedAt(linenum - 1), m_re_result_temp))));
+                          clean_lines.GetElidedAt(linenum - 1)))));
 }
 
 bool FileLinter::CheckCStyleCast(const CleansedLines& clean_lines,
@@ -2447,7 +2453,7 @@ bool FileLinter::CheckCStyleCast(const CleansedLines& clean_lines,
     size_t pos = GetMatchStart(m_re_result, 1);
     std::string context = line.substr(0, (pos == 0) ? 0 : pos - 1);
     if (RegexMatch(R"(.*\b(?:sizeof|alignof|alignas|[_A-Z][_A-Z0-9]*)\s*$)",
-                   context, m_re_result_temp))
+                   context))
         return false;
 
     // Try expanding current context to see if we one level of
@@ -2458,7 +2464,7 @@ bool FileLinter::CheckCStyleCast(const CleansedLines& clean_lines,
             context = clean_lines.GetElidedAt(i) + context;
     }
     if (RegexMatch(R"(.*\b[_A-Z][_A-Z0-9]*\s*\((?:\([^()]*\)|[^()])*$)",
-                   context, m_re_result_temp))
+                   context))
         return false;
 
     // operator++(int) and operator--(int)
@@ -2468,9 +2474,10 @@ bool FileLinter::CheckCStyleCast(const CleansedLines& clean_lines,
 
     // A single unnamed argument for a function tends to look like old style cast.
     // If we see those, don't issue warnings for deprecated casts.
-    std::string remainder = line.substr(GetMatchEnd(m_re_result, 0));
-    if (RegexMatch(R"(^\s*(?:;|const\b|throw\b|final\b|override\b|[=>{),]|->))",
-                   remainder, m_re_result_temp))
+    size_t endpos = GetMatchEnd(m_re_result, 0);
+    if (RegexMatchWithRange(
+            R"(^\s*(?:;|const\b|throw\b|final\b|override\b|[=>{),]|->))",
+            line, endpos, line.size() - endpos))
         return false;
 
     // At this point, all that should be left is actual casts.
@@ -2490,13 +2497,18 @@ void FileLinter::CheckCasts(const CleansedLines& clean_lines,
     // Parameterless conversion functions, such as bool(), are allowed as they are
     // probably a member operator declaration or default constructor.
     static const regex_code RE_PATTERN_CAST =
-        RegexCompile(R"((\bnew\s+(?:const\s+)?|\S<\s*(?:const\s+)?)?\b)"
-                     R"((int|float|double|bool|char|int32|uint32|int64|uint64))"
-                     R"((\([^)].*))");
-    bool match = RegexSearch(RE_PATTERN_CAST, line, m_re_result);
+        RegexJitCompile(R"((\bnew\s+(?:const\s+)?|\S<\s*(?:const\s+)?)?\b)"
+                        R"((int|float|double|bool|char|int32|uint32|int64|uint64))"
+                        R"((\([^)].*))");
+    bool match = RegexJitSearch(RE_PATTERN_CAST, line, m_re_result);
     bool expecting_function = ExpectingFunctionArgs(clean_lines, elided_line, linenum);
     if (match && !expecting_function) {
-        const std::string& matched_type = GetMatchStr(m_re_result, line, 2);
+        std::string matched_funcptr = GetMatchStr(m_re_result, line, 3);
+
+        // Avoid arrays by looking for brackets that come after the closing
+        // parenthesis.
+        if (RegexMatch(R"(\([^()]+\)\s*\[)", matched_funcptr))
+            return;
 
         // matched_new_or_template is used to silence two false positives:
         // - New operators
@@ -2512,18 +2524,13 @@ void FileLinter::CheckCasts(const CleansedLines& clean_lines,
         //   value < double(42)         // bracket + space = true positive
         std::string matched_new_or_template = GetMatchStr(m_re_result, line, 1);
 
-        // Avoid arrays by looking for brackets that come after the closing
-        // parenthesis.
-        if (RegexMatch(R"(\([^()]+\)\s*\[)",
-                       GetMatchStr(m_re_result, line, 3), m_re_result_temp))
-            return;
+        std::string matched_type = GetMatchStr(m_re_result, line, 2);
 
         // Other things to ignore:
         // - Function pointers
         // - Casts to pointer types
         // - Placement new
         // - Alias declarations
-        const std::string& matched_funcptr = GetMatchStr(m_re_result, line, 3);
         if (matched_new_or_template.empty() &&
                 !(!matched_funcptr.empty() &&
                   (RegexMatch(R"(\((?:[^() ]+::\s*\*\s*)?[^() ]+\)\s*\()",
@@ -2575,9 +2582,9 @@ void FileLinter::CheckCasts(const CleansedLines& clean_lines,
     // This is not a cast:
     //   reference_type&(int* function_param);
     static const regex_code RE_PATTERN_CAST_TYPE =
-        RegexCompile(R"((?:[^\w]&\(([^)*][^)]*)\)[\w(])|)"
-                     R"((?:[^\w]&(static|dynamic|down|reinterpret)_cast\b))");
-    match = RegexSearch(RE_PATTERN_CAST_TYPE, line, m_re_result_temp);
+        RegexJitCompile(R"((?:[^\w]&\(([^)*][^)]*)\)[\w(])|)"
+                        R"((?:[^\w]&(static|dynamic|down|reinterpret)_cast\b))");
+    match = RegexJitSearch(RE_PATTERN_CAST_TYPE, line);
     if (match) {
         // Try a better error message when the & is bound to something
         // dereferenced by the casted pointer, as opposed to the casted
@@ -2598,7 +2605,7 @@ void FileLinter::CheckCasts(const CleansedLines& clean_lines,
                     std::string extended_line = clean_lines.GetElidedAt(y2).substr(x2);
                     if (y2 < clean_lines.NumLines() - 1)
                         extended_line += clean_lines.GetElidedAt(y2 + 1);
-                    if (RegexMatch(R"(\s*(?:->|\[))", extended_line, m_re_result_temp))
+                    if (RegexMatch(R"(\s*(?:->|\[))", extended_line))
                         parenthesis_error = true;
                 }
             }
@@ -2650,11 +2657,11 @@ void FileLinter::CheckGlobalStatic(const std::string& elided_line, size_t linenu
     //    string Class::operator*()
     if (match &&
         !RegexSearch(R"(\bstring\b(\s+const)?\s*[\*\&]\s*(const\s+)?\w)",
-                     line, m_re_result_temp) &&
-        !RegexSearch(R"(\boperator\W)", line, m_re_result_temp) &&
+                     line) &&
+        !RegexSearch(R"(\boperator\W)", line) &&
         !RegexMatch(R"(\s*(<.*>)?(::[a-zA-Z0-9_]+)*\s*\(([^"]|$))",
-                    GetMatchStr(m_re_result, line, 4), m_re_result_temp)) {
-        if (RegexSearch(R"(\bconst\b)", line, m_re_result_temp)) {
+                    GetMatchStr(m_re_result, line, 4))) {
+        if (RegexSearch(R"(\bconst\b)", line)) {
             Error(linenum, "runtime/string", 4,
                   "For a static/global string constant, use a C style string instead:"
                   " \"" + GetMatchStr(m_re_result, line, 1) + "char" +
@@ -2667,11 +2674,8 @@ void FileLinter::CheckGlobalStatic(const std::string& elided_line, size_t linenu
     }
 
     static const regex_code RE_PATTERN_INIT_WITH_ITSELF =
-        RegexCompile(R"(\b([A-Za-z0-9_]*_)\(\1\))");
-    static const regex_code RE_PATTERN_INIT_WITH_ITSELF2 =
-        RegexCompile(R"(\b([A-Za-z0-9_]*_)\(CHECK_NOTNULL\(\1\)\))");
-    if (RegexSearch(RE_PATTERN_INIT_WITH_ITSELF, line, m_re_result_temp) ||
-        RegexSearch(RE_PATTERN_INIT_WITH_ITSELF2, line, m_re_result_temp)) {
+        RegexJitCompile(R"(\b([A-Za-z0-9_]*_)\((\1|CHECK_NOTNULL\(\1\))\))");
+    if (RegexJitSearch(RE_PATTERN_INIT_WITH_ITSELF, line)) {
         Error(linenum, "runtime/init", 4,
               "You seem to be initializing a member variable with itself.");
     }
@@ -2700,7 +2704,7 @@ void FileLinter::CheckPrintf(const std::string& elided_line, size_t linenum) {
         // Check if some verboten C functions are being used.
         static const regex_code RE_PATTERN_SPRINTF =
             RegexCompile(R"(\bsprintf\s*\()");
-        if (RegexSearch(RE_PATTERN_SPRINTF, line, m_re_result_temp)) {
+        if (RegexSearch(RE_PATTERN_SPRINTF, line)) {
             Error(linenum, "runtime/printf", 5,
                 "Never use sprintf. Use snprintf instead.");
         }
@@ -2790,7 +2794,7 @@ void FileLinter::CheckLanguage(const CleansedLines& clean_lines,
     if (line.empty())
         return;
 
-    bool match = RegexSearch(RE_PATTERN_INCLUDE, line, m_re_result_temp);
+    bool match = RegexSearch(RE_PATTERN_INCLUDE, line);
     if (match) {
         CheckIncludeLine(clean_lines, linenum, include_state);
         return;
@@ -2811,7 +2815,7 @@ void FileLinter::CheckLanguage(const CleansedLines& clean_lines,
     static const regex_code RE_PATTERN_MULTILINE_TOKEN =
         RegexCompile("[;({]");
     if (linenum + 1 < clean_lines.NumLines() &&
-            !RegexSearch(RE_PATTERN_MULTILINE_TOKEN, line, m_re_result_temp)) {
+            !RegexSearch(RE_PATTERN_MULTILINE_TOKEN, line)) {
         // Match two lines at a time to support multiline declarations
         std::string new_line = line + StrStrip(clean_lines.GetElidedAt(linenum + 1));
         CheckGlobalStatic(new_line, linenum);
@@ -2832,8 +2836,8 @@ void FileLinter::CheckLanguage(const CleansedLines& clean_lines,
     // we regularly allow is "unsigned short port" for port.
     static const regex_code RE_PATTERN_SHORT_PORT =
         RegexCompile(R"(\bshort port\b)");
-    if (RegexSearch(RE_PATTERN_SHORT_PORT, line, m_re_result_temp)) {
-        if (!RegexSearch(R"(\bunsigned short port\b)", line, m_re_result_temp)) {
+    if (RegexSearch(RE_PATTERN_SHORT_PORT, line)) {
+        if (!RegexSearch(R"(\bunsigned short port\b)", line)) {
             Error(linenum, "runtime/int", 4,
                   "Use \"unsigned short\" for ports, not \"short\"");
         }
@@ -2856,7 +2860,7 @@ void FileLinter::CheckLanguage(const CleansedLines& clean_lines,
     //   class Y { int operator&(const Y& x) { return 23; } }; // binary operator&
     static const regex_code RE_PATTERN_UNARY_OP =
         RegexCompile(R"(\boperator\s*&\s*\(\s*\))");
-    if (RegexSearch(RE_PATTERN_UNARY_OP, line, m_re_result_temp)) {
+    if (RegexSearch(RE_PATTERN_UNARY_OP, line)) {
         Error(linenum, "runtime/operator", 4,
               "Unary operator& is dangerous.  Do not use it.");
     }
@@ -2865,7 +2869,7 @@ void FileLinter::CheckLanguage(const CleansedLines& clean_lines,
     // } if (a == b) {
     static const regex_code RE_PATTERN_IF_AFTER_BRACE =
         RegexCompile(R"(\}\s*if\s*\()");
-    if (RegexSearch(RE_PATTERN_IF_AFTER_BRACE, line, m_re_result_temp)) {
+    if (RegexSearch(RE_PATTERN_IF_AFTER_BRACE, line)) {
         Error(linenum, "readability/braces", 4,
               "Did you mean \"else if\"? If not, start a new line for \"if\".");
     }
@@ -2899,7 +2903,7 @@ void FileLinter::CheckLanguage(const CleansedLines& clean_lines,
         RegexCompile(R"(memset\s*\(([^,]*),\s*([^,]*),\s*0\s*\))");
     match = RegexSearch(RE_PATTERN_MEMSET, line, m_re_result);
     if (match && !RegexMatch(R"(^''|-?[0-9]+|0x[0-9A-Fa-f]$)",
-                             GetMatchStr(m_re_result, line, 2), m_re_result_temp)) {
+                             GetMatchStr(m_re_result, line, 2))) {
         Error(linenum, "runtime/memset", 4,
               "Did you mean \"memset(" + GetMatchStr(m_re_result, line, 1) +
               ", 0, " + GetMatchStr(m_re_result, line, 2) + ")\"?");
@@ -2907,8 +2911,8 @@ void FileLinter::CheckLanguage(const CleansedLines& clean_lines,
 
     static const regex_code RE_PATTERN_NAMESPACE_USING =
         RegexCompile(R"(\busing namespace\b)");
-    if (RegexSearch(RE_PATTERN_NAMESPACE_USING, line, m_re_result_temp)) {
-        if (RegexSearch(R"(\bliterals\b)", line, m_re_result_temp)) {
+    if (RegexSearch(RE_PATTERN_NAMESPACE_USING, line)) {
+        if (RegexSearch(R"(\bliterals\b)", line)) {
             Error(linenum, "build/namespaces_literals", 5,
                   "Do not use namespace using-directives.  "
                   "Use using-declarations instead.");
@@ -2942,19 +2946,19 @@ void FileLinter::CheckLanguage(const CleansedLines& clean_lines,
                     continue;
                 }
 
-                if (RegexSearch(R"(sizeof\(.+\))", tok, m_re_result_temp))
+                if (RegexSearch(R"(sizeof\(.+\))", tok))
                     continue;
-                if (RegexSearch(R"(arraysize\(\w+\))", tok, m_re_result_temp))
+                if (RegexSearch(R"(arraysize\(\w+\))", tok))
                     continue;
 
                 std::string tok_clean = StrLstrip(tok, '(');
                 tok_clean = StrRstrip(tok_clean, ')');
                 if (tok_clean.empty()) continue;
-                if (RegexMatch(R"(\d+)", tok_clean, m_re_result_temp)) continue;
-                if (RegexMatch("0[xX][0-9a-fA-F]+", tok_clean, m_re_result_temp)) continue;
-                if (RegexMatch(R"(k[A-Z0-9]\w*)", tok_clean, m_re_result_temp)) continue;
-                if (RegexMatch(R"((.+::)?k[A-Z0-9]\w*)", tok_clean, m_re_result_temp)) continue;
-                if (RegexMatch("(.+::)?[A-Z][A-Z0-9_]*", tok_clean, m_re_result_temp)) continue;
+                if (RegexMatch(R"(\d+)", tok_clean)) continue;
+                if (RegexMatch("0[xX][0-9a-fA-F]+", tok_clean)) continue;
+                if (RegexMatch(R"(k[A-Z0-9]\w*)", tok_clean)) continue;
+                if (RegexMatch(R"((.+::)?k[A-Z0-9]\w*)", tok_clean)) continue;
+                if (RegexMatch("(.+::)?[A-Z][A-Z0-9_]*", tok_clean)) continue;
                 // A catch all for tricky sizeof cases, including 'sizeof expression',
                 // 'sizeof(*type)', 'sizeof(const type)', 'sizeof(struct StructName)'
                 // requires skipping the next token because we split on ' ' and '*'.
@@ -2979,7 +2983,7 @@ void FileLinter::CheckLanguage(const CleansedLines& clean_lines,
     static const regex_code RE_PATTERN_NAMESPACE_HEAD =
         RegexCompile(R"(\bnamespace\s*{)");
     if (is_header_extension &&
-        RegexSearch(RE_PATTERN_NAMESPACE_HEAD, line, m_re_result_temp) &&
+        RegexSearch(RE_PATTERN_NAMESPACE_HEAD, line) &&
         line.back() != '\\') {
         Error(linenum, "build/namespaces_headers", 4,
               "Do not use unnamed namespaces in header files.  See "
@@ -3008,7 +3012,9 @@ static bool IsDerivedFunction(const CleansedLines& clean_lines, size_t linenum,
             const std::string& close_line = CloseExpression(
                                         clean_lines, &pos, &closing_paren);
             return (closing_paren != INDEX_NONE &&
-                    RegexSearch(RE_PATTERN_OVERRIDE, close_line.substr(closing_paren), re_result));
+                    RegexSearchWithRange(RE_PATTERN_OVERRIDE,
+                                         close_line, closing_paren,
+                                         close_line.size() - closing_paren));
         }
         if (i == min_line) break;
     }
@@ -3016,16 +3022,15 @@ static bool IsDerivedFunction(const CleansedLines& clean_lines, size_t linenum,
 }
 
 // Check if current line contains an out-of-line method definition.
-static bool IsOutOfLineMethodDefinition(const CleansedLines& clean_lines, size_t linenum,
-                                        regex_match& re_result_temp) {
+static bool IsOutOfLineMethodDefinition(const CleansedLines& clean_lines, size_t linenum) {
     // Scan back a few lines for start of current function
     size_t min_line = (linenum >= 10) ? linenum - 10 : 0;
     for (size_t i = linenum;; i--) {
         const std::string& line = clean_lines.GetElidedAt(i);
-        if (RegexMatch(RE_PATTERN_FUNC_START, line, re_result_temp)) {
+        if (RegexMatch(RE_PATTERN_FUNC_START, line)) {
             static const regex_code RE_PATTERN_OUT_OF_LINE =
                 RegexCompile(R"(^[^()]*\w+::\w+\()");
-            return RegexMatch(RE_PATTERN_OUT_OF_LINE, line, re_result_temp);
+            return RegexMatch(RE_PATTERN_OUT_OF_LINE, line);
         }
         if (i == min_line) break;
     }
@@ -3095,7 +3100,7 @@ static bool IsInitializerList(const CleansedLines& clean_lines, size_t linenum,
         R"(::)+)"
 
 // A call-by-reference parameter ends with '& identifier'.
-const regex_code RE_REF_PARAM = RegexCompile(
+const regex_code RE_REF_PARAM = RegexJitCompile(
         "(" RE_PATTERN_TYPE R"((?:\s*(?:\bconst\b|[*]))*\s*)"
         R"(&\s*)" RE_PATTERN_IDENT R"()\s*(?:=[^,()]+)?[,)])");
 // A call-by-const-reference parameter either ends with 'const& identifier'
@@ -3130,7 +3135,7 @@ void FileLinter::CheckForNonConstReference(const CleansedLines& clean_lines,
 
     // Don't warn on out-of-line method definitions, as we would warn on the
     // in-line declaration, if it isn't marked with 'override'.
-    if (IsOutOfLineMethodDefinition(clean_lines, linenum, m_re_result_temp))
+    if (IsOutOfLineMethodDefinition(clean_lines, linenum))
         return;
 
     std::string line = elided_line;
@@ -3157,12 +3162,12 @@ void FileLinter::CheckForNonConstReference(const CleansedLines& clean_lines,
             RegexCompile(R"(\s*::(?:[\w<>]|::)+\s*&\s*\S)");
         static const regex_code RE_PATTERN_STARTS_WITH_COLONS2 =
             RegexCompile(R"(\s*[a-zA-Z_]([\w<>]|::)+\s*&\s*\S)");
-        if (RegexMatch(RE_PATTERN_STARTS_WITH_COLONS, line, m_re_result_temp)) {
+        if (RegexMatch(RE_PATTERN_STARTS_WITH_COLONS, line)) {
             // previous_line\n + ::current_line
             previous = RegexSearch(
                             R"(\b((?:const\s*)?(?:[\w<>]|::)+[\w<>])\s*$)",
                             clean_lines.GetElidedAt(linenum - 1), m_re_result);
-        } else if (RegexMatch(RE_PATTERN_STARTS_WITH_COLONS2, line, m_re_result_temp)) {
+        } else if (RegexMatch(RE_PATTERN_STARTS_WITH_COLONS2, line)) {
             // previous_line::\n + current_line
             previous = RegexSearch(
                             R"(\b((?:const\s*)?(?:[\w<>]|::)+::)\s*$)",
@@ -3214,15 +3219,15 @@ void FileLinter::CheckForNonConstReference(const CleansedLines& clean_lines,
         size_t min_line = (linenum >= 10) ? linenum - 10 : 0;
         for (size_t i = linenum - 1; i > min_line; i--) {
             const std::string& previous_line = clean_lines.GetElidedAt(i);
-            if (!RegexSearch(R"([),]\s*$)", previous_line, m_re_result_temp))
+            if (!RegexSearch(R"([),]\s*$)", previous_line))
                 break;
-            if (RegexMatch(R"(^\s*:\s+\S)", previous_line, m_re_result_temp))
+            if (RegexMatch(R"(^\s*:\s+\S)", previous_line))
                 return;
         }
     }
 
     // Avoid preprocessors
-    if (RegexSearch(R"(\\\s*$)", line, m_re_result_temp))
+    if (RegexSearch(R"(\\\s*$)", line))
         return;
 
     // Avoid constructor initializer lists
@@ -3236,35 +3241,34 @@ void FileLinter::CheckForNonConstReference(const CleansedLines& clean_lines,
     // We also accept & in static_assert, which looks like a function but
     // it's actually a declaration expression.
 
-    if (RegexSearch(RE_PATTERN_ALLOWED_FUNCTIONS, line, m_re_result_temp)) {
+    if (RegexSearch(RE_PATTERN_ALLOWED_FUNCTIONS, line)) {
         return;
-    } else if (!RegexSearch(R"(\S+\([^)]*$)", line, m_re_result_temp)) {
+    } else if (!RegexSearch(R"(\S+\([^)]*$)", line)) {
         // Don't see an allowed function on this line.  Actually we
         // didn't see any function name on this line, so this is likely a
         // multi-line parameter list.  Try a bit harder to catch this case.
         for (size_t i = 0; i < 2; i++) {
             if (linenum > i &&
                 RegexSearch(RE_PATTERN_ALLOWED_FUNCTIONS,
-                            clean_lines.GetElidedAt(linenum - i - 1),
-                            m_re_result_temp))
+                            clean_lines.GetElidedAt(linenum - i - 1)))
                 return;
         }
     }
 
     static const regex_code RE_PATTERN_FUNC_BODY =
         RegexCompile("{[^}]*}");
-    RegexReplace(RE_PATTERN_FUNC_BODY, " ", &line, m_re_result_temp);  // exclude function body
+    RegexReplace(RE_PATTERN_FUNC_BODY, " ", &line);  // exclude function body
     while (true) {
-        bool matched = RegexSearch(RE_REF_PARAM, line, m_re_result);
+        bool matched = RegexJitSearch(RE_REF_PARAM, line, m_re_result);
         if (!matched)
             break;
         std::string parameter = GetMatchStr(m_re_result, line, 1);
-        if (!RegexMatch(RE_CONST_REF_PARAM, parameter, m_re_result_temp) &&
-            !RegexMatch(RE_REF_STREAM_PARAM, parameter, m_re_result_temp)) {
+        if (!RegexMatch(RE_CONST_REF_PARAM, parameter) &&
+            !RegexMatch(RE_REF_STREAM_PARAM, parameter)) {
             Error(linenum, "runtime/references", 2,
                   "Is this a non-const reference? "
                   "If so, make const or use a pointer: " +
-                  RegexReplace(" *<", "<", parameter, m_re_result_temp));
+                  RegexReplace(" *<", "<", parameter));
         }
         line = line.substr(GetMatchEnd(m_re_result, 0));
     }
@@ -3281,14 +3285,14 @@ void FileLinter::CheckForNonStandardConstructs(const CleansedLines& clean_lines,
     if (StrContain(line, "printf")) {
         static const regex_code RE_PATTERN_PRINTF_Q =
             RegexCompile(R"(printf\s*\(.*".*%[-+ ]?\d*q)");
-        if (RegexSearch(RE_PATTERN_PRINTF_Q, line, m_re_result_temp)) {
+        if (RegexSearch(RE_PATTERN_PRINTF_Q, line)) {
             Error(linenum, "runtime/printf_format", 3,
                 "%q in format strings is deprecated.  Use %ll instead.");
         }
 
         static const regex_code RE_PATTERN_PRINTF_N =
             RegexCompile(R"(printf\s*\(.*".*%\d+\$)");
-        if (RegexSearch(RE_PATTERN_PRINTF_N, line, m_re_result_temp)) {
+        if (RegexSearch(RE_PATTERN_PRINTF_N, line)) {
             Error(linenum, "runtime/printf_format", 2,
                 "%N$ formats are unconventional.  Try rewriting to avoid them.");
         }
@@ -3321,11 +3325,11 @@ void FileLinter::CheckForNonStandardConstructs(const CleansedLines& clean_lines,
     const std::string& elided = elided_line;
 
     static const regex_code RE_PATTERN_STORAGE_CLASS =
-        RegexCompile(R"(\b(const|volatile|void|char|short|int|long)"
+        RegexJitCompile(R"(\b(const|volatile|void|char|short|int|long)"
                      "|float|double|signed|unsigned"
                      "|schar|u?int8|u?int16|u?int32|u?int64)"
                      R"(\s+(register|static|extern|typedef)\b)");
-    if (RegexSearch(RE_PATTERN_STORAGE_CLASS, elided, m_re_result_temp)) {
+    if (RegexJitSearch(RE_PATTERN_STORAGE_CLASS, elided)) {
         Error(linenum, "build/storage_class", 5,
               "Storage-class specifier (static, extern, typedef, etc) should be "
               "at the beginning of the declaration.");
@@ -3333,28 +3337,28 @@ void FileLinter::CheckForNonStandardConstructs(const CleansedLines& clean_lines,
 
     static const regex_code RE_PATTERN_ENDIF_COMMENT =
         RegexCompile(R"(\s*#\s*endif\s*[^/\s]+)");
-    if (RegexMatch(RE_PATTERN_ENDIF_COMMENT, elided, m_re_result_temp)) {
+    if (RegexMatch(RE_PATTERN_ENDIF_COMMENT, elided)) {
         Error(linenum, "build/endif_comment", 5,
               "Uncommented text after #endif is non-standard.  Use a comment.");
     }
 
     static const regex_code RE_PATTERN_FORWARD_DECL =
         RegexCompile(R"(\s*class\s+(\w+\s*::\s*)+\w+\s*;)");
-    if (RegexMatch(RE_PATTERN_FORWARD_DECL, elided, m_re_result_temp)) {
+    if (RegexMatch(RE_PATTERN_FORWARD_DECL, elided)) {
         Error(linenum, "build/forward_decl", 5,
               "Inner-style forward declarations are invalid.  Remove this line.");
     }
 
     static const regex_code RE_PATTERN_DEPRECATED =
         RegexCompile(R"((\w+|[+-]?\d+(\.\d*)?)\s*(<|>)\?=?\s*(\w+|[+-]?\d+)(\.\d*)?)");
-    if (RegexSearch(RE_PATTERN_DEPRECATED, elided, m_re_result_temp)) {
+    if (RegexSearch(RE_PATTERN_DEPRECATED, elided)) {
         Error(linenum, "build/deprecated", 3,
               ">? and <? (max and min) operators are non-standard and deprecated.");
     }
 
     static const regex_code RE_PATTERN_CONST_STR_MEMBER =
         RegexCompile(R"(^\s*const\s*string\s*&\s*\w+\s*;)");
-    if (RegexSearch(RE_PATTERN_CONST_STR_MEMBER, elided, m_re_result_temp)) {
+    if (RegexSearch(RE_PATTERN_CONST_STR_MEMBER, elided)) {
         // TODO(unknown): Could it be expanded safely to arbitrary references,
         // without triggering too many false positives? The first
         // attempt triggered 5 warnings for mostly benign code in the regtest, hence
@@ -3378,6 +3382,8 @@ void FileLinter::CheckForNonStandardConstructs(const CleansedLines& clean_lines,
     // The constructor and destructor will not have those qualifiers.
     const std::string& base_classname = classinfo->Basename();
 
+    // Since the next regex function can be a bottleneck,
+    // we check if the class name exists or not.
     if (!StrContain(elided, base_classname))
         return;
 
@@ -3438,12 +3444,12 @@ void FileLinter::CheckForNonStandardConstructs(const CleansedLines& clean_lines,
         RegexCompile(R"(\bstd\s*::\s*initializer_list\b)");
     bool initializer_list_constructor =
             onearg_constructor &&
-            RegexSearch(RE_PATTERN_INITIALIZER_LIST, constructor_args[0], m_re_result_temp);
+            RegexSearch(RE_PATTERN_INITIALIZER_LIST, constructor_args[0]);
     bool copy_constructor =
             onearg_constructor &&
             RegexMatch(R"(((const\s+(volatile\s+)?)?|(volatile\s+(const\s+)?))?)" +
                        base_classname + R"((\s*<[^>]*>)?(\s+const)?\s*(?:<\w+>\s*)?&)",
-                       StrStrip(constructor_args[0]), m_re_result_temp);
+                       StrStrip(constructor_args[0]));
 
     if (!is_marked_explicit &&
             onearg_constructor &&
@@ -3463,7 +3469,7 @@ void FileLinter::CheckForNonStandardConstructs(const CleansedLines& clean_lines,
 void FileLinter::CheckVlogArguments(const std::string& elided_line, size_t linenum) {
     static const regex_code RE_PATTERN_VLOG_ARG =
         RegexCompile(R"(\bVLOG\((INFO|ERROR|WARNING|DFATAL|FATAL)\))");
-    if (RegexSearch(RE_PATTERN_VLOG_ARG, elided_line, m_re_result_temp)) {
+    if (RegexSearch(RE_PATTERN_VLOG_ARG, elided_line)) {
         Error(linenum, "runtime/vlog", 5,
               "VLOG() should be used with numeric verbosity level.  "
               "Use LOG() if you want symbolic severity levels.");
@@ -3488,12 +3494,12 @@ void FileLinter::CheckPosixThreading(const std::string& elided_line, size_t line
     // member function calls.
 
     static const regex_code RE_PATTERN_UNSAFE_FUNC =
-        RegexCompile(R"((?:[-+*/=%^&|(<]\s*|>\s+))"
+        RegexJitCompile(R"((?:[-+*/=%^&|(<]\s*|>\s+))"
                     "(asctime|ctime|getgrgid|getgrnam|getlogin|getpwnam|"
                     "getpwuid|gmtime|localtime|rand|strtok|ttyname)"
                     R"(\([^)]*\))");
 
-    bool match = RegexSearch(RE_PATTERN_UNSAFE_FUNC, elided_line, m_re_result);
+    bool match = RegexJitSearch(RE_PATTERN_UNSAFE_FUNC, elided_line, m_re_result);
     if (match) {
         std::string funcname = GetMatchStr(m_re_result, elided_line, 1);
         Error(linenum, "runtime/threadsafe_fn", 2,
@@ -3507,7 +3513,7 @@ void FileLinter::CheckInvalidIncrement(const std::string& elided_line, size_t li
     // Matches invalid increment: *count++, which moves pointer instead of
     // incrementing a value.
     static const regex_code RE_INVALID_INCREMENT = RegexCompile(R"(^\s*\*\w+(\+\+|--);)");
-    if (RegexMatch(RE_INVALID_INCREMENT, elided_line, m_re_result_temp)) {
+    if (RegexMatch(RE_INVALID_INCREMENT, elided_line)) {
         Error(linenum, "runtime/invalid_increment", 5,
               "Changing pointer instead of value (or unused value of operator*).");
     }
@@ -3515,7 +3521,7 @@ void FileLinter::CheckInvalidIncrement(const std::string& elided_line, size_t li
 
 void FileLinter::CheckMakePairUsesDeduction(const std::string& elided_line, size_t linenum) {
     static const regex_code RE_EXPLICIT_MAKEPAIR = RegexCompile(R"(\bmake_pair\s*<)");
-    if (RegexSearch(RE_EXPLICIT_MAKEPAIR, elided_line, m_re_result_temp)) {
+    if (RegexSearch(RE_EXPLICIT_MAKEPAIR, elided_line)) {
         Error(linenum, "build/explicit_make_pair",
               4,  // 4 = high confidence
               "For C++11-compatibility, omit template arguments from make_pair"
@@ -3525,25 +3531,30 @@ void FileLinter::CheckMakePairUsesDeduction(const std::string& elided_line, size
 
 void FileLinter::CheckRedundantVirtual(const CleansedLines& clean_lines,
                                        const std::string& elided_line, size_t linenum) {
+    // Since RE_PATTERN_VIRTUAL is slow,
+    // we check if the line has "virtual" or not.
+    if (!StrContain(elided_line, "virtual"))
+        return;
+
     // Look for "virtual" on current line.
     static const regex_code RE_PATTERN_VIRTUAL =
         RegexCompile(R"(^(.*)(\bvirtual\b)(.*)$)");
-    bool match = RegexMatch(RE_PATTERN_VIRTUAL, elided_line, m_re_result);
+    bool match = RegexSearch(RE_PATTERN_VIRTUAL, elided_line, m_re_result);
     if (!match) return;
 
     // Ignore "virtual" keywords that are near access-specifiers.  These
     // are only used in class base-specifier and do not apply to member
     // functions.
     if (RegexSearch(R"(\b(public|protected|private)\s+$)",
-                    GetMatchStr(m_re_result, elided_line, 1), m_re_result_temp) ||
+                    GetMatchStr(m_re_result, elided_line, 1)) ||
         RegexMatch(R"(^\s+(public|protected|private)\b)",
-                   GetMatchStr(m_re_result, elided_line, 3), m_re_result_temp))
+                   GetMatchStr(m_re_result, elided_line, 3)))
         return;
 
     // Ignore the "virtual" keyword from virtual base classes.  Usually
     // there is a column on the same line in these cases (virtual base
     // classes are rare in google3 because multiple inheritance is rare).
-    if (RegexMatch(R"(^.*[^:]:[^:].*$)", elided_line, m_re_result_temp))
+    if (RegexMatch(R"(^.*[^:]:[^:].*$)", elided_line))
         return;
 
     // Look for the next opening parenthesis.  This is the start of the
@@ -3556,8 +3567,9 @@ void FileLinter::CheckRedundantVirtual(const CleansedLines& clean_lines,
     size_t start_col = GetMatchSize(m_re_result, 2);
     for (size_t start_line = linenum;
             start_line < MIN(linenum + 3, clean_lines.NumLines()); start_line++) {
-        std::string line = clean_lines.GetElidedAt(start_line).substr(start_col);
-        bool parameter_list = RegexMatch(R"(^([^(]*)\()", line, m_re_result);
+        const std::string& line = clean_lines.GetElidedAt(start_line);
+        bool parameter_list = RegexMatchWithRange(R"(^([^(]*)\()", line,
+                                                  start_col, line.size() - start_col, m_re_result);
         if (parameter_list) {
             // Match parentheses to find the end of the parameter list
             end_line = start_line;
@@ -3575,18 +3587,20 @@ void FileLinter::CheckRedundantVirtual(const CleansedLines& clean_lines,
     // (possibly on the next few lines).
     for (size_t i = end_line;
             i < MIN(end_line + 3, clean_lines.NumLines()); i++) {
-        std::string line = clean_lines.GetElidedAt(i).substr(end_col);
-        match = RegexSearch(R"(\b(override|final)\b)", line, m_re_result);
+        const std::string& line = clean_lines.GetElidedAt(i);
+        match = RegexSearchWithRange(R"(\b(override|final)\b)", line,
+                                     end_col, line.size() - end_col, m_re_result);
         if (match) {
             Error(linenum, "readability/inheritance", 4,
                   "\"virtual\" is redundant since function is "
-                  "already declared as \"" + GetMatchStr(m_re_result, line, 1) + "\"");
+                  "already declared as \"" + GetMatchStr(m_re_result, line, 1, end_col) + "\"");
         }
 
+        bool matched = RegexSearchWithRange(R"([^\w]\s*$)", line, end_col, line.size() - end_col);
         // Set end_col to check whole lines after we are done with the
         // first line.
         end_col = 0;
-        if (RegexSearch(R"([^\w]\s*$)", line, m_re_result_temp))
+        if (matched)
             break;
     }
 }
@@ -3598,20 +3612,23 @@ void FileLinter::CheckRedundantOverrideOrFinal(const CleansedLines& clean_lines,
     // false positives.
     const std::string& line = elided_line;
     size_t declarator_end = line.rfind(')');
-    std::string fragment;
+    bool has_error = false;
     if (declarator_end != std::string::npos) {
-        fragment = line.substr(declarator_end);
+        std::string fragment = line.substr(declarator_end);
+        has_error = RegexSearch(RE_PATTERN_OVERRIDE, fragment) &&
+                    RegexSearch(R"(\bfinal\b)", fragment);
     } else {
         if (linenum > 1 &&
-            clean_lines.GetElidedAt(linenum - 1).rfind(')') != std::string::npos)
-            fragment = line;
-        else
+            clean_lines.GetElidedAt(linenum - 1).rfind(')') != std::string::npos) {
+            has_error = RegexSearch(RE_PATTERN_OVERRIDE, line) &&
+                        RegexSearch(R"(\bfinal\b)", line);
+        } else {
             return;
+        }
     }
 
     // Check that at most one of "override" or "final" is present, not both
-    if (RegexSearch(RE_PATTERN_OVERRIDE, fragment, m_re_result_temp) &&
-        RegexSearch(R"(\bfinal\b)", fragment, m_re_result_temp)) {
+    if (has_error) {
         Error(linenum, "readability/inheritance", 4,
                               "\"override\" is redundant since function is "
                               "already declared as \"final\"");
@@ -3720,7 +3737,7 @@ static const header_patterns_t CompileContainingTemplatesPatterns() {
     patterns.reserve(HEADERS_CONTAINING_TEMPLATES.size());
     for (const std::pair<std::string, std::set<std::string>>& p : HEADERS_CONTAINING_TEMPLATES) {
         std::string regex = SetToStr(p.second, R"(((^|(^|\s|((^|\W)::))std::)|[^>.:]\b)()", "|", R"()\s*\<)");
-        patterns.emplace_back(p.first, std::move(RegexCompile(regex)));
+        patterns.emplace_back(p.first, std::move(RegexJitCompile(regex)));
     }
     return patterns;
 }
@@ -3740,7 +3757,7 @@ static const header_patterns_t CompileMaybeTemplatesPatterns() {
         // Match max<type>(..., ...), max(..., ...), but not foo->max, foo.max or
         // 'type::max()'.
         std::string regex = SetToStr(p.second, R"(((\bstd::)|[^>.:])\b()", "|", R"()(<.*?>)?\([^\)])");
-        patterns.emplace_back(p.first, std::move(RegexCompile(regex)));
+        patterns.emplace_back(p.first, std::move(RegexJitCompile(regex)));
     }
     return patterns;
 }
@@ -3762,7 +3779,7 @@ static const header_patterns_t CompileTypesOrObjsPatterns() {
     patterns.reserve(HEADERS_TYPES_OR_OBJS.size());
     for (const std::pair<std::string, std::set<std::string>>& p : HEADERS_TYPES_OR_OBJS) {
         std::string regex = SetToStr(p.second, "\\b(", "|", ")\\b");
-        patterns.emplace_back(p.first, std::move(RegexCompile(regex)));
+        patterns.emplace_back(p.first, std::move(RegexJitCompile(regex)));
     }
     return patterns;
 }
@@ -3788,7 +3805,7 @@ static const regex_code CompileCstdioPatterns() {
     std::string regex = SetToStr(HEADERS_CSTDIO_FUNCTIONS,
                                  R"(([^>.]|^)\b()", "|", R"()\([^\)])");
 
-    return RegexCompile(regex);
+    return RegexJitCompile(regex);
 }
 
 static const regex_code RE_PATTERN_CSTDIO_FUNCTIONS =
@@ -3808,7 +3825,7 @@ void FileLinter::CheckForIncludeWhatYouUse(const CleansedLines& clean_lines,
 
         // Non templated types or global objects
         for (const std::pair<std::string, regex_code>& p : RE_PATTERNS_TYPES_OR_OBJS) {
-            bool matched = RegexSearch(p.second, line, m_re_result);
+            bool matched = RegexJitSearch(p.second, line, m_re_result);
             if (matched) {
                 // Don't warn about strings in non-STL namespaces:
                 // (We check only the first match per line; good enough.)
@@ -3822,7 +3839,7 @@ void FileLinter::CheckForIncludeWhatYouUse(const CleansedLines& clean_lines,
 
         // Non templated functions
         {
-            bool matched = RegexSearch(RE_PATTERN_CSTDIO_FUNCTIONS, line, m_re_result);
+            bool matched = RegexJitSearch(RE_PATTERN_CSTDIO_FUNCTIONS, line, m_re_result);
             if (matched) {
                 // Don't warn about strings in non-STL namespaces:
                 // (We check only the first match per line; good enough.)
@@ -3835,7 +3852,7 @@ void FileLinter::CheckForIncludeWhatYouUse(const CleansedLines& clean_lines,
         }
 
         for (const std::pair<std::string, regex_code>& p : RE_PATTERNS_MAYBE_TEMPLATES) {
-            bool matched = RegexSearch(p.second, line, m_re_result);
+            bool matched = RegexJitSearch(p.second, line, m_re_result);
             if (matched) {
                 std::string func = GetMatchStr(m_re_result, line, 3);
                 required[p.first] = { linenum, func };
@@ -3849,13 +3866,13 @@ void FileLinter::CheckForIncludeWhatYouUse(const CleansedLines& clean_lines,
         // Map is often overloaded. Only check, if it is fully qualified.
         // Match 'std::map<type>(...)', but not 'map<type>(...)''
         static const regex_code RE_PATTERNS_MAP_TEMPLATES =
-            RegexCompile(R"((std\b::\bmap\s*\<)|(^(std\b::\b)map\b\(\s*\<))");
-        if (RegexSearch(RE_PATTERNS_MAP_TEMPLATES, line, m_re_result_temp))
+            RegexJitCompile(R"((std\b::\bmap\s*\<)|(^(std\b::\b)map\b\(\s*\<))");
+        if (RegexJitSearch(RE_PATTERNS_MAP_TEMPLATES, line))
             required["map"] = { linenum, "map<>" };
 
         // Other scripts may reach in and modify this pattern.
         for (const std::pair<std::string, regex_code>& p : RE_PATTERNS_CONTAINING_TEMPLATES) {
-            bool matched = RegexSearch(p.second, line, m_re_result);
+            bool matched = RegexJitSearch(p.second, line, m_re_result);
             if (matched) {
                 // Don't warn about IWYU in non-STL namespaces:
                 // (We check only the first match per line; good enough.)
@@ -3888,7 +3905,7 @@ void FileLinter::CheckHeaderFileIncluded(IncludeState* include_state) {
     std::string basename = m_file.filename().string();
     static const regex_code RE_PATTERN_TEST_SUFFIX =
         RegexCompile("(_test|_regtest|_unittest)$");
-    if (RegexSearch(RE_PATTERN_TEST_SUFFIX, basename, m_re_result_temp))
+    if (RegexSearch(RE_PATTERN_TEST_SUFFIX, basename))
         return;
 
     std::string message = "";
@@ -4025,30 +4042,36 @@ void FileLinter::ProcessFile() {
             m_cpplint_state->PrintError(
                 "Skipping input '" + m_filename + "': Can't open for reading\n");
         }
-        std::string line;
-        size_t linenum = 0;
+
+        // insert a comment line at the beginning of file.
+        lines.emplace_back("// marker so line numbers and indices both start at 1");
+
+        size_t linenum = 1;
         int status = LINE_OK;
         // Note: We can't use getline cause it trims NUL bytes and a linefeed at EOF.
         while ((status & LINE_EOF) == 0) {
-            line = GetLine(file, &status);
+            std::string line = GetLine(file, &status);
             if (!line.empty() && line.back() == '\r') {
                 // line ends with \r.
-                crlf_lines.push_back(linenum + 1);
+                crlf_lines.push_back(linenum);
                 line.pop_back();
             } else {
                 lf_lines_count++;
             }
             if (status & LINE_BAD_RUNE) {
                 // line contains bad runes.
-                bad_lines.push_back(linenum + 1);
+                bad_lines.push_back(linenum);
             }
             if (status & LINE_NULL) {
                 // line contains null bytes.
-                null_lines.push_back(linenum + 1);
+                null_lines.push_back(linenum);
             }
-            lines.push_back(line);
+            lines.emplace_back(std::move(line));
             linenum++;
         }
+
+        // add a comment line to the end of file.
+        lines.emplace_back("// marker so line numbers end in a known way");
     }
 
     CacheVariables();
@@ -4059,11 +4082,6 @@ void FileLinter::ProcessFile() {
             "Ignoring " + m_filename + "; not a valid file name" +
             " (" + SetToStr(m_all_extensions) + ")\n");
     } else {
-        // insert a comment line at the beginning of file.
-        lines.insert(lines.begin(), "// marker so line numbers and indices both start at 1");
-        // add a comment line to the end of file.
-        lines.emplace_back("// marker so line numbers end in a known way");
-
         // Check lines
         ProcessFileData(lines);
 

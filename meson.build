@@ -12,11 +12,12 @@ project('cpplint-cpp', ['c', 'cpp'],
         'cpp_winlibs=',                 # likewise as with c_winlibs
         'wrap_mode=forcefallback'       # we don't use installed libraries.
     ],
-    version: '0.1.0')
+    version: '0.2.0')
 
 cpplint_link_args = []
 cpplint_c_args = []
 cpplint_os = host_machine.system()
+cpplint_cpu = host_machine.cpu_family()
 cpplint_compiler = meson.get_compiler('c').get_id()
 cpplint_is_debug = get_option('buildtype').startswith('debug')
 
@@ -59,6 +60,19 @@ elif cpplint_os == 'darwin'
         add_global_link_arguments(arch, language: languages)
     else
         warning('Universal build is disabled since your SDKs do not support it.')
+    endif
+endif
+
+# enable JIT compiler in pcre2
+cpu_jit_supported = [ 'aarch64', 'arm', 'mips', 'mips64', 'ppc', 'ppc64', 'riscv32', 'riscv64', 's390x', 'x86', 'x86_64' ]
+pcre2_jit_supported = (cpplint_cpu in cpu_jit_supported and
+                       cpplint_compiler != 'tcc' and
+                       cpplint_os != 'darwin')
+if pcre2_jit_supported
+    if cpplint_compiler == 'msvc'
+        add_global_arguments('/DSUPPORT_JIT', language: ['c', 'cpp'])
+    else
+        add_global_arguments('-DSUPPORT_JIT', language: ['c', 'cpp'])
     endif
 endif
 

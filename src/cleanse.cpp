@@ -54,7 +54,8 @@ std::string GetReAltTokenReplacement() {
 }
 
 const regex_code RE_PATTERN_INCLUDE = RegexCompile(R"(^\s*#\s*include\s*([<"])([^>"]*)[>"].*$)");
-const regex_code RE_PATTERN_ALT_TOKEN_REPLACEMENT = RegexCompile(GetReAltTokenReplacement());
+static const regex_code RE_PATTERN_ALT_TOKEN_REPLACEMENT =
+    RegexCompile(GetReAltTokenReplacement());
 
 std::vector<std::string>
 CleansedLines::CleanseRawStrings(const std::vector<std::string>& raw_lines) {
@@ -96,29 +97,28 @@ CleansedLines::CleanseRawStrings(const std::vector<std::string>& raw_lines) {
                 we don't want to check comments that are inside raw strings.
             */
             static const regex_code RE_PATTERN_RAW_STR =
-                RegexCompile(R"---(^(.*?)\b(?:R|u8R|uR|UR|LR)"([^\s\\()]*)\((.*)$)---");
+                RegexJitCompile(R"---(^(.*?)\b(?:R|u8R|uR|UR|LR)"([^\s\\()]*)\((.*)$)---");
             static const regex_code RE_PATTERN_RAW_STR_SINGLE_LINE =
                 RegexCompile(R"---(^([^\'"]|\'(\\.|[^\'])*\'|"(\\.|[^"])*")*//)---");
-            thread_local regex_match re_result_raw_str_single_line =
-                RegexCreateMatchData(RE_PATTERN_RAW_STR_SINGLE_LINE);
 
-            bool matched = RegexMatch(RE_PATTERN_RAW_STR,
-                                      new_line, m_re_result);
-            if (matched &&
-                !RegexMatch(RE_PATTERN_RAW_STR_SINGLE_LINE,
-                            GetMatchStr(m_re_result, new_line, 1),
-                            re_result_raw_str_single_line)) {
+            bool matched = RegexJitSearch(RE_PATTERN_RAW_STR,
+                                          new_line, m_re_result);
+            if (matched) {
+                std::string match_str_1 = GetMatchStr(m_re_result, new_line, 1);
+                if (RegexMatch(RE_PATTERN_RAW_STR_SINGLE_LINE, match_str_1))
+                    break;
+
                 delimiter = ")" + GetMatchStr(m_re_result, new_line, 2) + "\"";
-
-                size_t end = GetMatchStr(m_re_result, new_line, 3).find(delimiter);
+                std::string match_str_3 = GetMatchStr(m_re_result, new_line, 3);
+                size_t end = match_str_3.find(delimiter);
                 if (end != std::string::npos) {
                     // Raw string ended on same line
-                    new_line = GetMatchStr(m_re_result, new_line, 1) + "\"\"" +
-                               GetMatchStr(m_re_result, new_line, 3).substr(end + delimiter.size());
+                    new_line = match_str_1 + "\"\"" +
+                               match_str_3.substr(end + delimiter.size());
                     delimiter = "";
                 } else {
                     // Start of a multi-line raw string
-                    new_line = GetMatchStr(m_re_result, new_line, 1) + "\"\"";
+                    new_line = match_str_1 + "\"\"";
                 }
             } else {
                 break;
@@ -136,8 +136,7 @@ CleansedLines::CleanseRawStrings(const std::vector<std::string>& raw_lines) {
 // Match a single C style comment on the same line.
 #define RE_PATTERN_C_COMMENTS R"(/\*(?:[^*]|\*(?!/))*\*/)"
 
-std::string CleanseComments(const std::string& line, bool* is_comment,
-                            regex_match& re_result_temp) {
+std::string CleanseComments(const std::string& line, bool* is_comment) {
     size_t commentpos = line.find("//");
     std::string new_line = line;
     if (commentpos != std::string::npos) {
@@ -166,15 +165,13 @@ std::string CleanseComments(const std::string& line, bool* is_comment,
 
     // get rid of /* ... */
     bool replaced = false;
-    RegexReplace(RE_PATTERN_CLEANSE_LINE_C_COMMENTS, "", &new_line,
-                 re_result_temp, &replaced);
+    RegexReplace(RE_PATTERN_CLEANSE_LINE_C_COMMENTS, "", &new_line, &replaced);
     if (replaced)
         *is_comment = true;
     return new_line;
 }
 
 std::string CleansedLines::ReplaceAlternateTokens(const std::string& line) {
-    regex_match m;
     std::string str = line;
     std::string ret = line;
     while (!str.empty()) {
@@ -186,11 +183,8 @@ std::string CleansedLines::ReplaceAlternateTokens(const std::string& line) {
         std::string tail = ((key == "not" || key == "compl") &&
                             StrIsChar(GetMatchStr(m_re_result, str, 3), ' ')) ? "" : "\\3";
         // replace the found token
-        thread_local regex_match re_result_replace =
-            RegexCreateMatchData(RE_PATTERN_ALT_TOKEN_REPLACEMENT);
         RegexReplace(RE_PATTERN_ALT_TOKEN_REPLACEMENT,
-                     std::string("\\1") + token + tail, &ret,
-                     re_result_replace, false);
+                     std::string("\\1") + token + tail, &ret, false);
         // remove the replaced part from str
         str = str.substr(GetMatchEnd(m_re_result, 0));
     }
@@ -198,7 +192,7 @@ std::string CleansedLines::ReplaceAlternateTokens(const std::string& line) {
 }
 
 std::string CleansedLines::CollapseStrings(const std::string& elided) {
-    if (RegexMatch(RE_PATTERN_INCLUDE, elided, m_re_result))
+    if (RegexMatch(RE_PATTERN_INCLUDE, elided))
         return elided;
 
     // Matches standard C++ escape sequences per 2.13.2.3 of the C++ standard.
@@ -209,7 +203,7 @@ std::string CleansedLines::CollapseStrings(const std::string& elided) {
     // Remove escaped characters first to make quote/single quote collapsing
     // basic.  Things that look like escaped characters shouldn't occur
     // outside of strings and chars.
-    RegexReplace(RE_PATTERN_CLEANSE_LINE_ESCAPES, "", &new_elided, m_re_result);
+    RegexReplace(RE_PATTERN_CLEANSE_LINE_ESCAPES, "", &new_elided);
 
     // Replace quoted strings and digit separators.  Both single quotes
     // and double quotes are processed in the same loop, otherwise
@@ -225,10 +219,10 @@ std::string CleansedLines::CollapseStrings(const std::string& elided) {
             break;
         }
         std::string head = GetMatchStr(m_re_result, new_elided, 1);
-        std::string quote = GetMatchStr(m_re_result, new_elided, 2);
+        bool has_double_quote = new_elided[GetMatchStart(m_re_result, 2)] == '"';
         std::string tail = GetMatchStr(m_re_result, new_elided, 3);
 
-        if (StrIsChar(quote, '"')) {
+        if (has_double_quote) {
             // Collapse double quoted strings
             size_t second_quote = tail.find('"');
             if (second_quote != std::string::npos) {
@@ -249,8 +243,8 @@ std::string CleansedLines::CollapseStrings(const std::string& elided) {
             like "0.'3" (gcc 4.9.0 will not allow this literal).
             */
             static const regex_code RE_PATTERN_DIGIT =
-                RegexCompile(R"(\b(?:0[bBxX]?|[1-9])[0-9a-fA-F]*$)");
-            if (RegexSearch(RE_PATTERN_DIGIT, head, m_re_result)) {
+                RegexJitCompile(R"(\b(?:0[bBxX]?|[1-9])[0-9a-fA-F]*$)");
+            if (RegexJitSearch(RE_PATTERN_DIGIT, head)) {
                 std::string subject = "'" + tail;
                 static const regex_code RE_PATTERN_DIGIT2 =
                     RegexCompile(R"(^((?:\'?[0-9a-zA-Z_])*)(.*)$)");
@@ -280,7 +274,7 @@ CleansedLines::CleansedLines(std::vector<std::string>& lines,
                              m_raw_lines(lines),
                              m_has_comment(lines.size(), false),
                              m_re_result(RegexCreateMatchData(16)) {
-    if (InStrVec(options.Filters(), "-readability/alt_tokens")) {
+    if (!options.ShouldPrintError("readability/alt_tokens", "", INDEX_NONE)) {
         for (std::string& line : m_raw_lines) {
             line = ReplaceAlternateTokens(line);
         }
@@ -291,7 +285,7 @@ CleansedLines::CleansedLines(std::vector<std::string>& lines,
     size_t linenum = 0;
     for (const std::string& line : m_lines_without_raw_strings) {
         bool is_comment = false;
-        std::string comment_removed = CleanseComments(line, &is_comment, m_re_result);
+        std::string comment_removed = CleanseComments(line, &is_comment);
         if (is_comment) {
             m_has_comment[linenum] = true;
         }

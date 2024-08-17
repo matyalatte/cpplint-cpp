@@ -24,7 +24,7 @@ std::string StrBeforeChar(const std::string& str, char c) {
         }
         str_p++;
     }
-    return str.substr(0, TO_SIZE(end - start));
+    return std::string(start, end);
 }
 
 std::string StrAfterChar(const std::string& str, char c) {
@@ -47,7 +47,7 @@ std::string StrStrip(const std::string &str) {
         end--;
     if (end < start)
         return "";
-    return str.substr(TO_SIZE(start - &str[0]), TO_SIZE(end - start) + 1);
+    return std::string(start, end + 1);
 }
 
 std::string StrStrip(const std::string &str, char c) {
@@ -58,7 +58,18 @@ std::string StrStrip(const std::string &str, char c) {
     const char* end = &str[str.size() - 1];
     while (start < end && *end == c)
         end--;
-    return str.substr(TO_SIZE(start - &str[0]), TO_SIZE(end - start) + 1);
+    return std::string(start, end + 1);
+}
+
+std::string StrStrip(const char* start, const char* end) {
+    if (start > end) return "";
+    while (IS_SPACE(*start))
+        start++;
+    while (start <= end && IS_SPACE(*end))
+        end--;
+    if (end < start)
+        return "";
+    return std::string(start, end + 1);
 }
 
 std::string StrRstrip(const std::string &str) {
@@ -69,7 +80,7 @@ std::string StrRstrip(const std::string &str) {
         end--;
     if (end < start)
         return "";
-    return str.substr(0, TO_SIZE(end - start) + 1);
+    return std::string(start, end + 1);
 }
 
 std::string StrRstrip(const std::string &str, char c) {
@@ -80,7 +91,7 @@ std::string StrRstrip(const std::string &str, char c) {
         end--;
     if (end < start)
         return "";
-    return str.substr(0, TO_SIZE(end - start) + 1);
+    return std::string(start, end + 1);
 }
 
 std::string StrLstrip(const std::string &str) {
@@ -88,7 +99,7 @@ std::string StrLstrip(const std::string &str) {
     while (IS_SPACE(*start))
         start++;
     const char* end = &str[str.size()];
-    return str.substr(TO_SIZE(start - &str[0]), TO_SIZE(end - start));
+    return std::string(start, end);
 }
 
 std::string StrLstrip(const std::string &str, char c) {
@@ -96,7 +107,7 @@ std::string StrLstrip(const std::string &str, char c) {
     while (*start == c)
         start++;
     const char* end = &str[str.size()];
-    return str.substr(TO_SIZE(start - &str[0]), TO_SIZE(end - start));
+    return std::string(start, end);
 }
 
 size_t StrLstripSize(const std::string &str) {
@@ -127,12 +138,33 @@ std::vector<std::string> StrSplit(const std::string& str, size_t max_size) {
             str_p++;
         }
         const char* end = str_p;
-        split.emplace_back(str.substr(TO_SIZE(start - &str[0]), TO_SIZE(end - start)));
+        split.emplace_back(start, end);
         if (split.size() >= max_size) {
             break;
         }
     }
     return split;
+}
+
+std::string StrSplitLast(const std::string& str) {
+    if (str.empty())
+        return "";
+
+    const char* start = &str[0];
+    const char* str_p = &str[str.size() - 1];
+    // skip white spaces
+    while (IS_SPACE(*str_p) && str_p >= start)
+        str_p--;
+
+    if (str_p < start)
+        return "";  // All characters are white spaces.
+
+    const char* end = str_p + 1;
+
+    while (!IS_SPACE(*str_p) && str_p >= start)
+        str_p--;
+
+    return std::string(str_p + 1, end);
 }
 
 std::vector<std::string> StrSplitBy(const std::string &str, const std::string &delimiter) {
@@ -152,21 +184,19 @@ std::vector<std::string> StrSplitBy(const std::string &str, const std::string &d
 
 std::set<std::string> ParseCommaSeparetedList(const std::string& str) {
     std::set<std::string> set = {};
-    std::string copied = str;
-    char* str_p = &copied[0];
-    char* start = str_p;
+    const char* str_p = &str[0];
+    const char* start = str_p;
 
     while (*str_p != '\0') {
         if (*str_p == ',') {
-            *str_p = '\0';
-            std::string item = StrStrip(start);
+            std::string item = StrStrip(start, str_p - 1);
             if (item.size() > 0)
                 set.insert(item);
             start = str_p + 1;
         }
         str_p++;
     }
-    std::string item = StrStrip(start);
+    std::string item = StrStrip(start, str_p - 1);
     if (item.size() > 0)
         set.insert(item);
     return set;
@@ -261,15 +291,15 @@ std::string StrToUpper(const std::string &str) {
     return upper;
 }
 
-char GetFirstNonSpace(const std::string& str) noexcept {
-    const char* start = &str[0];
+char GetFirstNonSpace(const std::string& str, size_t pos) noexcept {
+    const char* start = &str[pos];
     while (IS_SPACE(*start))
         start++;
     return *start;
 }
 
-size_t GetFirstNonSpacePos(const std::string& str) noexcept {
-    const char* start = &str[0];
+size_t GetFirstNonSpacePos(const std::string& str, size_t pos) noexcept {
+    const char* start = &str[pos];
     while (IS_SPACE(*start))
         start++;
     if (*start == '\0')

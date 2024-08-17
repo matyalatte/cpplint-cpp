@@ -46,6 +46,24 @@ TEST(StringTest, StrStripWithChar) {
     EXPECT_STREQ("test", res.c_str());
 }
 
+TEST(StringTest, StrStripCharPointers) {
+    std::string input = "   test   ";
+    std::string res = StrStrip(&input[0], &input[input.size() - 1]);
+    EXPECT_STREQ("test", res.c_str());
+}
+
+TEST(StringTest, StrStripCharPointersEmpty) {
+    std::string input = "   ";
+    std::string res = StrStrip(&input[0], &input[input.size() - 1]);
+    EXPECT_STREQ("", res.c_str());
+}
+
+TEST(StringTest, StrStripCharPointersNostrip) {
+    std::string input = "a";
+    std::string res = StrStrip(&input[0], &input[input.size() - 1]);
+    EXPECT_STREQ("a", res.c_str());
+}
+
 TEST(StringTest, StrLstrip) {
     std::string res = StrLstrip("   test   ");
     EXPECT_STREQ("test   ", res.c_str());
@@ -116,6 +134,11 @@ TEST(StringTest, StrSplitTwo) {
     }
 }
 
+TEST(StringTest, StrSplitLast) {
+    std::string res = StrSplitLast("test foo bar");
+    EXPECT_STREQ("bar", res.c_str());
+}
+
 TEST(StringTest, StrSplitBy) {
     const std::vector<std::string> expected =
         { "test", "foo", "bar" };
@@ -141,7 +164,7 @@ TEST(StringTest, ParseCommaSeparetedList) {
         { "a", "b", "see", "d"};
     std::set<std::string> actual =
         ParseCommaSeparetedList("a,b, see ,,d");
-    EXPECT_EQ(expected.size(), actual.size());
+    ASSERT_EQ(expected.size(), actual.size());
     auto ex_it = expected.begin();
     auto ac_it = actual.begin();
     while (ex_it != expected.end()) {

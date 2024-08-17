@@ -83,8 +83,7 @@ bool IncludeState::IsInAlphabeticalOrder(const CleansedLines& clean_lines,
         RegexCompile(R"(^\s*#\s*include\b)");
     if ((m_last_header.compare(header_path) > 0) &&
         RegexMatch(RE_PATTERN_INCLUDE_ORDER,
-                   clean_lines.GetElidedAt(linenum - 1),
-                   m_re_result))
+                   clean_lines.GetElidedAt(linenum - 1)))
         return false;
     return true;
 }
@@ -259,11 +258,11 @@ void NestingState::UpdatePreprocessor(const std::string& line) {
         RegexCompile(R"(^\s*#\s*(else|elif)\b)");
     static const regex_code RE_PATTERN_ENDIF_MACRO =
         RegexCompile(R"(^\s*#\s*endif\b)");
-    if (RegexMatch(RE_PATTERN_IF_MACRO, line, m_re_result_temp)) {
+    if (RegexMatch(RE_PATTERN_IF_MACRO, line)) {
         // Beginning of #if block, save the nesting stack here.  The saved
         // stack will allow us to restore the parsing state in the #else case.
         m_pp_stack.push(PreprocessorInfo(m_stack));
-    } else if (RegexMatch(RE_PATTERN_ELSE_MACRO, line, m_re_result_temp)) {
+    } else if (RegexMatch(RE_PATTERN_ELSE_MACRO, line)) {
         // Beginning of #else block
         if (!m_pp_stack.empty()) {
             PreprocessorInfo& pp = m_pp_stack.top();
@@ -280,7 +279,7 @@ void NestingState::UpdatePreprocessor(const std::string& line) {
         } else {
             // TODO(unknown): unexpected #else, issue warning?
         }
-    } else if (RegexMatch(RE_PATTERN_ENDIF_MACRO, line, m_re_result_temp)) {
+    } else if (RegexMatch(RE_PATTERN_ENDIF_MACRO, line)) {
         // End of #if or #else blocks.
         if (!m_pp_stack.empty()) {
             PreprocessorInfo& pp = m_pp_stack.top();
@@ -336,7 +335,7 @@ void NestingState::Update(const CleansedLines& clean_lines,
         if (inline_asm == NO_ASM || inline_asm == END_ASM) {
             if (depth_change != 0 &&
                 inner_block->OpenParentheses() == 1 &&
-                RegexMatch(RE_PATTERN_ASM, line, m_re_result_temp)) {
+                RegexMatch(RE_PATTERN_ASM, line)) {
                 // Enter assembly block
                 inner_block->SetInlineAsm(INSIDE_ASM);
             } else {
@@ -445,17 +444,20 @@ void NestingState::Update(const CleansedLines& clean_lines,
     }
 
     // Consume braces or semicolons from what's left of the line
-    while (1) {
+    size_t pos = 0;
+    while (pos < line.size()) {
         // Match first brace, semicolon, or closed parenthesis.
         static const regex_code RE_PATTERN_TOKEN =
             RegexCompile("^[^{;)}]*([{;)}])(.*)$");
-        bool matched = RegexMatch(RE_PATTERN_TOKEN, line, m_re_result);
+        size_t length = line.size() - pos;
+        bool matched = RegexMatchWithRange(RE_PATTERN_TOKEN, line,
+                                           pos, length, m_re_result);
         if (!matched)
             break;
 
-        const std::string& token = GetMatchStr(m_re_result, line, 1);
-        assert(token.size() == 1);
-        if (token[0] == '{') {
+        const char token = line[GetMatchStart(m_re_result, 1, pos)];
+        assert(GetMatchSize(m_re_result, 1) == 1);
+        if (token == '{') {
             // If namespace or class hasn't seen a opening brace yet, mark
             // namespace/class head as complete.  Push a new block onto the
             // stack otherwise.
@@ -463,16 +465,16 @@ void NestingState::Update(const CleansedLines& clean_lines,
                 RegexCompile(R"(^extern\s*"[^"]*"\s*\{)");
             if (!SeenOpenBrace()) {
                 m_stack.back()->SetSeenOpenBrace(true);
-            } else if (RegexMatch(RE_PATTERN_EXTERN, line, m_re_result_temp)) {
+            } else if (RegexMatchWithRange(RE_PATTERN_EXTERN, line, pos, length)) {
                 m_block_info_buffer.push(new ExternCInfo(linenum));
                 m_stack.push_back(m_block_info_buffer.top());
             } else {
                 m_block_info_buffer.push(new BlockInfo(linenum, true));
                 m_stack.push_back(m_block_info_buffer.top());
-                if (RegexMatch(RE_PATTERN_ASM, line, m_re_result_temp))
+                if (RegexMatchWithRange(RE_PATTERN_ASM, line, pos, length))
                     m_stack.back()->SetInlineAsm(BLOCK_ASM);
             }
-        } else if (token[0] == ';' || token[0] == ')') {
+        } else if (token == ';' || token == ')') {
             // If we haven't seen an opening brace yet, but we already saw
             // a semicolon, this is probably a forward declaration.  Pop
             // the stack for these.
@@ -490,7 +492,7 @@ void NestingState::Update(const CleansedLines& clean_lines,
                 m_stack.pop_back();
             }
         }
-        line = GetMatchStr(m_re_result, line, 2);
+        pos = GetMatchStart(m_re_result, 2, pos);
     }
 }
 

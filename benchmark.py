@@ -8,7 +8,13 @@ def measure_time(command, repeat_time=30):
     count = 0
     while(duration < repeat_time):
         start_time = time.time()  # Record start time
-        result = subprocess.run(command, shell=True)  # Execute the command
+        # Execute the command
+        if count == 0:
+            subprocess.run(command, shell=True)
+        else:
+            subprocess.run(
+                command, shell=True,
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         end_time = time.time()  # Record end time
         duration += end_time - start_time
         count += 1
@@ -44,14 +50,13 @@ if __name__ == '__main__':
         cmd_cpp = cmd_cpp.replace("/", "\\")
         cmd_py = cmd_py.replace("/", "\\")
 
-    # Measure time for cpplint-cpp
+    # Measuring
     print(f"Measuring time for cpplint-cpp: {cmd_cpp}")
     time1 = measure_time(cmd_cpp, repeat_time)
 
-    # Measure time for cpplint-py
     print(f"Measuring time for cpplint.py: {cmd_py}")
     time2 = measure_time(cmd_py, repeat_time)
 
     # Output result
     print(f"Execution time for cpplint-cpp: {time1:.6f} seconds")
-    print(f"Execution time for cpplint-py: {time2:.6f} seconds")
+    print(f"Execution time for cpplint.py: {time2:.6f} seconds")

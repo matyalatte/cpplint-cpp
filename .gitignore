@@ -1,8 +1,8 @@
 build*
 *.exe
 *.bat
-!batch_files/*.bat
 *.sh
+!memory_usage.sh
 *.txt
 !meson_options.txt
 

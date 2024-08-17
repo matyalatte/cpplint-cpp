@@ -3,6 +3,7 @@
 #include <iostream>
 #include <map>
 #include <mutex>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -14,7 +15,8 @@ CppLintState::CppLintState() :
     m_counting(COUNT_TOTAL),
     m_errors_by_category({}),
     m_quiet(false),
-    m_output_format(OUTPUT_EMACS) {}
+    m_output_format(OUTPUT_EMACS),
+    m_num_threads(0) {}
 
 void CppLintState::IncrementErrorCount(const std::string& category) {
     std::string cat = category;
@@ -53,24 +55,27 @@ void CppLintState::PrintErrorCounts() {
     }
 }
 
-void CppLintState::PrintInfo(const std::string& message) {
-    std::lock_guard<std::mutex> lock(m_mtx);
+// Use buffers to avoid mutex locks
+thread_local std::ostringstream cout_buffer;
+thread_local std::ostringstream cerr_buffer;
 
+// Flush streams when the buffer size is larger than this value
+static const std::streampos FLUSH_THRESHOLD = 512;
+
+void CppLintState::PrintInfo(const std::string& message) {
     // _quiet does not represent --quiet flag.
     // Hide infos from stdout to keep stdout pure for machine consumption
     if (m_output_format != OUTPUT_JUNIT &&
         m_output_format != OUTPUT_SED &&
         m_output_format != OUTPUT_GSED)
-        std::cout << message;
+        cout_buffer << message;
 }
 
 void CppLintState::PrintError(const std::string& message) {
-    std::lock_guard<std::mutex> lock(m_mtx);
-
     if (m_output_format == OUTPUT_JUNIT) {
         // m_junit_errors.push_back(message);
     } else {
-        std::cerr << message;
+        cerr_buffer << message;
     }
 }
 
@@ -92,37 +97,67 @@ const std::map<std::string, std::string> SED_FIXUPS = {
 void CppLintState::Error(const std::string& filename, size_t linenum,
            const std::string& category, int confidence,
            const std::string& message) {
-    std::lock_guard<std::mutex> lock(m_mtx);
-
-    IncrementErrorCount(category);
     if (m_output_format == OUTPUT_VS7) {
-        std::cerr << filename << "(" << linenum << "): error cpplint: [" <<
-                     category << "] " << message << " [" << confidence << "]\n";
+        cerr_buffer << filename << "(" << linenum << "): error cpplint: [" <<
+                       category << "] " << message << " [" << confidence << "]\n";
     } else if (m_output_format == OUTPUT_ECLIPSE) {
-        std::cerr << filename << ":" << linenum << ": warning: " <<
-                     message << "  [" << category << "] [" << confidence << "]\n";
+        cerr_buffer << filename << ":" << linenum << ": warning: " <<
+                       message << "  [" << category << "] [" << confidence << "]\n";
     } else if (m_output_format == OUTPUT_JUNIT) {
         bool res = AddJUnitFailure(filename, linenum, message, category, confidence);
         if (!res)
-            std::cerr << "Failed to add a JUnit failure\n";
+            cerr_buffer << "Failed to add a JUnit failure\n";
     } else if (m_output_format == OUTPUT_SED ||
                m_output_format == OUTPUT_GSED) {
         auto it = SED_FIXUPS.find(message);
         if (it == SED_FIXUPS.end()) {
             if (m_output_format == OUTPUT_SED)
-                std::cout << "sed";
+                cout_buffer << "sed";
             else
-                std::cout << "gsed";
-            std::cout << " -i" <<
-                         " '" << linenum << it->second << "' " << filename <<
-                         " # " << message << "  [" << category << "] [" << confidence << "]\n";
+                cout_buffer << "gsed";
+            cout_buffer << " -i" <<
+                           " '" << linenum << it->second << "' " << filename <<
+                           " # " << message << "  [" << category << "] [" << confidence << "]\n";
         } else {
-            std::cerr << "# " << filename << ":" << linenum << ": " <<
-                         " \"" << message << "\"  [" << category << "] [" << confidence << "]\n";
+            cerr_buffer << "# " << filename << ":" << linenum << ": " <<
+                           " \"" << message << "\"  [" << category << "] [" << confidence << "]\n";
         }
     } else {
-        std::cerr << filename << ":" << linenum << ":  " << message << "  [" <<
-                     category << "] [" << confidence << "]\n";
+        cerr_buffer << filename << ":" << linenum << ":  " << message << "  [" <<
+                       category << "] [" << confidence << "]\n";
+    }
+
+    std::lock_guard<std::mutex> lock(m_mtx);
+    IncrementErrorCount(category);
+
+    // Flush large buffers
+    if (cout_buffer.tellp() > FLUSH_THRESHOLD) {
+        std::cout << cout_buffer.str();
+        cout_buffer.str("");
+        cout_buffer.clear();
+    }
+    if (cerr_buffer.tellp() > FLUSH_THRESHOLD) {
+        std::cerr << cerr_buffer.str();
+        cerr_buffer.str("");
+        cerr_buffer.clear();
+    }
+}
+
+void CppLintState::FlushThreadStream() {
+    if (cout_buffer.tellp() == 0 && cerr_buffer.tellp() == 0)
+        return;
+
+    std::lock_guard<std::mutex> lock(m_mtx);
+
+    if (cout_buffer.tellp() > 0) {
+        std::cout << cout_buffer.str();
+        cout_buffer.str("");
+        cout_buffer.clear();
+    }
+    if (cerr_buffer.tellp() > 0) {
+        std::cerr << cerr_buffer.str();
+        cerr_buffer.str("");
+        cerr_buffer.clear();
     }
 }
 

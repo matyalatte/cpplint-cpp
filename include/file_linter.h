@@ -27,7 +27,6 @@ class FileLinter {
     fs::path m_file_from_repo;  // relative path from repository
     std::string m_cppvar;
     regex_match m_re_result;
-    regex_match m_re_result_temp;  // use this when we dont need results
     bool m_has_error;
 
  public:
@@ -45,7 +44,6 @@ class FileLinter {
                 m_file_from_repo(),
                 m_cppvar(),
                 m_re_result(RegexCreateMatchData(16)),
-                m_re_result_temp(RegexCreateMatchData(16)),
                 m_has_error(false) {}
 
     fs::path GetRelativeFromRepository(const fs::path& file, const fs::path& repository);

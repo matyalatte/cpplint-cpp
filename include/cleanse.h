@@ -7,7 +7,8 @@
 
 extern const regex_code RE_PATTERN_INCLUDE;
 
-extern const regex_code RE_PATTERN_ALT_TOKEN_REPLACEMENT;
+// Get regex pattern for RE_PATTERN_ALT_TOKEN_REPLACEMENT
+std::string GetReAltTokenReplacement();
 
 // ALT_TOKEN_REPLACEMENT[alt_token]
 const std::string& AltTokenToToken(const std::string& alt_token);
@@ -26,8 +27,7 @@ const std::string& AltTokenToToken(const std::string& alt_token);
 bool IsCppString(const std::string& line);
 
 // Removes //-comments and single-line C-style /* */ comments.
-std::string CleanseComments(const std::string& line, bool* is_comment,
-                            regex_match& re_result_temp);
+std::string CleanseComments(const std::string& line, bool* is_comment);
 
 class CleansedLines {
     /*Holds 4 copies of all lines with different preprocessing applied to them.

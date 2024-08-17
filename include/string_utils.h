@@ -16,6 +16,9 @@ std::string StrStrip(const std::string &str);
 // Strips leading and tailing characters from a string.
 std::string StrStrip(const std::string &str, char c);
 
+// Strips leading spaces from start and tailing spaces from end.
+std::string StrStrip(const char* start, const char* end);
+
 // Strips tailing white spaces from a string.
 std::string StrRstrip(const std::string &str);
 
@@ -34,6 +37,9 @@ size_t StrLstripSize(const std::string &str);
 // Split string by white spaces. Empty strings are removed from return value.
 std::vector<std::string> StrSplit(const std::string& str, size_t max_size = INDEX_MAX);
 
+// StrSplit().back()
+std::string StrSplitLast(const std::string& str);
+
 // Split string by another string.
 std::vector<std::string> StrSplitBy(const std::string &str, const std::string &delimiter);
 
@@ -41,7 +47,8 @@ std::vector<std::string> StrSplitBy(const std::string &str, const std::string &d
 std::set<std::string> ParseCommaSeparetedList(const std::string& str);
 
 // Concat vec2 to vec1.
-inline void ConcatVec(std::vector<std::string>& vec1, std::vector<std::string>& vec2) {
+template <typename T>
+inline void ConcatVec(std::vector<T>& vec1, std::vector<T>& vec2) {
     vec1.insert(vec1.end(), vec2.begin(), vec2.end());
 }
 
@@ -86,8 +93,16 @@ inline bool StrContain(const std::string& str, const std::string& target) {
     return str.find(target) != std::string::npos;
 }
 
+inline bool StrContain(const std::string& str, const char* target) {
+    return str.find(target) != std::string::npos;
+}
+
 inline bool StrContain(const std::string& str, const char c) {
     return str.find(c) != std::string::npos;
+}
+
+inline bool StrContain(const std::string& str, const char c, size_t pos) {
+    return str.find(c, pos) != std::string::npos;
 }
 
 inline bool StrIsChar(const std::string& str, char c) {
@@ -114,10 +129,10 @@ std::string StrToLower(const std::string &str);
 std::string StrToUpper(const std::string &str);
 
 // Returns the first non-space character or a null terminator.
-char GetFirstNonSpace(const std::string& str) noexcept;
+char GetFirstNonSpace(const std::string& str, size_t pos = 0) noexcept;
 
 // Returns index to the first non-space character or INDEX_NONE.
-size_t GetFirstNonSpacePos(const std::string& str) noexcept;
+size_t GetFirstNonSpacePos(const std::string& str, size_t pos = 0) noexcept;
 
 // Returns true if the string is empty or consists of only white spaces.
 inline bool StrIsBlank(const std::string& str) noexcept {

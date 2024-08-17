@@ -1,6 +1,7 @@
 #include "regex_utils.h"
 #include <ctype.h>
 #include <algorithm>
+#include <cstring>
 #include <iostream>
 #include <string>
 #include <utility>
@@ -28,11 +29,13 @@ pcre2_code* RegexCompileBase(const std::string& regex, uint32_t options) noexcep
 }
 
 static inline bool pcre2_match_priv(const pcre2_code* re, const std::string& str,
-                                    pcre2_match_data* match, uint32_t flags = REGEX_FLAGS_DEFAULT) {
+                                    PCRE2_SIZE startoffset, PCRE2_SIZE length,
+                                    pcre2_match_data* match,
+                                    uint32_t flags = REGEX_FLAGS_DEFAULT) {
     int rc = pcre2_match(
         re,
-        reinterpret_cast<PCRE2_SPTR>(str.c_str()),
-        str.length(),
+        reinterpret_cast<PCRE2_SPTR>(str.c_str()) + startoffset,
+        length,
         0,
         flags,
         match,
@@ -40,7 +43,7 @@ static inline bool pcre2_match_priv(const pcre2_code* re, const std::string& str
     return rc >= 0;
 }
 
-std::string GetMatchStr(regex_match& match, const std::string &subject, int i) {
+std::string GetMatchStr(regex_match& match, const std::string &subject, int i, size_t startoffset) {
     PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match.get());
     int rc = pcre2_get_ovector_count(match.get());
 
@@ -52,7 +55,7 @@ std::string GetMatchStr(regex_match& match, const std::string &subject, int i) {
     PCRE2_SIZE len = end - start;
 
     // Return the substring as std::string
-    return subject.substr(start, len);
+    return subject.substr(start + startoffset, len);
 }
 
 bool IsMatched(regex_match& match, int i) noexcept {
@@ -64,7 +67,7 @@ bool IsMatched(regex_match& match, int i) noexcept {
            ovector[2 * i + 1] != PCRE2_UNSET;
 }
 
-PCRE2_SIZE GetMatchStart(regex_match& match, int i) noexcept {
+PCRE2_SIZE GetMatchStart(regex_match& match, int i, size_t startoffset) noexcept {
     PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match.get());
     int rc = pcre2_get_ovector_count(match.get());
 
@@ -72,10 +75,10 @@ PCRE2_SIZE GetMatchStart(regex_match& match, int i) noexcept {
         return INDEX_NONE;  // the group does not exist or is not matched
 
     PCRE2_SIZE start = ovector[2 * i];
-    return start;
+    return start + startoffset;
 }
 
-PCRE2_SIZE GetMatchEnd(regex_match& match, int i) noexcept {
+PCRE2_SIZE GetMatchEnd(regex_match& match, int i, size_t startoffset) noexcept {
     PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match.get());
     int rc = pcre2_get_ovector_count(match.get());
 
@@ -83,7 +86,7 @@ PCRE2_SIZE GetMatchEnd(regex_match& match, int i) noexcept {
         return INDEX_NONE;  // the group does not exist or is not matched
 
     PCRE2_SIZE end = ovector[2 * i + 1];
-    return end;
+    return end + startoffset;
 }
 
 PCRE2_SIZE GetMatchSize(regex_match& match, int i) noexcept {
@@ -98,192 +101,144 @@ PCRE2_SIZE GetMatchSize(regex_match& match, int i) noexcept {
     return end - start;
 }
 
-bool RegexSearch(const std::string& regex, const std::string& str,
-                 uint32_t options, uint32_t flags) noexcept {
-    regex_code re = RegexCompile(regex, options);
-    if (!re) return false;
-    regex_match result(
-        pcre2_match_data_create_from_pattern(re.get(), nullptr));
-    return pcre2_match_priv(re.get(), str, result.get(), flags);
-}
+// We use this dummy buffer when we don't need results.
+thread_local regex_match re_result_temp =
+    RegexCreateMatchData(32);
 
 bool RegexSearch(const regex_code& regex, const std::string& str,
                  uint32_t flags) noexcept {
     if (!regex) return false;
-    regex_match result(
-        pcre2_match_data_create_from_pattern(regex.get(), nullptr));
-    return pcre2_match_priv(regex.get(), str, result.get(), flags);
-}
-
-bool RegexSearch(const std::string& regex, const std::string& str,
-                 regex_match& result,
-                 uint32_t options, uint32_t flags) noexcept {
-    regex_code re = RegexCompile(regex, options);
-    if (!re) return false;
-    return pcre2_match_priv(re.get(), str, result.get(), flags);
+    return pcre2_match_priv(regex.get(), str, 0, str.size(),
+                            re_result_temp.get(), flags);
 }
 
 bool RegexSearch(const regex_code& regex, const std::string& str,
                  regex_match& result,
                  uint32_t flags) noexcept {
     if (!regex) return false;
-    return pcre2_match_priv(regex.get(), str, result.get(), flags);
+    return pcre2_match_priv(regex.get(), str, 0, str.size(), result.get(), flags);
 }
 
-static std::vector<char> regex_replace_base(
+bool RegexSearchWithRange(const regex_code& regex, const std::string& str,
+                          size_t startoffset, size_t length,
+                          uint32_t flags) noexcept {
+    if (!regex) return false;
+    return pcre2_match_priv(regex.get(), str, startoffset, length,
+                            re_result_temp.get(), flags);
+}
+
+bool RegexSearchWithRange(const regex_code& regex, const std::string& str,
+                          size_t startoffset, size_t length,
+                          regex_match& result,
+                          uint32_t flags) noexcept {
+    if (!regex) return false;
+    return pcre2_match_priv(regex.get(), str, startoffset, length,
+                            result.get(), flags);
+}
+
+template<typename MatchFunc>
+static void regex_replace_base(
+        MatchFunc re_match,
         const pcre2_code* re, const std::string& fmt,
         const std::string& str,
-        pcre2_match_data* match_data,
-        PCRE2_SIZE* outlength,
+        std::string* result_str,
         bool* replaced, bool replace_all) {
     *replaced = false;
-    uint32_t options = PCRE2_SUBSTITUTE_EXTENDED;
-    if (replace_all)
-        options |= PCRE2_SUBSTITUTE_GLOBAL;
 
-    // Calculate the output size
-    size_t buffer_size = MAX(str.length(), 1);  // Starting buffer size
-    *outlength = buffer_size;
-    std::vector<char> buffer(buffer_size);
+    // Position to start the search
+    PCRE2_SIZE start_offset = 0;
+
+    // Get matched ranges and the length of replaced string
+    std::vector<std::pair<PCRE2_SIZE, PCRE2_SIZE>>* matched_ranges = nullptr;
+    size_t result_length = 0;
     while (true) {
-        int result = pcre2_substitute(
+        int rc = re_match(
             re,
-            reinterpret_cast<PCRE2_SPTR>(str.c_str()),
+            (PCRE2_SPTR)str.c_str(),
             str.length(),
-            0,
-            options,
-            match_data,
-            nullptr,
-            reinterpret_cast<PCRE2_SPTR>(fmt.c_str()),
-            fmt.length(),
-            reinterpret_cast<PCRE2_UCHAR8*>(buffer.data()),
-            outlength);
+            start_offset,
+            REGEX_OPTIONS_DEFAULT,
+            re_result_temp.get(),
+            nullptr);
 
-        if (result == PCRE2_ERROR_NOMEMORY) {
-            // Increase buffer size and try again
-            buffer_size *= 2;
-            buffer.resize(buffer_size);
-            *outlength = buffer_size;
-        } else if (result >= 0) {
-            // Success
-            *replaced = result > 0;
-            break;
-        } else {
-            // Substitution failed, return original string
-            break;
+        if (rc < 0) {
+            if (rc == PCRE2_ERROR_NOMATCH) {
+                result_length += str.length() - start_offset;
+                break;  // No more matches
+            } else {
+                std::cerr << "PCRE2 matching error " << rc << std::endl;
+                break;
+            }
         }
+
+        // Save the matched range.
+        PCRE2_SIZE* ovector = pcre2_get_ovector_pointer(re_result_temp.get());
+        PCRE2_SIZE match_start = ovector[0];
+        PCRE2_SIZE match_end = ovector[1];
+        if (!matched_ranges)
+            matched_ranges = new std::vector<std::pair<PCRE2_SIZE, PCRE2_SIZE>>({});
+        matched_ranges->emplace_back(match_start, match_end);
+        result_length += match_start - start_offset + fmt.size();
+
+        // Update previous_end and start_offset to continue after the current match
+        start_offset = match_end;
+
+        *replaced = true;
+
+        // Handle empty matches by incrementing the offset
+        if (match_start == match_end)
+            start_offset++;
+
+        if (start_offset >= str.length() || !replace_all)
+            break;
     }
-    return buffer;
-}
 
-inline std::string regex_replace_base(const pcre2_code* re, const std::string& fmt,
-                                      const std::string& str,
-                                      pcre2_match_data* match_data,
-                                      bool* replaced, bool replace_all) {
-    PCRE2_SIZE outlength = 0;
-    std::vector<char> buffer =
-        regex_replace_base(re, fmt, str, match_data, &outlength, replaced, replace_all);
-    if (*replaced)
-        return std::string(buffer.data(), outlength);
-    else
-        return str;
-}
+    if (!matched_ranges)
+        return;  // Returns input string as it is.
 
-inline std::string regex_replace_base(const pcre2_code* re, const std::string& fmt,
-                                      const std::string& str,
-                                      pcre2_match_data* match_data, bool replace_all) {
-    bool replaced = false;
-    PCRE2_SIZE outlength = 0;
-    std::vector<char> buffer =
-        regex_replace_base(re, fmt, str, match_data, &outlength, &replaced, replace_all);
-    if (replaced)
-        return std::string(buffer.data(), outlength);
-    else
-        return str;
-}
+    // Create return value
+    std::string new_str;
+    new_str.resize(result_length);
+    char* result_p = new_str.data();
+    const char* str_p = str.data();
+    const char* fmt_p = fmt.data();
+    PCRE2_SIZE prev_end = 0;
 
-inline void regex_replace_base(const pcre2_code* re, const std::string& fmt,
-                               std::string* str,
-                               pcre2_match_data* match_data, bool replace_all) {
-    bool replaced = false;
-    PCRE2_SIZE outlength = 0;
-    std::vector<char> buffer =
-        regex_replace_base(re, fmt, *str, match_data, &outlength, &replaced, replace_all);
-    if (replaced)
-        *str = std::string(buffer.data(), outlength);
-}
+    for (const std::pair<PCRE2_SIZE, PCRE2_SIZE>& range : (*matched_ranges)) {
+        memcpy(result_p, str_p + prev_end, range.first - prev_end);
+        result_p += range.first - prev_end;
+        memcpy(result_p, fmt_p, fmt.size());
+        result_p += fmt.size();
+        prev_end = range.second;
+    }
 
-inline void regex_replace_base(const pcre2_code* re, const std::string& fmt,
-                               std::string* str,
-                               pcre2_match_data* match_data,
-                               bool* replaced, bool replace_all) {
-    PCRE2_SIZE outlength = 0;
-    std::vector<char> buffer =
-        regex_replace_base(re, fmt, *str, match_data, &outlength, replaced, replace_all);
-    if (*replaced)
-        *str = std::string(buffer.data(), outlength);
-}
+    if (prev_end != str.length())
+        memcpy(result_p, str_p + prev_end, str.length() - prev_end);
 
-std::string RegexReplace(const std::string& regex, const std::string& fmt,
-                         const std::string& str, bool replace_all) {
-    regex_code re = RegexCompile(regex);
-    if (!re) return str;
-
-    regex_match match_data(
-        pcre2_match_data_create_from_pattern(re.get(), nullptr));
-    return regex_replace_base(re.get(), fmt, str, match_data.get(), replace_all);
-}
-
-std::string RegexReplace(const regex_code& regex, const std::string& fmt,
-                         const std::string& str, bool replace_all) {
-    if (!regex) return str;
-
-    regex_match match_data(
-        pcre2_match_data_create_from_pattern(regex.get(), nullptr));
-    return regex_replace_base(regex.get(), fmt, str, match_data.get(), replace_all);
-}
-
-std::string RegexReplace(const std::string& regex, const std::string& fmt,
-                         const std::string& str,
-                         regex_match& match_data, bool replace_all) {
-    regex_code re = RegexCompile(regex);
-    if (!re) return str;
-    return regex_replace_base(re.get(), fmt, str, match_data.get(), replace_all);
+    *result_str = std::move(new_str);
+    delete matched_ranges;
 }
 
 std::string RegexReplace(const regex_code& regex, const std::string& fmt,
                          const std::string& str,
-                         regex_match& match_data, bool replace_all) {
+                         bool* replaced, bool replace_all) {
     if (!regex) return str;
-    return regex_replace_base(regex.get(), fmt, str, match_data.get(), replace_all);
-}
-
-std::string RegexReplace(const regex_code& regex, const std::string& fmt,
-                         const std::string& str,
-                         regex_match& match_data, bool* replaced, bool replace_all) {
-    if (!regex) return str;
-    return regex_replace_base(regex.get(), fmt, str, match_data.get(), replaced, replace_all);
+    std::string result = str;
+    regex_replace_base(pcre2_match, regex.get(), fmt, str, &result, replaced, replace_all);
+    return result;
 }
 
 void RegexReplace(const regex_code& regex, const std::string& fmt,
                   std::string* str,
-                  regex_match& match_data, bool replace_all) {
+                  bool* replaced, bool replace_all) {
     if (!regex) return;
-    regex_replace_base(regex.get(), fmt, str, match_data.get(), replace_all);
-}
-
-void RegexReplace(const regex_code& regex, const std::string& fmt,
-                  std::string* str,
-                  regex_match& match_data, bool* replaced, bool replace_all) {
-    if (!regex) return;
-    regex_replace_base(regex.get(), fmt, str, match_data.get(), replaced, replace_all);
+    regex_replace_base(pcre2_match, regex.get(), fmt, *str, str, replaced, replace_all);
 }
 
 std::string RegexEscape(const std::string& str) {
     static const regex_code RE_PATTERN_ESCAPE = RegexCompile(R"([-[\]{}()*+?.,\^$|#\s])");
     return RegexReplace(RE_PATTERN_ESCAPE, R"(\$&)", str);
 }
-
 
 std::vector<std::string> RegexSplit(const std::string& regex, const std::string& str) {
     regex_code re = RegexCompile(regex);
@@ -294,10 +249,6 @@ std::vector<std::string> RegexSplit(const std::string& regex, const std::string&
         return result;
     }
 
-    regex_match match_data(
-        pcre2_match_data_create_from_pattern(re.get(), nullptr));
-
-    // Position to start the search
     // Position to start the search
     PCRE2_SIZE start_offset = 0;
     PCRE2_SIZE previous_end = 0;
@@ -309,7 +260,7 @@ std::vector<std::string> RegexSplit(const std::string& regex, const std::string&
             str.length(),
             start_offset,
             REGEX_OPTIONS_DEFAULT,
-            match_data.get(),
+            re_result_temp.get(),
             nullptr);
 
         if (rc < 0) {
@@ -326,7 +277,7 @@ std::vector<std::string> RegexSplit(const std::string& regex, const std::string&
         }
 
         // Retrieve the starting position of the match
-        PCRE2_SIZE* ovector = pcre2_get_ovector_pointer(match_data.get());
+        PCRE2_SIZE* ovector = pcre2_get_ovector_pointer(re_result_temp.get());
         PCRE2_SIZE match_start = ovector[0];
         PCRE2_SIZE match_end = ovector[1];
 
@@ -349,3 +300,63 @@ std::vector<std::string> RegexSplit(const std::string& regex, const std::string&
     }
     return result;
 }
+
+#ifdef SUPPORT_JIT
+regex_code RegexJitCompile(const std::string& regex, uint32_t options) noexcept {
+    pcre2_code* ret = RegexCompileBase(regex, options);
+
+    int result = pcre2_jit_compile(ret, PCRE2_JIT_COMPLETE);
+    if (result != 0) {
+        std::cerr << "PCRE2 JIT compilation failed. " <<
+            " Error: " << result << ", Pattern: " << regex << std::endl;
+        exit(1);
+    }
+
+    return regex_code(ret);
+}
+
+static inline bool pcre2_jit_match_priv(const pcre2_code* re, const std::string& str,
+                                        PCRE2_SIZE startoffset, PCRE2_SIZE length,
+                                        pcre2_match_data* match,
+                                        uint32_t flags = REGEX_FLAGS_DEFAULT) {
+    int rc = pcre2_jit_match(
+        re,
+        reinterpret_cast<PCRE2_SPTR>(str.c_str()) + startoffset,
+        length,
+        0,
+        flags,
+        match,
+        nullptr);
+    return rc >= 0;
+}
+
+bool RegexJitSearch(const regex_code& regex, const std::string& str,
+                    uint32_t flags) noexcept {
+    if (!regex) return false;
+    return pcre2_jit_match_priv(regex.get(), str, 0, str.size(),
+                                re_result_temp.get(), flags);
+}
+
+bool RegexJitSearch(const regex_code& regex, const std::string& str,
+                    regex_match& result,
+                    uint32_t flags) noexcept {
+    if (!regex) return false;
+    return pcre2_jit_match_priv(regex.get(), str, 0, str.size(), result.get(), flags);
+}
+
+std::string RegexJitReplace(const regex_code& regex, const std::string& fmt,
+                            const std::string& str,
+                            bool* replaced, bool replace_all) {
+    if (!regex) return str;
+    std::string result = str;
+    regex_replace_base(pcre2_jit_match, regex.get(), fmt, str, &result, replaced, replace_all);
+    return result;
+}
+
+void RegexJitReplace(const regex_code& regex, const std::string& fmt,
+                     std::string* str,
+                     bool* replaced, bool replace_all) {
+    if (!regex) return;
+    regex_replace_base(pcre2_jit_match, regex.get(), fmt, *str, str, replaced, replace_all);
+}
+#endif

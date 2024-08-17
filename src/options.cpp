@@ -8,6 +8,7 @@
 #include <mutex>
 #include <set>
 #include <string>
+#include <thread>
 #include <utility>
 #include <vector>
 #include "cpplint_state.h"
@@ -18,7 +19,7 @@
 namespace fs = std::filesystem;
 
 // The version of cpplint.cpp
-static const char* CPPLINT_CPP_VERSION = "0.1.0";
+static const char* CPPLINT_CPP_VERSION = "0.2.0";
 
 // The version of cpplint.py
 static const char* ORIGINAL_VERSION = "1.7";
@@ -36,6 +37,8 @@ static const char* USAGE[] = {
     "                    [--config=filename]\n"
     "                    [--quiet]\n"
     "                    [--version]\n"
+    "                    [--timing]\n"
+    "                    [--threads=#]\n"
     "                    <file> [file] ...\n"
     "\n"
     "  Style checker for C/C++ source files.\n"
@@ -208,6 +211,13 @@ static const char* USAGE[] = {
     "    timing\n"
     "      Display elapsed processing time.\n"
     "\n"
+    "    threads=#\n"
+    "      Specify a number of threads for multithreading.\n"
+    "      You can use 0 or -1 for using all available threads."
+    "\n"
+    "      To see the number of available threads, pass no arg:\n"
+    "         --threads=\n"
+    "\n"
     "    cpplint.py supports per-directory configurations specified in CPPLINT.cfg\n"
     "    files. CPPLINT.cfg file can contain a number of key=value pairs.\n"
     "    Currently the following options are supported:\n"
@@ -298,6 +308,20 @@ static void PrintCategories() {
     exit(1);
 }
 
+static int GetNumThreads() {
+    auto num = std::thread::hardware_concurrency();
+    if (num < 1) {  // num can be zero.
+        std::cout << "Warning: Failed to get the number of available threads.\n";
+        num = 1;
+    }
+    return static_cast<int>(num);
+}
+
+static void PrintNumThreads() {
+    std::cout << "Number of threads: " << GetNumThreads() << "\n";
+    exit(0);
+}
+
 // Gets a value of "--opt=value" format.
 // and removes leading and tailing double-quotations.
 static std::string ArgToValue(const std::string& arg) {
@@ -325,6 +349,7 @@ std::vector<fs::path> Options::ParseArguments(int argc, char** argv,
     std::string counting_style = "";
     bool recursive = false;
     std::vector<fs::path> excludes = {};
+    int num_threads = -1;
     m_filters = DEFAULT_FILTERS;
 
     char** argp = argv + 1;
@@ -400,6 +425,15 @@ std::vector<fs::path> Options::ParseArguments(int argc, char** argv,
                 PrintUsage("Config file name must not include directory components.");
         } else if (opt == "--timing") {
             m_timing = true;
+        } else if (opt.starts_with("--threads=")) {
+            std::string val = ArgToValue(opt);
+            if (val.empty())
+                PrintNumThreads();
+            if (val != "-1" && val != "0") {
+                num_threads = static_cast<int>(StrToUint(val));
+                if (num_threads < 1)
+                    PrintUsage("Number of threads should be a positive integer. (" + opt+ ")");
+            }
         } else {
             PrintUsage("Invalid arguments. (" + opt + ")");
         }
@@ -426,11 +460,15 @@ std::vector<fs::path> Options::ParseArguments(int argc, char** argv,
     if (excludes.size() > 0)
         filenames = FilterExcludedFiles(std::move(filenames), excludes);
 
+    if (num_threads == -1)
+        num_threads = GetNumThreads();
+
     // Update options
     cpplint_state->SetOutputFormat(output_format);
     cpplint_state->SetQuiet(quiet);
     cpplint_state->SetVerboseLevel(verbosity);
     cpplint_state->SetCountingStyle(counting_style);
+    cpplint_state->SetNumThreads(num_threads);
 
     // sort filenames
     std::sort(filenames.begin(), filenames.end());
@@ -553,10 +591,38 @@ std::set<std::string> Options::GetNonHeaderExtensions() const {
     return difference;
 }
 
+// Parses filters and append them to a vector.
+// Returns false when the last filter does not start with + or -.
+static bool ParseCommaSeparetedFilters(const std::string& filters,
+                                       std::vector<Filter>& parsed) {
+    const char* str_p = &filters[0];
+    const char* start = str_p;
+
+    while (*str_p != '\0') {
+        if (*str_p == ',') {
+            std::string item = StrStrip(start, str_p - 1);
+            if (item.size() > 0) {
+                if (item[0] != '+' && item[0] != '-')
+                    return false;
+                parsed.emplace_back(item);
+            }
+            start = str_p + 1;
+        }
+        str_p++;
+    }
+    std::string item = StrStrip(start, str_p - 1);
+    if (item.size() > 0) {
+        if (item[0] != '+' && item[0] != '-')
+            return false;
+        parsed.emplace_back(item);
+    }
+    return true;
+}
+
 class CfgFile {
  public:
     bool noparent;
-    std::vector<std::string> filters;
+    std::vector<Filter> filters;
     std::vector<std::string> exclude_files;
     size_t line_length;
     std::set<std::string> extensions;
@@ -592,7 +658,14 @@ class CfgFile {
             if (name == "set noparent") {
                 noparent = true;
             } else if (name == "filter") {
-                filters.emplace_back(std::move(val));
+                bool result = ParseCommaSeparetedFilters(val, filters);
+                if (!result) {
+                    // The last filter does not start with + or -
+                    cpplint_state->PrintError(
+                        file.string() +
+                        ": Every filter must start with + or -"
+                        " (" + val + ")");
+                }
             } else if (name == "exclude_files") {
                 exclude_files.emplace_back(std::move(val));
             } else if (name == "linelength") {
@@ -653,17 +726,8 @@ bool Options::ProcessConfigOverrides(const fs::path& filename,
 
         noparent = cfg->noparent;
 
-        if (!cfg->filters.empty()) {
-            for (const std::string& filter : cfg->filters) {
-                bool added = AddFilters(filter);
-                if (!added) {
-                    cpplint_state->PrintError(
-                        cfg_path.string() +
-                        ": Every filter must start with + or -"
-                        " (" + filter + ")");
-                }
-            }
-        }
+        if (!cfg->filters.empty())
+            ConcatVec(m_filters, cfg->filters);
 
         if (!cfg->exclude_files.empty()) {
             for (const std::string& exclude : cfg->exclude_files) {
@@ -708,43 +772,11 @@ bool Options::ProcessConfigOverrides(const fs::path& filename,
     return true;
 }
 
-static std::vector<std::string> ParseCommaSeparetedVec(const std::string& str) {
-    std::vector<std::string> list = {};
-    std::string copied = str;
-    char* str_p = &copied[0];
-    char* start = str_p;
-
-    while (*str_p != '\0') {
-        if (*str_p == ',') {
-            *str_p = '\0';
-            std::string item = StrStrip(start);
-            if (item.size() > 0)
-                list.emplace_back(std::move(item));
-            start = str_p + 1;
-        }
-        str_p++;
-    }
-    std::string item = StrStrip(start);
-    if (item.size() > 0)
-        list.emplace_back(std::move(item));
-    return list;
-}
-
 bool Options::AddFilters(const std::string& filters) {
-    std::vector<std::string> filters_vec;
-    filters_vec = ParseCommaSeparetedVec(filters);
-    for (const std::string& filt : m_filters) {
-        if (!filt.starts_with('+') && !filt.starts_with('-'))
-            return false;
-    }
-    ConcatVec(m_filters, filters_vec);
-    return true;
+    return ParseCommaSeparetedFilters(filters, m_filters);
 }
 
-static void ParseFilterSelector(const std::string& filter,
-                                std::string& category,
-                                std::string& file,
-                                size_t* line) {
+void Filter::ParseFilterSelector(const std::string& filter) {
     /*Parses the given command line parameter for file- and line-specific
     exclusions.
     readability/casting:file.cpp
@@ -759,50 +791,45 @@ static void ParseFilterSelector(const std::string& filter,
         Filename is either a filename or empty if all files are meant.
         Line is either a line in filename or -1 if all lines are meant.
     */
-    size_t colon_pos = filter.find(':');
-    if (colon_pos == std::string::npos) {
-        category = filter;
-        file = "";
-        *line = INDEX_NONE;
+    if (filter[0] == '+') {
+        m_sign = true;
+    } else if (filter[0] == '-') {
+        m_sign = false;
+    } else {
+        m_category = "";
+        m_file = "";
+        m_linenum = INDEX_NONE;
         return;
     }
-    category = filter.substr(0, colon_pos);
+
+    size_t colon_pos = filter.find(':', 1);
+    if (colon_pos == std::string::npos) {
+        m_category = filter.substr(1);
+        m_file = "";
+        m_linenum = INDEX_NONE;
+        return;
+    }
+    m_category = filter.substr(1, colon_pos - 1);
     size_t second_colon_pos = filter.find(':', colon_pos + 1);
     if (second_colon_pos == std::string::npos) {
-        file = filter.substr(colon_pos + 1, std::string::npos);
-        *line = INDEX_NONE;
+        m_file = filter.substr(colon_pos + 1, std::string::npos);
+        m_linenum = INDEX_NONE;
         return;
     }
-    file = filter.substr(colon_pos + 1, second_colon_pos - colon_pos);
+    m_file = filter.substr(colon_pos + 1, second_colon_pos - colon_pos);
     std::string line_str = filter.substr(second_colon_pos + 1, std::string::npos);
-    *line = StrToUint(line_str);
+    m_linenum = StrToUint(line_str);
     return;
 }
 
 bool Options::ShouldPrintError(const std::string& category,
-                               const std::string& filename, size_t linenum) {
+                               const std::string& filename, size_t linenum) const {
     bool is_filtered = false;
-    for (const std::string& one_filter : Filters()) {
-        std::string filter_without_dot = &one_filter[1];
-        std::string filter_cat;
-        std::string filter_file;
-        size_t filter_line;
-        ParseFilterSelector(filter_without_dot, filter_cat, filter_file, &filter_line);
-        bool category_match = category.starts_with(filter_cat);
-        bool file_match = filter_file.empty() || filter_file == filename;
-        bool line_match = filter_line == linenum || filter_line == INDEX_NONE;
-
-        if (one_filter.starts_with('-')) {
-            if (category_match && file_match && line_match)
-                is_filtered = true;
-        } else if (one_filter.starts_with('+')) {
-            if (category_match && file_match && line_match)
-                is_filtered = false;
-        } else {
-            assert(false);  // should have been checked for in SetFilter.
+    for (const Filter& filter : Filters()) {
+        if (filter.IsMatched(category, filename, linenum)) {
+            // true with "-" filters, false with "+" filters
+            is_filtered = !filter.IsPositive();
         }
     }
-    if (is_filtered)
-        return false;
-    return true;
+    return !is_filtered;
 }
