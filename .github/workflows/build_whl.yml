@@ -1,0 +1,97 @@
+name: Build wheel packages
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.check-tag.outputs.tag }}
+    steps:
+      - name: Check tag
+        id: check-tag
+        run: |
+          if [[ ${{ github.ref }} == refs/tags/v* ]]; then
+            TAG=$(echo ${{ github.ref }} | sed -e "s#refs/tags/##g")
+          else
+            TAG=$(echo ${{ github.sha }} | cut -c1-7)
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+        shell: bash
+
+      - uses: actions/checkout@v4
+
+      - name: Create Release Draft
+        id: create-release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.check-tag.outputs.tag }}
+          name: ${{ steps.check-tag.outputs.tag }}
+          body: |
+            ## Changelog
+
+            - First Change
+            - Second Change
+          draft: true
+          prerelease: false
+
+  build:
+    name: build-${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, ubuntu-20.04, macos-14]
+    runs-on: ${{ matrix.os }}
+    needs: setup
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Meson for Windows
+        if: runner.os == 'Windows'
+        run: pip install meson
+
+      - name: Install Meson for Unix
+        if: runner.os != 'Windows'
+        run: pip3 install meson ninja
+
+      - name: Prepare MSVC
+        if: runner.os == 'Windows'
+        uses: bus1/cabuild/action/msdevshell@v1
+        with:
+          architecture: x64
+
+      - name: Build c++ binary
+        run: |
+          meson setup build --native-file=presets/release.ini
+          meson compile -C build
+          meson test -C build -v
+
+      - name: Copy built binary
+        run: |
+          mkdir dist
+          $(cp build/cpplint-cpp dist 2>/dev/null || exit 0)
+          $(cp build/cpplint-cpp.exe dist 2>/dev/null || exit 0)
+        shell: bash
+
+      - name: Build wheel package
+        run: |
+          pip install build
+          python -m build
+
+      - name: Check required GLIBC version
+        if: runner.os == 'Linux'
+        run: bash .github/workflows/check_glibc_compatibility.sh ./build/cpplint-cpp
+
+      - name: Upload Release Asset
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload ${{ needs.setup.outputs.tag }} dist/*.whl
+        shell: bash
