@@ -36,6 +36,12 @@ jobs:
 
             - First Change
             - Second Change
+
+            ## Installation
+
+            ```sh
+            pip install cpplint-cpp --find-links https://github.com/matyalatte/cpplint-cpp/releases/tag/${{ steps.check-tag.outputs.tag }}
+            ```
           draft: true
           prerelease: false
 
