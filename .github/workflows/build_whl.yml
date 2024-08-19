@@ -39,13 +39,13 @@ jobs:
           draft: true
           prerelease: false
 
-  build:
-    name: build-${{ matrix.os }}
+  build-windows:
+    name: build-windows_${{ matrix.arch }}
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-2022, ubuntu-20.04, macos-14]
-    runs-on: ${{ matrix.os }}
+        arch: [amd64, arm64]
+    runs-on: windows-latest
     needs: setup
     steps:
       - uses: actions/checkout@v4
@@ -53,31 +53,33 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install Meson for Windows
-        if: runner.os == 'Windows'
+      - name: Install Meson
         run: pip install meson
 
-      - name: Install Meson for Unix
-        if: runner.os != 'Windows'
-        run: pip3 install meson ninja
-
       - name: Prepare MSVC
-        if: runner.os == 'Windows'
         uses: bus1/cabuild/action/msdevshell@v1
         with:
           architecture: x64
 
-      - name: Build c++ binary
+      - name: Build c++ binary for arm64
+        if: matrix.arch == 'amd64'
         run: |
           meson setup build --native-file=presets/release.ini
+          meson compile -C build
+          meson test -C build -v
+
+      - name: Build c++ binary for arm64
+        if: matrix.arch == 'arm64'
+        run: |
+          meson setup build --cross-file=presets/release.ini --cross-file=presets/windows_arm64.ini
           meson compile -C build
           meson test -C build -v
 
       - name: Copy built binary
         run: |
           mkdir dist
-          $(cp build/cpplint-cpp dist 2>/dev/null || exit 0)
-          $(cp build/cpplint-cpp.exe dist 2>/dev/null || exit 0)
+          cp build/cpplint-cpp.exe dist
+          cp build/version.h dist
         shell: bash
 
       - name: Build wheel package
@@ -85,9 +87,80 @@ jobs:
           pip install build
           python -m build
 
-      - name: Check required GLIBC version
-        if: runner.os == 'Linux'
-        run: bash .github/workflows/check_glibc_compatibility.sh ./build/cpplint-cpp
+      - name: Upload Release Asset
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload ${{ needs.setup.outputs.tag }} dist/*.whl
+        shell: bash
+
+  build-macos:
+    runs-on: macos-latest
+    needs: setup
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Meson for Unix
+        run: pip3 install meson ninja
+
+      - name: Build c++ binary
+        run: |
+          meson setup build --native-file=presets/release.ini
+          meson compile -C build
+          meson test -C build -v
+          strip ./build/cpplint-cpp
+
+      - name: Copy built binary
+        run: |
+          mkdir dist
+          cp build/cpplint-cpp dist
+          cp build/version.h dist
+
+      - name: Build wheel package
+        run: |
+          pip install build
+          python -m build
+
+      - name: Upload Release Asset
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload ${{ needs.setup.outputs.tag }} dist/*.whl
+        shell: bash
+
+  build-linux_arm64:
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build linux package for arm64
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-user-static binfmt-support
+          docker buildx build --platform linux/arm64 -t cpplint_arm ./
+          docker run --name cpplint_arm cpplint_arm
+          docker cp cpplint_arm:/cpplint-cpp/dist ./
+
+      - name: Upload Release Asset
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload ${{ needs.setup.outputs.tag }} dist/*.whl
+        shell: bash
+
+  build-linux_x86_64:
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build linux package for x86_64
+        run: |
+          docker build -t cpplint ./
+          docker run --name cpplint cpplint
+          docker cp cpplint:/cpplint-cpp/dist ./
 
       - name: Upload Release Asset
         env:

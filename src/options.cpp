@@ -15,14 +15,9 @@
 #include "error_suppressions.h"
 #include "regex_utils.h"
 #include "string_utils.h"
+#include "version.h"
 
 namespace fs = std::filesystem;
-
-// The version of cpplint.cpp
-static const char* CPPLINT_CPP_VERSION = "0.2.0";
-
-// The version of cpplint.py
-static const char* ORIGINAL_VERSION = "1.7";
 
 static const char* USAGE[] = {
     "Syntax: cpplint.cpp [--verbose=#] [--output=emacs|eclipse|vs7|junit|sed|gsed]\n"
@@ -293,8 +288,8 @@ void Options::PrintUsage(const std::string& message) {
 }
 
 static void PrintVersion() {
-    std::cout << "Cpplint.cpp " << CPPLINT_CPP_VERSION <<
-                 " (https://github.com/matyalatte/cpplint.cpp)\n"
+    std::cout << "cpplint-cpp " << CPPLINT_VERSION <<
+                 " " << PLATFORM_TAG << "\n"
                  "Reimplementation of cpplint.py " << ORIGINAL_VERSION << "\n";
     exit(0);
 }

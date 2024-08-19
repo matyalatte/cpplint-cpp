@@ -1,0 +1,12 @@
+#pragma once
+// Note: You should copy version.h into ./dist before executing setup.py
+//       It reads CPPLINT_VERSION and PLATFORM_TAG for wheel package
+
+// Version of cpplint.cpp
+#define CPPLINT_VERSION "@VERSION@"
+
+// Version of cpplint.py
+#define ORIGINAL_VERSION "1.7"
+
+// Platform tag for pip
+#define PLATFORM_TAG "@PLATFORM_TAG@"

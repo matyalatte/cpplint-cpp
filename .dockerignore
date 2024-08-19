@@ -1,0 +1,10 @@
+.git
+.github
+.gitignore
+.vscode
+batch_files
+build*
+coverage-report
+dist
+Dockerfile
+python*

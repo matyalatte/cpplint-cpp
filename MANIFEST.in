@@ -1,3 +1,4 @@
 include LICENSE
 include README.md
 include dist
+include dist/version.h
