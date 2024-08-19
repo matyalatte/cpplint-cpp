@@ -51,7 +51,7 @@ jobs:
       fail-fast: false
       matrix:
         arch: [amd64, arm64]
-    runs-on: windows-latest
+    runs-on: windows-2022
     needs: setup
     steps:
       - uses: actions/checkout@v4
@@ -100,8 +100,13 @@ jobs:
           gh release upload ${{ needs.setup.outputs.tag }} dist/*.whl
         shell: bash
 
-  build-macos:
-    runs-on: macos-latest
+  build-unix:
+    name: build-${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, ubuntu-22.04]
+    runs-on: ${{ matrix.os }}
     needs: setup
     steps:
       - uses: actions/checkout@v4
@@ -117,7 +122,18 @@ jobs:
           meson setup build --native-file=presets/release.ini
           meson compile -C build
           meson test -C build -v
-          strip ./build/cpplint-cpp
+
+      - name: Check required GLIBC version
+        if: runner.os == 'Linux'
+        run: bash .github/workflows/check_glibc_compatibility.sh ./build/cpplint-cpp
+
+      - name: Strip symbols
+        if: matrix.os == 'Linux'
+        run: strip --strip-all ./build/cpplint-cpp
+
+      - name: Strip symbols
+        if: matrix.os != 'Linux'
+        run: strip ./build/cpplint-cpp
 
       - name: Copy built binary
         run: |
