@@ -16,13 +16,12 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install Meson
-        run: pip3 install meson ninja
-
-      - name: Build cpplint-cpp
+      - name: Build linux package for x86_64
         run: |
-          meson setup build --native-file=presets/release.ini
-          meson compile -C build
+          docker build -t cpplint ./
+          docker run --name cpplint cpplint
+          docker cp cpplint:/cpplint-cpp/dist ./
+          docker cp cpplint:/cpplint-cpp/subprojects ./
 
       - name: Copy gooletest, Download cpplint.py
         run: |
@@ -32,16 +31,16 @@ jobs:
       - name: Show CPU info
         run: |
           lscpu
-          ./build/cpplint-cpp --threads=
+          ./dist/cpplint-cpp --threads=
 
       - name: Lint cpplint-cpp
         run: |
-          python benchmark.py . --cpplint_cpp="./build/cpplint-cpp"
+          python benchmark.py . --cpplint_cpp="./dist/cpplint-cpp"
           sh memory_usage.sh "python cpplint.py" .
-          sh memory_usage.sh "./build/cpplint-cpp" .
+          sh memory_usage.sh "./dist/cpplint-cpp" .
 
       - name: Lint googletest
         run: |
-          python benchmark.py ../googletest-${{ env.GTEST_VER }} --cpplint_cpp="./build/cpplint-cpp"
+          python benchmark.py ../googletest-${{ env.GTEST_VER }} --cpplint_cpp="./dist/cpplint-cpp"
           sh memory_usage.sh "python cpplint.py" ../googletest-${{ env.GTEST_VER }}
-          sh memory_usage.sh "./build/cpplint-cpp" ../googletest-${{ env.GTEST_VER }}
+          sh memory_usage.sh "./dist/cpplint-cpp" ../googletest-${{ env.GTEST_VER }}
