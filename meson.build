@@ -106,8 +106,8 @@ elif cpplint_os == 'linux'
         cpplint_platform_tag = 'linux_'
     else
         message('Use dynamic linked glibc.')
-        # requires glibc 2.29 or later
-        cpplint_platform_tag = 'manylinux_2_29_'
+        # requires glibc 2.34 or later when building on ubuntu 22.04
+        cpplint_platform_tag = 'manylinux_2_34_'
     endif
     cpplint_platform_tag += cpplint_cpu
 else

@@ -1,6 +1,6 @@
 """
 Script to make or install a package.
-You should copy cpplint-cpp and cpplint-cpp_info.txt
+You should copy cpplint-cpp and version.h
 from a build directory to ./dist before executing setup.py.
 """
 
