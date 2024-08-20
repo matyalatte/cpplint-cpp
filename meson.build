@@ -16,7 +16,7 @@ project('cpplint-cpp', ['c', 'cpp'],
 
 cpplint_link_args = []
 cpplint_c_args = []
-cpplint_os = host_machine.system()
+cpplint_os = target_machine.system()
 cpplint_cpu = target_machine.cpu_family()
 cpplint_compiler = meson.get_compiler('c')
 cpplint_compiler_id = cpplint_compiler.get_id()
@@ -37,7 +37,7 @@ if cpplint_os == 'windows'
             '/LARGEADDRESSAWARE',
             '/INCREMENTAL:NO'
         ]
-        if (not cpplint_is_debug)
+        if not cpplint_is_debug
             # enable lto
             cpplint_c_args += ['/GL']
             cpplint_link_args += ['/OPT:ICF', '/LTCG']
@@ -46,10 +46,10 @@ if cpplint_os == 'windows'
         # don't require shipping the MinGW-w64 DLLs
         cpplint_link_args += static_libc_args
     endif
-    if (cpplint_cpu == 'aarch64')
+    if cpplint_cpu == 'aarch64'
         cpplint_cpu = 'arm64'
     endif
-    if (cpplint_cpu == 'x86_64')
+    if cpplint_cpu == 'x86_64'
         cpplint_cpu = 'amd64'
     endif
     cpplint_platform_tag = 'win_' + cpplint_cpu
@@ -75,17 +75,13 @@ elif cpplint_os == 'darwin'
         add_global_link_arguments(arch, language: languages)
         cpplint_platform_tag += '_universal2'
     else
-        if (cpplint_cpu == 'aarch64')
+        if cpplint_cpu == 'aarch64'
             cpplint_cpu = 'arm64'
         endif
         cpplint_platform_tag += '_' + cpplint_cpu
         warning('Universal build is disabled since your SDKs do not support it.')
     endif
-else
-    if cpplint_os == 'linux'
-        cpplint_platform_tag = 'linux_'
-    endif
-
+elif cpplint_os == 'linux'
     # Check if libc is musl or not
     result = cpplint_compiler.run(
         '''
@@ -103,22 +99,26 @@ else
         ''',
         name: 'libc test')
 
-    if (result.stdout() == 'musl')
+    if result.stdout() == 'musl'
         message('Use static linked musl.')
         cpplint_link_args += static_libc_args
-        if cpplint_os == 'linux'
-            cpplint_platform_tag = 'linux_'
-        endif
+        # built binary works on all linux distributions
+        cpplint_platform_tag = 'linux_'
     else
         message('Use dynamic linked glibc.')
-        if cpplint_os == 'linux'
-            # requires glibc 2.29 or later
-            cpplint_platform_tag = 'manylinux_2_29_'
-        endif
+        # requires glibc 2.29 or later
+        cpplint_platform_tag = 'manylinux_2_29_'
     endif
-    if cpplint_os == 'linux'
-        cpplint_platform_tag += cpplint_cpu
-    endif
+    cpplint_platform_tag += cpplint_cpu
+else
+    # BSD seems to use uname to generate platform tags.
+    # 'uname -s'_'uname -r'_'uname -m'
+    # Idk about other systems tho.
+    version = run_command('uname', '-r').stdout().strip()
+    version = version.replace('.', '_').replace(' ', '_')
+    arch = run_command('uname', '-m').stdout().strip()
+    arch = arch.replace('.', '_').replace(' ', '_')
+    cpplint_platform_tag = cpplint_os + '_' + version + '_' + arch
 endif
 
 # Generate version info
