@@ -280,14 +280,18 @@ std::string StrReplaceAll(const std::string &str, const std::string& from, const
 std::string StrToLower(const std::string &str) {
     std::string lower = str;
     std::transform(lower.begin(), lower.end(), lower.begin(),
-        [](unsigned char c){ return std::tolower(c); });
+        [](unsigned char c) -> char {
+            return static_cast<char>(std::tolower(c));
+        });
     return lower;
 }
 
 std::string StrToUpper(const std::string &str) {
     std::string upper = str;
     std::transform(upper.begin(), upper.end(), upper.begin(),
-        [](unsigned char c){ return std::toupper(c); });
+        [](unsigned char c) -> char {
+            return static_cast<char>(std::toupper(c));
+        });
     return upper;
 }
 
