@@ -871,14 +871,23 @@ void FileLinter::CheckTrailingSemicolon(const CleansedLines& clean_lines,
                 clean_lines, &endlinenum, &endpos);
         if (endpos != INDEX_NONE) {
             std::string line_prefix = opening_parenthesis.substr(0, endpos);
+
             static const regex_code RE_PATTERN_MACRO =
                 RegexCompile(R"(\b([A-Z_][A-Z0-9_]*)\s*$)");
             thread_local regex_match macro_m = RegexCreateMatchData(RE_PATTERN_MACRO);
             bool macro = RegexSearch(RE_PATTERN_MACRO, line_prefix, macro_m);
+
             static const regex_code RE_PATTERN_FUNC =
                 RegexCompile(R"(^(.*\])\s*$)");
             thread_local regex_match func_m = RegexCreateMatchData(RE_PATTERN_FUNC);
             bool func = RegexMatch(RE_PATTERN_FUNC, line_prefix, func_m);
+
+            static const regex_code RE_PATTERN_ALIGNAS =
+                RegexCompile(R"(\b(?:struct|union)\s+alignas\s*$)");
+            static const regex_code RE_PATTERN_DECLTYPE =
+                RegexCompile(R"(\bdecltype$)");
+            static const regex_code RE_PATTERN_INCOP =
+                RegexCompile(R"(\s+=\s*$)");
             if ((macro && !InStrVec({
                             "TEST", "TEST_F", "MATCHER", "MATCHER_P", "TYPED_TEST",
                             "EXCLUSIVE_LOCKS_REQUIRED", "SHARED_LOCKS_REQUIRED",
@@ -886,15 +895,15 @@ void FileLinter::CheckTrailingSemicolon(const CleansedLines& clean_lines,
                             GetMatchStr(macro_m, line_prefix, 1))) ||
                     (func && !RegexSearch(R"(\boperator\s*\[\s*\])",
                                 GetMatchStr(func_m, line_prefix, 1))) ||
-                    RegexSearch(R"(\b(?:struct|union)\s+alignas\s*$)", line_prefix) ||
-                    RegexSearch(R"(\bdecltype$)", line_prefix) ||
-                    RegexSearch(R"(\s+=\s*$)", line_prefix)) {
+                    RegexSearch(RE_PATTERN_ALIGNAS, line_prefix) ||
+                    RegexSearch(RE_PATTERN_DECLTYPE, line_prefix) ||
+                    RegexSearch(RE_PATTERN_INCOP, line_prefix)) {
                 match = false;
             }
         }
         if (match &&
                 endlinenum > 1 &&
-                RegexSearch(R"(\]\s*$)", clean_lines.GetElidedAt(endlinenum - 1))) {
+                GetLastNonSpace(clean_lines.GetElidedAt(endlinenum - 1)) == ']') {
             // Multi-line lambda-expression
             match = false;
         }

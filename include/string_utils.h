@@ -131,5 +131,8 @@ inline bool StrIsBlank(const std::string& str) noexcept {
     return GetFirstNonSpace(str) == '\0';
 }
 
+// Returns the last non-space character or a null terminator.
+char GetLastNonSpace(const std::string& str, size_t pos = 0) noexcept;
+
 // Returns true if the string consists of only digits.
 bool StrIsDigit(const std::string& str) noexcept;
