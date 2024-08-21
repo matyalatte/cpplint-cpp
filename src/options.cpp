@@ -553,14 +553,6 @@ std::set<std::string> Options::GetAllExtensions() const {
     return exts;
 }
 
-bool Options::IsHeaderExtension(const std::string& file_extension) const {
-    return InStrSet(GetHeaderExtensions(), file_extension);
-}
-
-bool Options::IsSourceExtension(const std::string& file_extension) const {
-    return InStrSet(GetNonHeaderExtensions(), file_extension);
-}
-
 std::set<std::string> Options::GetHeaderExtensions() const {
     if (m_hpp_headers.size() > 0) {
         return m_hpp_headers;

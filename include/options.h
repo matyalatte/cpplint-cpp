@@ -107,8 +107,6 @@ class Options {
     size_t LineLength() const { return m_line_length; }
 
     std::set<std::string> GetAllExtensions() const;
-    bool IsHeaderExtension(const std::string& file_extension) const;
-    bool IsSourceExtension(const std::string& file_extension) const;
     std::set<std::string> GetHeaderExtensions() const;
     std::set<std::string> GetNonHeaderExtensions() const;
 

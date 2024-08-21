@@ -81,14 +81,6 @@ inline bool InCharVec(const std::vector<char>& char_vec, const std::string& str)
     return false;
 }
 
-inline bool InStrSet(const std::set<std::string>& str_vec, const std::string& str) {
-    for (const std::string& s : str_vec) {
-        if (s == str)
-            return true;
-    }
-    return false;
-}
-
 inline bool StrContain(const std::string& str, const std::string& target) {
     return str.find(target) != std::string::npos;
 }

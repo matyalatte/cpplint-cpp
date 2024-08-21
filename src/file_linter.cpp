@@ -2337,7 +2337,7 @@ void FileLinter::CheckIncludeLine(const CleansedLines& clean_lines, size_t linen
         RegexCompile(R"(^(?:[^/]*[A-Z][^/]*\.h|lua\.h|lauxlib\.h|lualib\.h)$)");
     bool match = RegexMatch(RE_PATTERN_INCLUDE_SUBDIR, line, m_re_result);
     if (match) {
-        if (InStrSet(m_header_extensions, GetMatchStr(m_re_result, line, 2)) &&
+        if (m_header_extensions.contains(GetMatchStr(m_re_result, line, 2)) &&
             !RegexMatch(RE_PATTERN_INCLUDE_EXT,
                         GetMatchStr(m_re_result, line, 1))) {
             Error(linenum, "build/include_subdir", 4,
@@ -3991,7 +3991,7 @@ void FileLinter::ProcessFileData(std::vector<std::string>& lines) {
         }
     }
 
-    bool is_header_extension = InStrSet(m_header_extensions, m_file_extension);
+    bool is_header_extension = m_header_extensions.contains(m_file_extension);
 
     if (is_header_extension) {
         m_cppvar = GetHeaderGuardCPPVariable();
@@ -4009,7 +4009,7 @@ void FileLinter::ProcessFileData(std::vector<std::string>& lines) {
     CheckForIncludeWhatYouUse(clean_lines, &include_state);
 
     // Check that the .cc file has included its header if it exists.
-    if (m_options.IsSourceExtension(m_file_extension))
+    if (m_non_header_extensions.contains(m_file_extension))
         CheckHeaderFileIncluded(&include_state);
 
     CheckForNewlineAtEOF(lines);
