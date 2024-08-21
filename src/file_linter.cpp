@@ -4048,9 +4048,11 @@ void FileLinter::ProcessFile() {
 
         size_t linenum = 1;
         int status = LINE_OK;
+        std::string buffer;
+        buffer.resize(120);
         // Note: We can't use getline cause it trims NUL bytes and a linefeed at EOF.
         while ((status & LINE_EOF) == 0) {
-            std::string line = GetLine(file, &status);
+            std::string line = GetLine(file, &buffer, &status);
             if (!line.empty() && line.back() == '\r') {
                 // line ends with \r.
                 crlf_lines.push_back(linenum);
