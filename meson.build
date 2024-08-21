@@ -46,13 +46,14 @@ if cpplint_os == 'windows'
         # don't require shipping the MinGW-w64 DLLs
         cpplint_link_args += static_libc_args
     endif
-    if cpplint_cpu == 'aarch64'
-        cpplint_cpu = 'arm64'
+    arch = cpplint_cpu
+    if arch == 'aarch64'
+        arch = 'arm64'
     endif
-    if cpplint_cpu == 'x86_64'
-        cpplint_cpu = 'amd64'
+    if arch == 'x86_64'
+        arch = 'amd64'
     endif
-    cpplint_platform_tag = 'win_' + cpplint_cpu
+    cpplint_platform_tag = 'win_' + arch
 elif cpplint_os == 'darwin'
     # Set deployment targets
     languages = ['c', 'cpp']
@@ -75,10 +76,11 @@ elif cpplint_os == 'darwin'
         add_global_link_arguments(arch, language: languages)
         cpplint_platform_tag += '_universal2'
     else
-        if cpplint_cpu == 'aarch64'
-            cpplint_cpu = 'arm64'
+        arch = cpplint_cpu
+        if arch == 'aarch64'
+            arch = 'arm64'
         endif
-        cpplint_platform_tag += '_' + cpplint_cpu
+        cpplint_platform_tag += '_' + arch
         warning('Universal build is disabled since your SDKs do not support it.')
     endif
 elif cpplint_os == 'linux'
@@ -135,11 +137,14 @@ pcre2_jit_supported = (cpplint_cpu in cpu_jit_supported and
                        cpplint_compiler_id != 'tcc' and
                        cpplint_os != 'darwin')
 if pcre2_jit_supported
+    message('JIT compiler is enabled.')
     if cpplint_compiler_id == 'msvc'
         add_global_arguments('/DSUPPORT_JIT', language: ['c', 'cpp'])
     else
         add_global_arguments('-DSUPPORT_JIT', language: ['c', 'cpp'])
     endif
+else
+    message('JIT compiler is disabled on this platform.')
 endif
 
 # get pcre2
