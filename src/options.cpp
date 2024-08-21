@@ -727,7 +727,9 @@ bool Options::ProcessConfigOverrides(const fs::path& filename,
                 std::string base_name = basename.string();
                 if (base_name == "")
                     continue;
-                bool match = RegexMatch(exclude, base_name);
+                regex_code regex = RegexCompile(exclude);
+                regex_match result = RegexCreateMatchData(regex);
+                bool match = RegexMatch(regex, base_name, result);
                 if (match) {
                     if (cpplint_state->Quiet()) {
                         // Suppress "Ignoring file" warning when using --quiet.
