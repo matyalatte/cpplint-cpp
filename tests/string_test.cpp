@@ -237,6 +237,8 @@ TEST(StringTest, GetFirstNonSpace) {
 TEST(StringTest, GetFirstNonSpacePos) {
     size_t res = GetFirstNonSpacePos(" \t\r\n\v\fa");
     EXPECT_EQ(6, res);
+    res = GetFirstNonSpacePos("a \t\r\n\v\fa");
+    EXPECT_EQ(0, res);
     res = GetFirstNonSpacePos("");
     EXPECT_EQ(INDEX_NONE, res);
 }
@@ -248,4 +250,26 @@ TEST(StringTest, StrIsBlank) {
     EXPECT_EQ(true, res);
     res = StrIsBlank(" a");
     EXPECT_EQ(false, res);
+}
+
+TEST(StringTest, GetLastNonSpace) {
+    char res = GetLastNonSpace("a \t\r\n\v\f");
+    EXPECT_EQ('a', res);
+    res = GetLastNonSpace("\t\r\n\v\fa");
+    EXPECT_EQ('a', res);
+    res = GetLastNonSpace("");
+    EXPECT_EQ('\0', res);
+}
+
+TEST(StringTest, GetLastNonSpacePos) {
+    size_t res = GetLastNonSpacePos("a \t\r\n\v\f");
+    EXPECT_EQ(0, res);
+    res = GetLastNonSpacePos("a \t\r\n\v\fa");
+    EXPECT_EQ(7, res);
+    res = GetLastNonSpacePos("");
+    EXPECT_EQ(INDEX_NONE, res);
+}
+
+TEST(StringTest, StrContain) {
+    EXPECT_EQ(true, StrContain("x = sprintf()", "printf"));
 }

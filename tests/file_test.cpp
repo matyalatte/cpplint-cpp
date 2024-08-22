@@ -22,7 +22,9 @@ class FileLinterTest : public ::testing::Test {
         filters = "-legal/copyright,-whitespace/ending_newline,+build/include_alpha";
     }
 
-    void TearDown() override {}
+    void TearDown() override {
+        cpplint_state.FlushThreadStream();
+    }
 
     void ProcessFile() {
         ResetFilters();

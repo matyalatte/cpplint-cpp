@@ -21,7 +21,9 @@ class LinesLinterTest : public ::testing::Test {
         ResetFilters("-legal/copyright,-whitespace/ending_newline,+build/include_alpha");
     }
 
-    void TearDown() override {}
+    void TearDown() override {
+        cpplint_state.FlushThreadStream();
+    }
 
     void ProcessLines(std::vector<std::string> lines) {
         linter.CacheVariables(filename);

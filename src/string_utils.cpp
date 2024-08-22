@@ -311,14 +311,26 @@ size_t GetFirstNonSpacePos(const std::string& str, size_t pos) noexcept {
     return TO_SIZE(start - &str[0]);
 }
 
-char GetLastNonSpace(const std::string& str, size_t pos) noexcept {
+char GetLastNonSpace(const std::string& str) noexcept {
+    if (str.empty()) return '\0';
     const char* start = str.data();
-    const char* end = &str[pos];
+    const char* end = &str.back();
     while (end >= start && IS_SPACE(*end))
         end--;
     if (end < start)
         return '\0';
     return *end;
+}
+
+size_t GetLastNonSpacePos(const std::string& str) noexcept {
+    if (str.empty()) return INDEX_NONE;
+    const char* start = str.data();
+    const char* end = &str.back();
+    while (end >= start && IS_SPACE(*end))
+        end--;
+    if (end < start)
+        return INDEX_NONE;
+    return TO_SIZE(end - start);
 }
 
 bool StrIsDigit(const std::string& str) noexcept {

@@ -489,8 +489,6 @@ void FileLinter::CheckForFunctionLengths(const CleansedLines& clean_lines, size_
             starting_func = true;
     }
 
-    static const regex_code RE_PATTERN_FUNC_END =
-        RegexCompile(R"(^\}\s*$)");
     if (starting_func) {
         bool body_found = false;
         std::string joined_line = "";
@@ -529,7 +527,7 @@ void FileLinter::CheckForFunctionLengths(const CleansedLines& clean_lines, size_
             Error(linenum, "readability/fn_size", 5,
                   "Lint failed to find start of function body.");
         }
-    } else if (RegexMatch(RE_PATTERN_FUNC_END, line)) {  // function end
+    } else if (GetLastNonSpacePos(line) == 0 && line[0] == '}') {  // function end
         function_state->Check(this, linenum, m_cpplint_state->VerboseLevel());
         function_state->End();
     } else if (!StrIsBlank(line)) {
@@ -756,7 +754,10 @@ void FileLinter::CheckBraces(const CleansedLines& clean_lines,
                 // We allow a mix of whitespace and closing braces (e.g. for one-liner
                 // methods) and a single \ after the semicolon (for macros)
                 endpos = endline.find(';');
-                if (!RegexMatchWithRange(R"(;[\s}]*(\\?)$)", endline, endpos, endline.size() - endpos)) {
+                static const regex_code RE_PATTERN_IF_MULTI_COMMAND =
+                    RegexCompile(R"(;[\s}]*(\\?)$)");
+                if (!RegexMatchWithRange(RE_PATTERN_IF_MULTI_COMMAND, endline,
+                                         endpos, endline.size() - endpos)) {
                     // Semicolon isn't the last character, there's something trailing.
                     // Output a warning if the semicolon is not contained inside
                     // a lambda expression.
@@ -771,7 +772,9 @@ void FileLinter::CheckBraces(const CleansedLines& clean_lines,
                     // With ambiguous nested if statements, this will error out on the
                     // if that *doesn't* match the else, regardless of whether it's the
                     // inner one or outer one.
-                    if (if_match && RegexMatch(R"(\s*else\b)", next_line) &&
+                    static const regex_code RE_PATTERN_ELSE_INDENT =
+                        RegexCompile(R"(\s*else\b)");
+                    if (if_match && RegexMatch(RE_PATTERN_ELSE_INDENT, next_line) &&
                         next_indent != if_indent) {
                         Error(linenum, "readability/braces", 4,
                               "Else clause should be indented at the same level as if. "
@@ -2077,14 +2080,14 @@ void FileLinter::CheckSectionSpacing(const CleansedLines& clean_lines,
     const std::string& prev_line = clean_lines.GetLineAt(linenum - 1);
     if (!StrIsBlank(prev_line) &&
         !RegexSearch(R"(\b(class|struct)\b)", prev_line) &&
-        !RegexSearch(R"(\\$)", prev_line)) {
+        !prev_line.ends_with('\\')) {
         // Try a bit harder to find the beginning of the class.  This is to
         // account for multi-line base-specifier lists, e.g.:
         //   class Derived
         //       : public Base {
         size_t end_class_head = classinfo->StartingLinenum();
         for (size_t i = end_class_head; i < linenum; i++) {
-            if (RegexSearch(R"(\{\s*$)", clean_lines.GetLineAt(i))) {
+            if (GetLastNonSpace(clean_lines.GetLineAt(i)) == '}') {
                 end_class_head = i;
                 break;
             }
@@ -2890,20 +2893,24 @@ void FileLinter::CheckLanguage(const CleansedLines& clean_lines,
     // convention of the whole function to process multiple line to handle it.
     //   printf(
     //       boy_this_is_a_really_long_variable_that_cannot_fit_on_the_prev_line);
-    static const regex_code RE_PATTERN_PRINTF_ARGS =
-        RegexCompile(R"((?i)\b(string)?printf\s*\()", REGEX_OPTIONS_MULTILINE);
-    std::string printf_args = GetTextInside(line, RE_PATTERN_PRINTF_ARGS, m_re_result);
-    if (!printf_args.empty()) {
-        match = RegexMatch(R"(([\w.\->()]+)$)", printf_args, m_re_result);
-        if (match && GetMatchStr(m_re_result, printf_args, 1) != "__VA_ARGS__") {
-            thread_local regex_match funcm = RegexCreateMatchData(2);
-            RegexSearch(R"(\b((?:string)?printf)\s*\()",
-                        line, funcm, REGEX_OPTIONS_ICASE);
-            const std::string& function_name = GetMatchStr(funcm, line, 1);
-            Error(linenum, "runtime/printf", 4,
-                  "Potential format string bug. Do " +
-                  function_name + "(\"%s\", " +
-                  GetMatchStr(m_re_result, printf_args, 1) + ") instead.");
+    static const regex_code RE_PATTERN_PRINTF_ICASE =
+        RegexCompile("printf", REGEX_OPTIONS_ICASE | REGEX_OPTIONS_MULTILINE);
+    if (RegexSearch(RE_PATTERN_PRINTF_ICASE, line)) {
+        static const regex_code RE_PATTERN_PRINTF_ARGS =
+            RegexCompile(R"(\b(string)?printf\s*\()", REGEX_OPTIONS_ICASE | REGEX_OPTIONS_MULTILINE);
+        std::string printf_args = GetTextInside(line, RE_PATTERN_PRINTF_ARGS, m_re_result);
+        if (!printf_args.empty()) {
+            match = RegexMatch(R"(([\w.\->()]+)$)", printf_args, m_re_result);
+            if (match && GetMatchStr(m_re_result, printf_args, 1) != "__VA_ARGS__") {
+                thread_local regex_match funcm = RegexCreateMatchData(2);
+                RegexSearch(R"(\b((?:string)?printf)\s*\()",
+                            line, funcm, REGEX_OPTIONS_ICASE);
+                const std::string& function_name = GetMatchStr(funcm, line, 1);
+                Error(linenum, "runtime/printf", 4,
+                    "Potential format string bug. Do " +
+                    function_name + "(\"%s\", " +
+                    GetMatchStr(m_re_result, printf_args, 1) + ") instead.");
+            }
         }
     }
 
@@ -2934,8 +2941,8 @@ void FileLinter::CheckLanguage(const CleansedLines& clean_lines,
 
     // Detect variable-length arrays.
     static const regex_code RE_PATTERN_VARIABLE_LENGTH_ARRAY =
-        RegexCompile(R"(\s*(.+::)?(\w+) [a-z]\w*\[(.+)];)");
-    match = RegexMatch(RE_PATTERN_VARIABLE_LENGTH_ARRAY, line, m_re_result);
+        RegexJitCompile(R"(^\s*(.+::)?(\w+) [a-z]\w*\[(.+)];)");
+    match = RegexJitSearch(RE_PATTERN_VARIABLE_LENGTH_ARRAY, line, m_re_result);
 
     if (match) {
         std::string str2 = GetMatchStr(m_re_result, line, 2);
@@ -3073,9 +3080,9 @@ static bool IsInitializerList(const CleansedLines& clean_lines, size_t linenum,
             // brace-initialized member in constructor initializer list.
             return true;
         }
-        static const regex_code RE_PATTERN_BRACE =
-            RegexCompile(R"([{};]\s*$)");
-        if (RegexSearch(RE_PATTERN_BRACE, line, re_result)) {
+
+        char c = GetLastNonSpace(line);
+        if (c == '{' || c == '}' || c == ';') {
             // Found one of the following:
             // - A closing brace or semicolon, probably the end of the previous
             //   function.
@@ -3228,7 +3235,8 @@ void FileLinter::CheckForNonConstReference(const CleansedLines& clean_lines,
         size_t min_line = (linenum >= 10) ? linenum - 10 : 0;
         for (size_t i = linenum - 1; i > min_line; i--) {
             const std::string& previous_line = clean_lines.GetElidedAt(i);
-            if (!RegexSearch(R"([),]\s*$)", previous_line))
+            char c = GetLastNonSpace(previous_line);
+            if (c != ')' && c != ',')
                 break;
             if (RegexMatch(R"(^\s*:\s+\S)", previous_line))
                 return;
@@ -3236,7 +3244,7 @@ void FileLinter::CheckForNonConstReference(const CleansedLines& clean_lines,
     }
 
     // Avoid preprocessors
-    if (RegexSearch(R"(\\\s*$)", line))
+    if (GetLastNonSpace(line) == '\\')
         return;
 
     // Avoid constructor initializer lists
@@ -3250,9 +3258,11 @@ void FileLinter::CheckForNonConstReference(const CleansedLines& clean_lines,
     // We also accept & in static_assert, which looks like a function but
     // it's actually a declaration expression.
 
+    static const regex_code RE_PATTERN_MULTILINE_FUNC =
+        RegexCompile(R"(\S+\([^)]*$)");
     if (RegexSearch(RE_PATTERN_ALLOWED_FUNCTIONS, line)) {
         return;
-    } else if (!RegexSearch(R"(\S+\([^)]*$)", line)) {
+    } else if (!RegexSearch(RE_PATTERN_MULTILINE_FUNC, line)) {
         // Don't see an allowed function on this line.  Actually we
         // didn't see any function name on this line, so this is likely a
         // multi-line parameter list.  Try a bit harder to catch this case.
@@ -3623,9 +3633,10 @@ void FileLinter::CheckRedundantOverrideOrFinal(const CleansedLines& clean_lines,
     size_t declarator_end = line.rfind(')');
     bool has_error = false;
     if (declarator_end != std::string::npos) {
-        std::string fragment = line.substr(declarator_end);
-        has_error = RegexSearch(RE_PATTERN_OVERRIDE, fragment) &&
-                    RegexSearch(R"(\bfinal\b)", fragment);
+        has_error = RegexSearchWithRange(RE_PATTERN_OVERRIDE, line,
+                                         declarator_end, line.length() - declarator_end) &&
+                    RegexSearchWithRange(R"(\bfinal\b)", line,
+                                         declarator_end, line.length() - declarator_end);
     } else {
         if (linenum > 1 &&
             clean_lines.GetElidedAt(linenum - 1).rfind(')') != std::string::npos) {

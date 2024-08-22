@@ -121,6 +121,7 @@ std::string StrToLower(const std::string &str);
 std::string StrToUpper(const std::string &str);
 
 // Returns the first non-space character or a null terminator.
+// You can replace RegexMatch(R"(\s*x)", line) with GetFirstNoneSpace(line) == 'x'
 char GetFirstNonSpace(const std::string& str, size_t pos = 0) noexcept;
 
 // Returns index to the first non-space character or INDEX_NONE.
@@ -132,7 +133,11 @@ inline bool StrIsBlank(const std::string& str) noexcept {
 }
 
 // Returns the last non-space character or a null terminator.
-char GetLastNonSpace(const std::string& str, size_t pos = 0) noexcept;
+// You can replace RegexSearch(R"(x\s*$)", line) with GetLastNoneSpace(line) == 'x'
+char GetLastNonSpace(const std::string& str) noexcept;
+
+// Returns index to the last non-space character or INDEX_NONE.
+size_t GetLastNonSpacePos(const std::string& str) noexcept;
 
 // Returns true if the string consists of only digits.
 bool StrIsDigit(const std::string& str) noexcept;
