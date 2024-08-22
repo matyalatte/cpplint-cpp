@@ -340,3 +340,13 @@ bool StrIsDigit(const std::string& str) noexcept {
         start++;
     return *start == '\0';
 }
+
+bool StrIsDigit(const std::string_view& str) noexcept {
+    if (str.empty()) return false;
+    const char* start = str.data();
+    const char* end = start + str.size();
+    while (start < end && IS_DIGIT(*start)) {
+        ++start;
+    }
+    return start == end;
+}

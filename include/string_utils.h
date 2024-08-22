@@ -1,6 +1,7 @@
 #pragma once
 #include <set>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "common.h"
 
@@ -81,6 +82,15 @@ inline bool InCharVec(const std::vector<char>& char_vec, const std::string& str)
     return false;
 }
 
+inline bool InCharVec(const std::vector<char>& char_vec, const std::string_view& str) {
+    if (str.size() != 1) return false;
+    for (char c : char_vec) {
+        if (str[0] == c)
+            return true;
+    }
+    return false;
+}
+
 inline bool StrContain(const std::string& str, const std::string& target) {
     return str.find(target) != std::string::npos;
 }
@@ -98,6 +108,10 @@ inline bool StrContain(const std::string& str, const char c, size_t pos) {
 }
 
 inline bool StrIsChar(const std::string& str, char c) {
+    return str.size() == 1 && str[0] == c;
+}
+
+inline bool StrIsChar(const std::string_view& str, char c) {
     return str.size() == 1 && str[0] == c;
 }
 
@@ -141,3 +155,4 @@ size_t GetLastNonSpacePos(const std::string& str) noexcept;
 
 // Returns true if the string consists of only digits.
 bool StrIsDigit(const std::string& str) noexcept;
+bool StrIsDigit(const std::string_view& str) noexcept;

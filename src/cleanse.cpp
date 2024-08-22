@@ -181,7 +181,7 @@ std::string CleansedLines::ReplaceAlternateTokens(const std::string& line) {
         const std::string& key = GetMatchStr(m_re_result, str, 2);
         const std::string& token = AltTokenToToken(key);
         std::string tail = ((key == "not" || key == "compl") &&
-                            StrIsChar(GetMatchStr(m_re_result, str, 3), ' ')) ? "" : "\\3";
+                            StrIsChar(GetMatchStrView(m_re_result, str, 3), ' ')) ? "" : "\\3";
         // replace the found token
         RegexReplace(RE_PATTERN_ALT_TOKEN_REPLACEMENT,
                      std::string("\\1") + token + tail, &ret, false);

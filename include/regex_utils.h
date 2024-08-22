@@ -1,6 +1,7 @@
 #pragma once
 #include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 #ifndef PCRE2_STATIC
@@ -40,6 +41,9 @@ inline constexpr uint32_t REGEX_FLAGS_DEFAULT = 0;
 // std::smatch.str(i) for pcre2
 std::string GetMatchStr(regex_match& match, const std::string &subject, int i,
                         size_t startoffset = 0);
+
+std::string_view GetMatchStrView(regex_match& match, const std::string &subject, int i,
+                                 size_t startoffset = 0);
 
 // std::smatch[i].matched
 bool IsMatched(regex_match& match, int i) noexcept;

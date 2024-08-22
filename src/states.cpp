@@ -191,7 +191,7 @@ bool NestingState::InTemplateArgumentList(const CleansedLines& clean_lines,
             pos = 0;
             continue;
         }
-        std::string token = GetMatchStr(re_result, line, 1);
+        std::string_view token = GetMatchStrView(re_result, line, 1);
         pos += GetMatchSize(re_result, 0);
 
         // These things do not look like template argument list:
@@ -434,7 +434,7 @@ void NestingState::Update(const CleansedLines& clean_lines,
                 else
                     parent = "class " + classinfo->Name();
                 std::string slots = "";
-                if (!GetMatchStr(m_re_result, line, 3).empty())
+                if (!GetMatchStrView(m_re_result, line, 3).empty())
                     slots = GetMatchStr(m_re_result, line, 3);
                 file_linter->Error(linenum, "whitespace/indent", 3,
                     GetMatchStr(m_re_result, line, 2) + slots + ":" +

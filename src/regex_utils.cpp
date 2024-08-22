@@ -4,6 +4,7 @@
 #include <cstring>
 #include <iostream>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 #include "common.h"
@@ -43,19 +44,43 @@ static inline bool pcre2_match_priv(const pcre2_code* re, const std::string& str
     return rc >= 0;
 }
 
-std::string GetMatchStr(regex_match& match, const std::string &subject, int i, size_t startoffset) {
+static bool GetMatchRange(regex_match& match, int i,
+                          PCRE2_SIZE* start, PCRE2_SIZE* len) {
     PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match.get());
     int rc = pcre2_get_ovector_count(match.get());
 
     if (i >= rc || ovector[2 * i] == PCRE2_UNSET || ovector[2 * i + 1] == PCRE2_UNSET)
-        return "";  // Return empty string if the group does not exist or is not matched
+        return false;
 
-    PCRE2_SIZE start = ovector[2 * i];
+    *start = ovector[2 * i];
     PCRE2_SIZE end = ovector[2 * i + 1];
-    PCRE2_SIZE len = end - start;
+    *len = end - *start;
+    return true;
+}
 
+std::string GetMatchStr(regex_match& match, const std::string &subject, int i, size_t startoffset) {
+    PCRE2_SIZE start;
+    PCRE2_SIZE len;
+    bool valid = GetMatchRange(match, i, &start, &len);
+    if (!valid) {
+        // Return empty string if the group does not exist or is not matched
+        return "";
+    }
     // Return the substring as std::string
     return subject.substr(start + startoffset, len);
+}
+
+std::string_view GetMatchStrView(regex_match& match, const std::string &subject,
+                                 int i, size_t startoffset) {
+    PCRE2_SIZE start;
+    PCRE2_SIZE len;
+    bool valid = GetMatchRange(match, i, &start, &len);
+    if (!valid) {
+        // Return empty string if the group does not exist or is not matched
+        return std::string_view(subject.data(), 0);
+    }
+    // Return the substring as std::string_view
+    return std::string_view(subject.data() + start + startoffset, len);
 }
 
 bool IsMatched(regex_match& match, int i) noexcept {
