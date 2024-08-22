@@ -25,6 +25,7 @@ class FileLinter {
     std::string m_filename;
     std::string m_file_extension;
     fs::path m_file_from_repo;  // relative path from repository
+    std::string m_basefilename_relative;
     std::string m_cppvar;
     regex_match m_re_result;
     bool m_has_error;
@@ -42,6 +43,7 @@ class FileLinter {
                 m_filename(file.string()),
                 m_file_extension(),
                 m_file_from_repo(),
+                m_basefilename_relative(),
                 m_cppvar(),
                 m_re_result(RegexCreateMatchData(16)),
                 m_has_error(false) {}
@@ -236,7 +238,7 @@ class FileLinter {
     // Returns true if an error was emitted. false otherwise.
     bool CheckCStyleCast(const CleansedLines& clean_lines,
                          const std::string& elided_line, size_t linenum,
-                         const std::string& cast_type,
+                         const char* cast_type,
                          const regex_code& pattern);
 
     // Various cast related checks.

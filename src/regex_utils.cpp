@@ -8,12 +8,12 @@
 #include <vector>
 #include "common.h"
 
-pcre2_code* RegexCompileBase(const std::string& regex, uint32_t options) noexcept {
+pcre2_code* RegexCompileBase(const char* regex, uint32_t options) noexcept {
     int error_number;
     PCRE2_SIZE error_offset;
     pcre2_code* code_ptr = pcre2_compile(
-        reinterpret_cast<PCRE2_SPTR>(regex.c_str()),
-        regex.length(),
+        reinterpret_cast<PCRE2_SPTR>(regex),
+        PCRE2_ZERO_TERMINATED,
         options,
         &error_number,
         &error_offset,
@@ -139,7 +139,7 @@ bool RegexSearchWithRange(const regex_code& regex, const std::string& str,
 template<typename MatchFunc>
 static void regex_replace_base(
         MatchFunc re_match,
-        const pcre2_code* re, const std::string& fmt,
+        const pcre2_code* re, const char* fmt,
         const std::string& str,
         std::string* result_str,
         bool* replaced, bool replace_all) {
@@ -151,6 +151,7 @@ static void regex_replace_base(
     // Get matched ranges and the length of replaced string
     std::vector<std::pair<PCRE2_SIZE, PCRE2_SIZE>>* matched_ranges = nullptr;
     size_t result_length = 0;
+    size_t fmt_length = strlen(fmt);
     while (true) {
         int rc = re_match(
             re,
@@ -178,7 +179,7 @@ static void regex_replace_base(
         if (!matched_ranges)
             matched_ranges = new std::vector<std::pair<PCRE2_SIZE, PCRE2_SIZE>>({});
         matched_ranges->emplace_back(match_start, match_end);
-        result_length += match_start - start_offset + fmt.size();
+        result_length += match_start - start_offset + fmt_length;
 
         // Update previous_end and start_offset to continue after the current match
         start_offset = match_end;
@@ -201,14 +202,14 @@ static void regex_replace_base(
     new_str.resize(result_length);
     char* result_p = new_str.data();
     const char* str_p = str.data();
-    const char* fmt_p = fmt.data();
+    const char* fmt_p = fmt;
     PCRE2_SIZE prev_end = 0;
 
     for (const std::pair<PCRE2_SIZE, PCRE2_SIZE>& range : (*matched_ranges)) {
         memcpy(result_p, str_p + prev_end, range.first - prev_end);
         result_p += range.first - prev_end;
-        memcpy(result_p, fmt_p, fmt.size());
-        result_p += fmt.size();
+        memcpy(result_p, fmt_p, fmt_length);
+        result_p += fmt_length;
         prev_end = range.second;
     }
 
@@ -224,11 +225,11 @@ std::string RegexReplace(const regex_code& regex, const std::string& fmt,
                          bool* replaced, bool replace_all) {
     if (!regex) return str;
     std::string result = str;
-    regex_replace_base(pcre2_match, regex.get(), fmt, str, &result, replaced, replace_all);
+    regex_replace_base(pcre2_match, regex.get(), fmt.c_str(), str, &result, replaced, replace_all);
     return result;
 }
 
-void RegexReplace(const regex_code& regex, const std::string& fmt,
+void RegexReplace(const regex_code& regex, const char* fmt,
                   std::string* str,
                   bool* replaced, bool replace_all) {
     if (!regex) return;
@@ -302,7 +303,7 @@ std::vector<std::string> RegexSplit(const std::string& regex, const std::string&
 }
 
 #ifdef SUPPORT_JIT
-regex_code RegexJitCompile(const std::string& regex, uint32_t options) noexcept {
+regex_code RegexJitCompile(const char* regex, uint32_t options) noexcept {
     pcre2_code* ret = RegexCompileBase(regex, options);
 
     int result = pcre2_jit_compile(ret, PCRE2_JIT_COMPLETE);
@@ -344,19 +345,21 @@ bool RegexJitSearch(const regex_code& regex, const std::string& str,
     return pcre2_jit_match_priv(regex.get(), str, 0, str.size(), result.get(), flags);
 }
 
-std::string RegexJitReplace(const regex_code& regex, const std::string& fmt,
+std::string RegexJitReplace(const regex_code& regex, const char* fmt,
                             const std::string& str,
                             bool* replaced, bool replace_all) {
     if (!regex) return str;
     std::string result = str;
-    regex_replace_base(pcre2_jit_match, regex.get(), fmt, str, &result, replaced, replace_all);
+    regex_replace_base(pcre2_jit_match, regex.get(), fmt,
+                       str, &result, replaced, replace_all);
     return result;
 }
 
-void RegexJitReplace(const regex_code& regex, const std::string& fmt,
+void RegexJitReplace(const regex_code& regex, const char* fmt,
                      std::string* str,
                      bool* replaced, bool replace_all) {
     if (!regex) return;
-    regex_replace_base(pcre2_jit_match, regex.get(), fmt, *str, str, replaced, replace_all);
+    regex_replace_base(pcre2_jit_match, regex.get(), fmt,
+                       *str, str, replaced, replace_all);
 }
 #endif

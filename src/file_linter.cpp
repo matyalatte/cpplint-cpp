@@ -2256,8 +2256,8 @@ fs::path FileLinter::DropCommonSuffixes(const fs::path& file) {
         }
     }
     for (const std::string& ext : m_header_extensions) {
-        for (std::string suffix : { "inl.", "imp.", "internal." }) {
-            suffix += ext;
+        for (const char* const internal_suffix : { "inl.", "imp.", "internal." }) {
+            std::string suffix = internal_suffix + ext;
             if (basename.ends_with(suffix) && basename.size() > suffix.size()) {
                 char c = basename[basename.size() - suffix.size() - 1];
                 if (c == '-' || c == '_')
@@ -2386,12 +2386,8 @@ void FileLinter::CheckIncludeLine(const CleansedLines& clean_lines, size_t linen
         // filename. Otherwise we get an erroneous error "...should include its
         // header" error later.
         bool third_src_header = false;
-        thread_local std::string basefilename_relative =
-            m_file_from_repo.string().substr(
-                0, m_file_from_repo.string().size() -
-                m_file_extension.size());
         for (const std::string& ext : m_header_extensions) {
-            std::string headername = basefilename_relative + ext;
+            std::string headername = m_basefilename_relative + ext;
             if (StrContain(headername, include) || StrContain(include, headername)) {
                 third_src_header = true;
                 break;
@@ -2412,8 +2408,8 @@ void FileLinter::CheckIncludeLine(const CleansedLines& clean_lines, size_t linen
             // using a number of techniques. The include_state object keeps
             // track of the highest type seen, and complains if we see a
             // lower type after that.
-            std::string error_message = include_state->CheckNextIncludeOrder(
-                    ClassifyInclude(m_file_from_repo, include, used_angle_brackets));
+            int include_type = ClassifyInclude(m_file_from_repo, include, used_angle_brackets);
+            std::string error_message = include_state->CheckNextIncludeOrder(include_type);
             if (!error_message.empty()) {
                 std::string basename = m_file.filename().string();
                 basename = basename.substr(0, basename.size() - m_file_extension.size() - 1);
@@ -2454,7 +2450,7 @@ bool FileLinter::ExpectingFunctionArgs(const CleansedLines& clean_lines,
 
 bool FileLinter::CheckCStyleCast(const CleansedLines& clean_lines,
                                  const std::string& elided_line, size_t linenum,
-                                 const std::string& cast_type,
+                                 const char* cast_type,
                                  const regex_code& pattern) {
     const std::string& line = elided_line;
     bool match = RegexSearch(pattern, line, m_re_result);
@@ -2494,7 +2490,7 @@ bool FileLinter::CheckCStyleCast(const CleansedLines& clean_lines,
 
     // At this point, all that should be left is actual casts.
     Error(linenum, "readability/casting", 4,
-          "Using C-style cast.  Use " + cast_type +
+          std::string("Using C-style cast.  Use ") + cast_type +
           "<" + GetMatchStr(m_re_result, line, 1) + ">(...) instead");
 
     return true;
@@ -3968,6 +3964,10 @@ void FileLinter::CheckHeaderFileIncluded(IncludeState* include_state) {
 
 void FileLinter::CacheVariables() {
     m_file_from_repo = GetRelativeFromRepository(m_file, m_options.Repository());
+    m_basefilename_relative =
+        m_file_from_repo.string().substr(
+            0, m_file_from_repo.string().size() -
+            m_file_extension.size());
     std::string ext = m_file.extension().string();
     if (ext.empty())
         m_file_extension = "";

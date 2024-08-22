@@ -55,14 +55,19 @@ PCRE2_SIZE GetMatchEnd(regex_match& match, int i,
 // std::smatch.str(i).size()
 PCRE2_SIZE GetMatchSize(regex_match& match, int i) noexcept;
 
-pcre2_code* RegexCompileBase(const std::string& regex,
+pcre2_code* RegexCompileBase(const char* regex,
                              uint32_t options = REGEX_OPTIONS_DEFAULT) noexcept;
 
 // get pcre2_code as a unique pointer
-inline regex_code RegexCompile(const std::string& regex,
+inline regex_code RegexCompile(const char* regex,
                                uint32_t options = REGEX_OPTIONS_DEFAULT) noexcept {
     pcre2_code* ret = RegexCompileBase(regex, options);
     return regex_code(ret);
+}
+
+inline regex_code RegexCompile(const std::string& regex,
+                               uint32_t options = REGEX_OPTIONS_DEFAULT) noexcept {
+    return RegexCompile(regex.c_str(), options);
 }
 
 // ovecsize is the number of groups plus one.
@@ -206,15 +211,27 @@ inline std::string RegexReplace(const std::string& regex, const std::string& fmt
 }
 
 // This version is faster than others but strings should be mutable.
-void RegexReplace(const regex_code& regex, const std::string& fmt,
+void RegexReplace(const regex_code& regex, const char* fmt,
                   std::string* str,
                   bool* replaced, bool replace_all = true);
 
 inline void RegexReplace(const regex_code& regex, const std::string& fmt,
                          std::string* str,
+                         bool* replaced, bool replace_all = true) {
+    RegexReplace(regex, fmt.c_str(), str, replaced, replace_all);
+}
+
+inline void RegexReplace(const regex_code& regex, const char* fmt,
+                         std::string* str,
                          bool replace_all = true) {
     bool replaced = false;
     RegexReplace(regex, fmt, str, &replaced, replace_all);
+}
+
+inline void RegexReplace(const regex_code& regex, const std::string& fmt,
+                         std::string* str,
+                         bool replace_all = true) {
+    RegexReplace(regex, fmt.c_str(), str, replace_all);
 }
 
 std::string RegexEscape(const std::string& str);
@@ -225,8 +242,13 @@ std::vector<std::string> RegexSplit(const std::string& regex, const std::string&
 #ifdef SUPPORT_JIT
 // Uses jit compiler for regex
 // It makes matching faster when using complex patterns in RegexSearch.
-regex_code RegexJitCompile(const std::string& regex,
+regex_code RegexJitCompile(const char* regex,
                            uint32_t options = REGEX_OPTIONS_DEFAULT) noexcept;
+
+inline regex_code RegexJitCompile(const std::string& regex,
+                                  uint32_t options = REGEX_OPTIONS_DEFAULT) noexcept {
+    return RegexJitCompile(regex.c_str(), options);
+}
 
 // This function is 10% faster than RegexSearch
 // but it crashes when regex_code is not JIT compiled.
@@ -237,11 +259,11 @@ bool RegexJitSearch(const regex_code& regex, const std::string& str,
                     regex_match& result,
                     uint32_t flags = REGEX_FLAGS_DEFAULT) noexcept;
 
-void RegexJitReplace(const regex_code& regex, const std::string& fmt,
+void RegexJitReplace(const regex_code& regex, const char* fmt,
                     std::string* str,
                     bool* replaced, bool replace_all = true);
 
-inline void RegexJitReplace(const regex_code& regex, const std::string& fmt,
+inline void RegexJitReplace(const regex_code& regex, const char* fmt,
                             std::string* str,
                             bool replace_all = true) {
     bool replaced = false;
