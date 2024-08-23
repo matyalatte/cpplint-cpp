@@ -1003,7 +1003,9 @@ void FileLinter::CheckEmptyBlockBody(const CleansedLines& clean_lines,
             std::string opening_line_fragment = end_line.substr(end_pos);
             // Loop until EOF or find anything that's not whitespace or opening {.
             while (GetFirstNonSpace(opening_line_fragment) != '{') {
-                if (RegexSearch(R"(^(?!\s*$))", opening_line_fragment)) {
+                static const regex_code RE_PATTERN_NO_BRACKETS =
+                    RegexCompile(R"(^(?!\s*$))");
+                if (RegexSearch(RE_PATTERN_NO_BRACKETS, opening_line_fragment)) {
                     // Conditional has no brackets.
                     return;
                 }
@@ -1310,7 +1312,8 @@ void FileLinter::CheckOperatorSpacing(const CleansedLines& clean_lines,
     static const regex_code RE_PATTERN_OPERATOR_SPACING =
         RegexCompile(R"(^(.*\boperator\b)(\S+)(\s*\(.*)$)");
 
-    bool match = RegexMatch(RE_PATTERN_OPERATOR_SPACING, line, m_re_result);
+    bool match = StrContain(line, "operator") &&  // This can avoid the next RegexMatch()
+                 RegexMatch(RE_PATTERN_OPERATOR_SPACING, line, m_re_result);
     if (match) {
         std::string new_line = GetMatchStr(m_re_result, line, 1) +
                                std::string(GetMatchSize(m_re_result, 2), '_') +
@@ -1368,7 +1371,8 @@ void FileLinter::CheckOperatorSpacing(const CleansedLines& clean_lines,
         // space.  This is done to avoid some false positives with shifts.
         static const regex_code RE_PATTERN_LESS_SPACING =
             RegexCompile(R"(^(.*[^\s<])<[^\s=<,])");
-        match = RegexMatch(RE_PATTERN_LESS_SPACING, line, m_re_result);
+        match = StrContain(line, '<') &&  // This can avoid the next RegexMatch()
+                RegexMatch(RE_PATTERN_LESS_SPACING, line, m_re_result);
         if (match) {
             size_t end_linenum = linenum;
             size_t end_pos = GetMatchSize(m_re_result, 1);
@@ -1384,7 +1388,8 @@ void FileLinter::CheckOperatorSpacing(const CleansedLines& clean_lines,
         // false positives with shifts.
         static const regex_code RE_PATTERN_GREATER_SPACING =
             RegexCompile(R"(^(.*[^-\s>])>[^\s=>,])");
-        match = RegexMatch(RE_PATTERN_GREATER_SPACING, line, m_re_result);
+        match = StrContain(line, '>') &&  // This can avoid the next RegexMatch()
+                RegexMatch(RE_PATTERN_GREATER_SPACING, line, m_re_result);
         if (match) {
             size_t start_linenum = linenum;
             size_t start_pos = GetMatchSize(m_re_result, 1);
@@ -1403,8 +1408,8 @@ void FileLinter::CheckOperatorSpacing(const CleansedLines& clean_lines,
     // those tend to be macros that deal with operators.
     static const regex_code RE_PATTERN_LSHIFT_SPACING =
         RegexCompile(R"((operator|[^\s(<])(?:L|UL|LL|ULL|l|ul|ll|ull)?<<([^\s,=<]))");
-    match = RegexSearch(
-                RE_PATTERN_LSHIFT_SPACING, line, m_re_result);
+    match = StrContain(line, "<<") &&  // This can avoid the next RegexSearch()
+            RegexSearch(RE_PATTERN_LSHIFT_SPACING, line, m_re_result);
     if (match && !(StrIsDigit(GetMatchStrView(m_re_result, line, 1)) &&
                    StrIsDigit(GetMatchStrView(m_re_result, line, 2))) &&
             !(GetMatchStrView(m_re_result, line, 1) == "operator" &&
@@ -1768,7 +1773,9 @@ void FileLinter::CheckSpacingForFunctionCallBase(const std::string& line,
         RegexCompile(R"(\w\s*\(\s(?!\s*\\$))");
     static const regex_code RE_PATTERN_PARENS =
         RegexCompile(R"(\(\s+(?!(\s*\\)|\())");
-    if (RegexSearch(RE_PATTERN_FUNC_PARENS, fncall)) {  // a ( used for a fn call
+    if (GetLastNonSpace(fncall) == '\\' &&  // This can avoid the next RegexSearch()
+            RegexSearch(RE_PATTERN_FUNC_PARENS, fncall)) {
+        // a ( used for a fn call
         Error(linenum, "whitespace/parens", 4,
               "Extra space after ( in function call");
     } else if (RegexSearch(RE_PATTERN_PARENS, fncall)) {
