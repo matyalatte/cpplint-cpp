@@ -252,6 +252,9 @@ void NestingState::UpdatePreprocessor(const std::string& line) {
         to #endif.  We still perform lint checks on these lines, but
         these do not affect nesting stack.
     */
+    if (GetFirstNonSpace(line) != '#')
+        return;  // Not a macro
+
     static const regex_code RE_PATTERN_IF_MACRO =
         RegexCompile(R"(^\s*#\s*(if|ifdef|ifndef)\b)");
     static const regex_code RE_PATTERN_ELSE_MACRO =

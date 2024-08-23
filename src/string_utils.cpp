@@ -1,5 +1,4 @@
 #include "string_utils.h"
-#include <ctype.h>
 #include <algorithm>
 #include <cstdint>
 #include <iostream>
@@ -9,9 +8,6 @@
 #include <utility>
 #include <vector>
 #include "common.h"
-
-#define IS_SPACE(c) isspace((uint8_t)(c))
-#define IS_DIGIT(c) isdigit((uint8_t)(c))
 
 std::string StrBeforeChar(const std::string& str, char c) {
     const char* str_p = &str[0];

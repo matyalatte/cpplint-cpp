@@ -28,8 +28,6 @@
 
 namespace fs = std::filesystem;
 
-#define IS_SPACE(c) isspace((uint8_t)(c))
-
 void FileLinter::CheckForCopyright(const std::vector<std::string>& lines) {
     // We'll say it should occur by line 10. Don't forget there's a
     // placeholder line at the front.
@@ -488,9 +486,11 @@ void FileLinter::CheckForFunctionLengths(const CleansedLines& clean_lines, size_
     if (match) {
         // If the name is all caps and underscores, figure it's a macro and
         // ignore it, unless it's TEST or TEST_F.
+        static const regex_code RE_PATTERN_MACRO_NAME =
+            RegexCompile("[A-Z_]+$");
         std::string_view function_name = StrSplitLast(GetMatchStrView(m_re_result, line, 1));
         if (function_name == "TEST" || function_name == "TEST_F" ||
-                !RegexMatch("[A-Z_]+$", function_name))
+                !RegexMatch(RE_PATTERN_MACRO_NAME, function_name))
             starting_func = true;
     }
 
@@ -3665,12 +3665,12 @@ void FileLinter::CheckCxxHeaders(const std::string& elided_line, size_t linenum)
     if (!include)
         return;
 
-    std::string str1 = GetMatchStr(m_re_result, elided_line, 1);
+    std::string_view str1 = GetMatchStrView(m_re_result, elided_line, 1);
 
     // Flag unapproved C++11 headers.
     if (InStrVec({ "cfenv", "fenv.h", "ratio" }, str1)) {
         Error(linenum, "build/c++11", 5,
-              "<" + str1 + "> is an unapproved C++11 header.");
+              "<" + std::string(str1) + "> is an unapproved C++11 header.");
     }
 
     // filesystem is the only unapproved C++17 header
