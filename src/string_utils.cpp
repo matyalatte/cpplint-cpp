@@ -359,3 +359,13 @@ bool StrIsDigit(const std::string_view& str) noexcept {
     }
     return start == end;
 }
+
+std::set<std::string> SetDiff(const std::set<std::string>& set1,
+                              const std::set<std::string>& set2) {
+    std::set<std::string> difference;
+    std::set_difference(
+        set1.begin(), set1.end(),
+        set2.begin(), set2.end(),
+        std::inserter(difference, difference.begin()));
+    return difference;
+}

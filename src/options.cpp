@@ -567,17 +567,6 @@ std::set<std::string> Options::GetHeaderExtensions() const {
     return { "h", "hh", "hpp", "hxx", "h++", "cuh" };
 }
 
-std::set<std::string> Options::GetNonHeaderExtensions() const {
-    std::set<std::string> all_exts = GetAllExtensions();
-    std::set<std::string> header_exts = GetHeaderExtensions();
-    std::set<std::string> difference;
-    std::set_difference(
-        all_exts.begin(), all_exts.end(),
-        header_exts.begin(), header_exts.end(),
-        std::inserter(difference, difference.begin()));
-    return difference;
-}
-
 // Parses filters and append them to a vector.
 // Returns false when the last filter does not start with + or -.
 static bool ParseCommaSeparetedFilters(const std::string& filters,
@@ -699,13 +688,13 @@ bool Options::ProcessConfigOverrides(const fs::path& filename,
     bool noparent = false;
     while (!noparent) {
         fs::path root = path.parent_path();
-        fs::path basename = path.filename();
         if (root == path)
             break;
         fs::path cfg_path = root / m_config_filename;
-        path = root;
-        if (!fs::is_regular_file(cfg_path))
+        if (!fs::is_regular_file(cfg_path)) {
+            path = root;
             continue;
+        }
 
         CfgFile* cfg = GetCfg(cfg_path, cpplint_state);
         if (!cfg)
@@ -717,30 +706,31 @@ bool Options::ProcessConfigOverrides(const fs::path& filename,
             ConcatVec(m_filters, cfg->filters);
 
         if (!cfg->exclude_files.empty()) {
-            for (const std::string& exclude : cfg->exclude_files) {
-                // When matching exclude_files pattern, use the base_name of
-                // the current file name or the directory name we are processing.
-                // For example, if we are checking for lint errors in /foo/bar/baz.cc
-                // and we found the .cfg file at /foo/CPPLINT.cfg, then the config
-                // file's "exclude_files" filter is meant to be checked against "bar"
-                // and not "baz" nor "bar/baz.cc".
-                std::string base_name = basename.string();
-                if (base_name == "")
-                    continue;
-                regex_code regex = RegexCompile(exclude);
-                regex_match result = RegexCreateMatchData(regex);
-                bool match = RegexMatch(regex, base_name, result);
-                if (match) {
-                    if (cpplint_state->Quiet()) {
-                        // Suppress "Ignoring file" warning when using --quiet.
+            fs::path basename = path.filename();
+            if (!basename.empty()) {
+                std::string basename_str = basename.string();
+                for (const std::string& exclude : cfg->exclude_files) {
+                    // When matching exclude_files pattern, use the base_name of
+                    // the current file name or the directory name we are processing.
+                    // For example, if we are checking for lint errors in /foo/bar/baz.cc
+                    // and we found the .cfg file at /foo/CPPLINT.cfg, then the config
+                    // file's "exclude_files" filter is meant to be checked against "bar"
+                    // and not "baz" nor "bar/baz.cc".
+                    regex_code regex = RegexCompile(exclude);
+                    regex_match result = RegexCreateMatchData(regex);
+                    bool match = RegexMatch(regex, basename_str, result);
+                    if (match) {
+                        if (cpplint_state->Quiet()) {
+                            // Suppress "Ignoring file" warning when using --quiet.
+                            return false;
+                        }
+                        cpplint_state->PrintInfo(
+                            "Ignoring \"" + filename.string() + "\": file excluded by \"" +
+                            cfg_path.string() + "\". " +
+                            "File path component " + basename_str + " matches "
+                            "pattern " + exclude + "\n");
                         return false;
                     }
-                    cpplint_state->PrintInfo(
-                        "Ignoring \"" + filename.string() + "\": file excluded by \"" +
-                        cfg_path.string() + "\". " +
-                        "File path component " + base_name + " matches "
-                        "pattern " + exclude + "\n");
-                    return false;
                 }
             }
         }
@@ -756,6 +746,8 @@ bool Options::ProcessConfigOverrides(const fs::path& filename,
 
         if (!cfg->include_order.empty())
             ProcessIncludeOrderOption(cfg->include_order);
+
+        path = root;
     }
 
     return true;

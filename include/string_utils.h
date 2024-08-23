@@ -149,3 +149,7 @@ size_t GetLastNonSpacePos(const std::string& str) noexcept;
 // Returns true if the string consists of only digits.
 bool StrIsDigit(const std::string& str) noexcept;
 bool StrIsDigit(const std::string_view& str) noexcept;
+
+// Remove items of set2 from set1.
+std::set<std::string> SetDiff(const std::set<std::string>& set1,
+                              const std::set<std::string>& set2);

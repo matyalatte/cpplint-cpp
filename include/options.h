@@ -108,7 +108,6 @@ class Options {
 
     std::set<std::string> GetAllExtensions() const;
     std::set<std::string> GetHeaderExtensions() const;
-    std::set<std::string> GetNonHeaderExtensions() const;
 
     bool ProcessConfigOverrides(const fs::path& filename,
                                 CppLintState* cpplint_state);

@@ -3982,7 +3982,7 @@ void FileLinter::CacheVariables() {
         m_file_extension = &(m_file.extension().string())[1];
     m_all_extensions = m_options.GetAllExtensions();
     m_header_extensions = m_options.GetHeaderExtensions();
-    m_non_header_extensions = m_options.GetNonHeaderExtensions();
+    m_non_header_extensions = SetDiff(m_all_extensions, m_header_extensions);
 }
 
 void FileLinter::CacheVariables(const fs::path& file) {
