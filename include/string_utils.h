@@ -39,13 +39,15 @@ size_t StrLstripSize(const std::string &str);
 std::vector<std::string> StrSplit(const std::string& str, size_t max_size = INDEX_MAX);
 
 // StrSplit().back()
-std::string StrSplitLast(const std::string& str);
+template <typename STR>
+STR StrSplitLast(const STR& str);
 
 // Split string by another string.
 std::vector<std::string> StrSplitBy(const std::string &str, const std::string &delimiter);
 
 // Split string by comma, strip white spaces, and remove duplicated items.
-std::set<std::string> ParseCommaSeparetedList(const std::string& str);
+template <typename STR>
+std::set<std::string> ParseCommaSeparetedList(const STR& str);
 
 // Concat vec2 to vec1.
 template <typename T>
@@ -54,7 +56,8 @@ inline void ConcatVec(std::vector<T>& vec1, std::vector<T>& vec2) {
 }
 
 // Check if a string is in a vector of strings
-inline bool InStrVec(const std::vector<std::string>& str_vec, const std::string& str) {
+template <typename STR>
+inline bool InStrVec(const std::vector<std::string>& str_vec, const STR& str) {
     for (const std::string& s : str_vec) {
         if (s == str)
             return true;
@@ -63,7 +66,8 @@ inline bool InStrVec(const std::vector<std::string>& str_vec, const std::string&
 }
 
 // You can also use a null terminated array of char* instead of vector.
-inline bool InStrVec(const char* const *str_vec, const std::string& str) {
+template <typename STR>
+inline bool InStrVec(const char* const *str_vec, const STR& str) {
     while (*str_vec != nullptr) {
         if (str == *str_vec)
             return true;
@@ -73,16 +77,8 @@ inline bool InStrVec(const char* const *str_vec, const std::string& str) {
 }
 
 // Check if a character is in a vector of strings
-inline bool InCharVec(const std::vector<char>& char_vec, const std::string& str) {
-    if (str.size() != 1) return false;
-    for (char c : char_vec) {
-        if (str[0] == c)
-            return true;
-    }
-    return false;
-}
-
-inline bool InCharVec(const std::vector<char>& char_vec, const std::string_view& str) {
+template <typename STR>
+inline bool InCharVec(const std::vector<char>& char_vec, const STR& str) {
     if (str.size() != 1) return false;
     for (char c : char_vec) {
         if (str[0] == c)
@@ -107,11 +103,8 @@ inline bool StrContain(const std::string& str, const char c, size_t pos) {
     return str.find(c, pos) != std::string::npos;
 }
 
-inline bool StrIsChar(const std::string& str, char c) {
-    return str.size() == 1 && str[0] == c;
-}
-
-inline bool StrIsChar(const std::string_view& str, char c) {
+template <typename STR>
+inline bool StrIsChar(const STR& str, char c) {
     return str.size() == 1 && str[0] == c;
 }
 

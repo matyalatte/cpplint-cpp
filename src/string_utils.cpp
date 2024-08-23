@@ -146,7 +146,8 @@ std::vector<std::string> StrSplit(const std::string& str, size_t max_size) {
     return split;
 }
 
-std::string StrSplitLast(const std::string& str) {
+template <typename STR>
+STR StrSplitLast(const STR& str) {
     if (str.empty())
         return "";
 
@@ -164,8 +165,10 @@ std::string StrSplitLast(const std::string& str) {
     while (!IS_SPACE(*str_p) && str_p >= start)
         str_p--;
 
-    return std::string(str_p + 1, end);
+    return STR(str_p + 1, end);
 }
+template std::string StrSplitLast(const std::string& str);
+template std::string_view StrSplitLast(const std::string_view& str);
 
 std::vector<std::string> StrSplitBy(const std::string &str, const std::string &delimiter) {
     std::string copied = str;
@@ -182,12 +185,14 @@ std::vector<std::string> StrSplitBy(const std::string &str, const std::string &d
     return tokens;
 }
 
-std::set<std::string> ParseCommaSeparetedList(const std::string& str) {
+template <typename STR>
+std::set<std::string> ParseCommaSeparetedList(const STR& str) {
     std::set<std::string> set = {};
-    const char* str_p = &str[0];
+    const char* str_p = str.data();
     const char* start = str_p;
+    const char* end = str_p + str.size();
 
-    while (*str_p != '\0') {
+    while (str_p < end) {
         if (*str_p == ',') {
             std::string item = StrStrip(start, str_p - 1);
             if (item.size() > 0)
@@ -201,6 +206,10 @@ std::set<std::string> ParseCommaSeparetedList(const std::string& str) {
         set.insert(item);
     return set;
 }
+template std::set<std::string>
+ParseCommaSeparetedList<std::string>(const std::string& str);
+template std::set<std::string>
+ParseCommaSeparetedList<std::string_view>(const std::string_view& str);
 
 std::string SetToStr(const std::set<std::string>& set,
                      const std::string& prefix,

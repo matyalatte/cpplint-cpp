@@ -38,11 +38,15 @@ inline constexpr uint32_t REGEX_OPTIONS_MULTILINE = PCRE2_MULTILINE | REGEX_OPTI
 
 inline constexpr uint32_t REGEX_FLAGS_DEFAULT = 0;
 
+// Note: Templated functions with "typename STR" should support std::string and std::string_view.
+
 // std::smatch.str(i) for pcre2
-std::string GetMatchStr(regex_match& match, const std::string &subject, int i,
+template <typename STR>
+std::string GetMatchStr(regex_match& match, const STR&subject, int i,
                         size_t startoffset = 0);
 
-std::string_view GetMatchStrView(regex_match& match, const std::string &subject, int i,
+template <typename STR>
+std::string_view GetMatchStrView(regex_match& match, const STR&subject, int i,
                                  size_t startoffset = 0);
 
 // std::smatch[i].matched
@@ -86,23 +90,27 @@ inline regex_match RegexCreateMatchData(const regex_code& regex) noexcept {
     return regex_match(ret);
 }
 
-bool RegexSearch(const regex_code& regex, const std::string& str,
+template <typename STR>
+bool RegexSearch(const regex_code& regex, const STR& str,
                  uint32_t flags = REGEX_FLAGS_DEFAULT) noexcept;
 
-bool RegexSearch(const regex_code& regex, const std::string& str,
+template <typename STR>
+bool RegexSearch(const regex_code& regex, const STR& str,
                  regex_match& result,
                  uint32_t flags = REGEX_FLAGS_DEFAULT) noexcept;
 
+template <typename STR>
 inline bool RegexSearch(
-        const std::string& regex, const std::string& str,
+        const std::string& regex, const STR& str,
         uint32_t options = REGEX_OPTIONS_DEFAULT,
         uint32_t flags = REGEX_FLAGS_DEFAULT) noexcept {
     regex_code re = RegexCompile(regex, options);
     return RegexSearch(re, str, flags);
 }
 
+template <typename STR>
 inline bool RegexSearch(
-        const std::string& regex, const std::string& str,
+        const std::string& regex, const STR& str,
         regex_match& result,
         uint32_t options = REGEX_OPTIONS_DEFAULT,
         uint32_t flags = REGEX_FLAGS_DEFAULT) noexcept {
@@ -112,17 +120,20 @@ inline bool RegexSearch(
 
 // RegexSearch(regex, str.substr(startoffset, length))
 // without creating string objects for substr
-bool RegexSearchWithRange(const regex_code& regex, const std::string& str,
+template <typename STR>
+bool RegexSearchWithRange(const regex_code& regex, const STR& str,
                           size_t startoffset, size_t length,
                           uint32_t flags = REGEX_FLAGS_DEFAULT) noexcept;
 
-bool RegexSearchWithRange(const regex_code& regex, const std::string& str,
+template <typename STR>
+bool RegexSearchWithRange(const regex_code& regex, const STR& str,
                           size_t startoffset, size_t length,
                           regex_match& result,
                           uint32_t flags = REGEX_FLAGS_DEFAULT) noexcept;
 
+template <typename STR>
 inline bool RegexSearchWithRange(
-        const std::string& regex, const std::string& str,
+        const std::string& regex, const STR& str,
         size_t startoffset, size_t length,
         uint32_t options = REGEX_OPTIONS_DEFAULT,
         uint32_t flags = REGEX_FLAGS_DEFAULT) noexcept {
@@ -130,8 +141,9 @@ inline bool RegexSearchWithRange(
     return RegexSearchWithRange(re, str, startoffset, length, flags);
 }
 
+template <typename STR>
 inline bool RegexSearchWithRange(
-        const std::string& regex, const std::string& str,
+        const std::string& regex, const STR& str,
         size_t startoffset, size_t length,
         regex_match& result,
         uint32_t options = REGEX_OPTIONS_DEFAULT,
@@ -140,25 +152,29 @@ inline bool RegexSearchWithRange(
     return RegexSearchWithRange(re, str, startoffset, length, result, flags);
 }
 
-inline bool RegexMatch(const std::string& regex, const std::string& str,
+template <typename STR>
+inline bool RegexMatch(const std::string& regex, const STR& str,
                        uint32_t options = REGEX_OPTIONS_DEFAULT,
                        uint32_t flags = REGEX_FLAGS_DEFAULT) noexcept {
     return RegexSearch(regex, str, options, flags | PCRE2_ANCHORED);
 }
 
-inline bool RegexMatch(const regex_code& regex, const std::string& str,
+template <typename STR>
+inline bool RegexMatch(const regex_code& regex, const STR& str,
                        uint32_t flags = REGEX_FLAGS_DEFAULT) noexcept {
     return RegexSearch(regex, str, flags | PCRE2_ANCHORED);
 }
 
-inline bool RegexMatch(const std::string& regex, const std::string& str,
+template <typename STR>
+inline bool RegexMatch(const std::string& regex, const STR& str,
                        regex_match& result,
                        uint32_t options = REGEX_OPTIONS_DEFAULT,
                        uint32_t flags = REGEX_FLAGS_DEFAULT) noexcept {
     return RegexSearch(regex, str, result, options, flags | PCRE2_ANCHORED);
 }
 
-inline bool RegexMatch(const regex_code& regex, const std::string& str,
+template <typename STR>
+inline bool RegexMatch(const regex_code& regex, const STR& str,
                        regex_match& result,
                        uint32_t flags = REGEX_FLAGS_DEFAULT) noexcept {
     return RegexSearch(regex, str, result, flags | PCRE2_ANCHORED);
@@ -166,14 +182,16 @@ inline bool RegexMatch(const regex_code& regex, const std::string& str,
 
 // RegexMatch(regex, str.substr(startoffset, length))
 // without creating string objects for substr
-inline bool RegexMatchWithRange(const regex_code& regex, const std::string& str,
+template <typename STR>
+inline bool RegexMatchWithRange(const regex_code& regex, const STR& str,
                                 size_t startoffset, size_t length,
                                 uint32_t flags = REGEX_FLAGS_DEFAULT) noexcept {
     return RegexSearchWithRange(regex, str, startoffset, length,
                                 flags | PCRE2_ANCHORED);
 }
 
-inline bool RegexMatchWithRange(const regex_code& regex, const std::string& str,
+template <typename STR>
+inline bool RegexMatchWithRange(const regex_code& regex, const STR& str,
                                 size_t startoffset, size_t length,
                                 regex_match& result,
                                 uint32_t flags = REGEX_FLAGS_DEFAULT) noexcept {
@@ -181,7 +199,8 @@ inline bool RegexMatchWithRange(const regex_code& regex, const std::string& str,
                                 result, flags | PCRE2_ANCHORED);
 }
 
-inline bool RegexMatchWithRange(const std::string& regex, const std::string& str,
+template <typename STR>
+inline bool RegexMatchWithRange(const std::string& regex, const STR& str,
                                 size_t startoffset, size_t length,
                                 uint32_t options = REGEX_OPTIONS_DEFAULT,
                                 uint32_t flags = REGEX_FLAGS_DEFAULT) noexcept {
@@ -189,7 +208,8 @@ inline bool RegexMatchWithRange(const std::string& regex, const std::string& str
                                 options, flags | PCRE2_ANCHORED);
 }
 
-inline bool RegexMatchWithRange(const std::string& regex, const std::string& str,
+template <typename STR>
+inline bool RegexMatchWithRange(const std::string& regex, const STR& str,
                                 size_t startoffset, size_t length,
                                 regex_match& result,
                                 uint32_t options = REGEX_OPTIONS_DEFAULT,
@@ -240,6 +260,10 @@ inline void RegexReplace(const regex_code& regex, const std::string& fmt,
 
 std::string RegexEscape(const std::string& str);
 
+inline std::string RegexEscape(const std::string_view& str) {
+    return RegexEscape(std::string(str));
+}
+
 // Split a string by a regex pattern.
 std::vector<std::string> RegexSplit(const std::string& regex, const std::string& str);
 
@@ -256,10 +280,12 @@ inline regex_code RegexJitCompile(const std::string& regex,
 
 // This function is 10% faster than RegexSearch
 // but it crashes when regex_code is not JIT compiled.
-bool RegexJitSearch(const regex_code& regex, const std::string& str,
+template <typename STR>
+bool RegexJitSearch(const regex_code& regex, const STR& str,
                     uint32_t flags = REGEX_FLAGS_DEFAULT) noexcept;
 
-bool RegexJitSearch(const regex_code& regex, const std::string& str,
+template <typename STR>
+bool RegexJitSearch(const regex_code& regex, const STR& str,
                     regex_match& result,
                     uint32_t flags = REGEX_FLAGS_DEFAULT) noexcept;
 

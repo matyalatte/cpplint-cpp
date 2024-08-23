@@ -29,13 +29,14 @@ pcre2_code* RegexCompileBase(const char* regex, uint32_t options) noexcept {
     return code_ptr;
 }
 
-static inline bool pcre2_match_priv(const pcre2_code* re, const std::string& str,
+template <typename STR>
+static inline bool pcre2_match_priv(const pcre2_code* re, const STR& str,
                                     PCRE2_SIZE startoffset, PCRE2_SIZE length,
                                     pcre2_match_data* match,
                                     uint32_t flags = REGEX_FLAGS_DEFAULT) {
     int rc = pcre2_match(
         re,
-        reinterpret_cast<PCRE2_SPTR>(str.c_str()) + startoffset,
+        reinterpret_cast<PCRE2_SPTR>(str.data()) + startoffset,
         length,
         0,
         flags,
@@ -58,7 +59,8 @@ static bool GetMatchRange(regex_match& match, int i,
     return true;
 }
 
-std::string GetMatchStr(regex_match& match, const std::string &subject, int i, size_t startoffset) {
+template <typename STR>
+std::string GetMatchStr(regex_match& match, const STR& subject, int i, size_t startoffset) {
     PCRE2_SIZE start;
     PCRE2_SIZE len;
     bool valid = GetMatchRange(match, i, &start, &len);
@@ -67,10 +69,15 @@ std::string GetMatchStr(regex_match& match, const std::string &subject, int i, s
         return "";
     }
     // Return the substring as std::string
-    return subject.substr(start + startoffset, len);
+    return std::string(subject.data() + start + startoffset, len);
 }
+template std::string GetMatchStr<std::string>(
+    regex_match& match, const std::string& subject, int i, size_t startoffset);
+template std::string GetMatchStr<std::string_view>(
+    regex_match& match, const std::string_view& subject, int i, size_t startoffset);
 
-std::string_view GetMatchStrView(regex_match& match, const std::string &subject,
+template <typename STR>
+std::string_view GetMatchStrView(regex_match& match, const STR& subject,
                                  int i, size_t startoffset) {
     PCRE2_SIZE start;
     PCRE2_SIZE len;
@@ -82,6 +89,10 @@ std::string_view GetMatchStrView(regex_match& match, const std::string &subject,
     // Return the substring as std::string_view
     return std::string_view(subject.data() + start + startoffset, len);
 }
+template std::string_view GetMatchStrView<std::string>(
+    regex_match& match, const std::string& subject, int i, size_t startoffset);
+template std::string_view GetMatchStrView<std::string_view>(
+    regex_match& match, const std::string_view& subject, int i, size_t startoffset);
 
 bool IsMatched(regex_match& match, int i) noexcept {
     PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match.get());
@@ -130,29 +141,51 @@ PCRE2_SIZE GetMatchSize(regex_match& match, int i) noexcept {
 thread_local regex_match re_result_temp =
     RegexCreateMatchData(32);
 
-bool RegexSearch(const regex_code& regex, const std::string& str,
+template <typename STR>
+bool RegexSearch(const regex_code& regex, const STR& str,
                  uint32_t flags) noexcept {
     if (!regex) return false;
     return pcre2_match_priv(regex.get(), str, 0, str.size(),
                             re_result_temp.get(), flags);
 }
+template bool RegexSearch<std::string>(
+    const regex_code& regex, const std::string& str,
+    uint32_t flags) noexcept;
+template bool RegexSearch<std::string_view>(
+    const regex_code& regex, const std::string_view& str,
+    uint32_t flags) noexcept;
 
-bool RegexSearch(const regex_code& regex, const std::string& str,
+template <typename STR>
+bool RegexSearch(const regex_code& regex, const STR& str,
                  regex_match& result,
                  uint32_t flags) noexcept {
     if (!regex) return false;
     return pcre2_match_priv(regex.get(), str, 0, str.size(), result.get(), flags);
 }
+template bool RegexSearch<std::string>(
+    const regex_code& regex, const std::string& str,
+    regex_match& result, uint32_t flags) noexcept;
+template bool RegexSearch<std::string_view>(
+    const regex_code& regex, const std::string_view& str,
+    regex_match& result, uint32_t flags) noexcept;
 
-bool RegexSearchWithRange(const regex_code& regex, const std::string& str,
+template <typename STR>
+bool RegexSearchWithRange(const regex_code& regex, const STR& str,
                           size_t startoffset, size_t length,
                           uint32_t flags) noexcept {
     if (!regex) return false;
     return pcre2_match_priv(regex.get(), str, startoffset, length,
                             re_result_temp.get(), flags);
 }
+template bool RegexSearchWithRange<std::string>(
+    const regex_code& regex, const std::string& str,
+    size_t startoffset, size_t length, uint32_t flags) noexcept;
+template bool RegexSearchWithRange<std::string_view>(
+    const regex_code& regex, const std::string_view& str,
+    size_t startoffset, size_t length, uint32_t flags) noexcept;
 
-bool RegexSearchWithRange(const regex_code& regex, const std::string& str,
+template <typename STR>
+bool RegexSearchWithRange(const regex_code& regex, const STR& str,
                           size_t startoffset, size_t length,
                           regex_match& result,
                           uint32_t flags) noexcept {
@@ -160,6 +193,14 @@ bool RegexSearchWithRange(const regex_code& regex, const std::string& str,
     return pcre2_match_priv(regex.get(), str, startoffset, length,
                             result.get(), flags);
 }
+template bool RegexSearchWithRange<std::string>(
+    const regex_code& regex, const std::string& str,
+    size_t startoffset, size_t length,
+    regex_match& result, uint32_t flags) noexcept;
+template bool RegexSearchWithRange<std::string_view>(
+    const regex_code& regex, const std::string_view& str,
+    size_t startoffset, size_t length,
+    regex_match& result, uint32_t flags) noexcept;
 
 template<typename MatchFunc>
 static void regex_replace_base(
@@ -341,13 +382,14 @@ regex_code RegexJitCompile(const char* regex, uint32_t options) noexcept {
     return regex_code(ret);
 }
 
-static inline bool pcre2_jit_match_priv(const pcre2_code* re, const std::string& str,
+template <typename STR>
+static inline bool pcre2_jit_match_priv(const pcre2_code* re, const STR& str,
                                         PCRE2_SIZE startoffset, PCRE2_SIZE length,
                                         pcre2_match_data* match,
                                         uint32_t flags = REGEX_FLAGS_DEFAULT) {
     int rc = pcre2_jit_match(
         re,
-        reinterpret_cast<PCRE2_SPTR>(str.c_str()) + startoffset,
+        reinterpret_cast<PCRE2_SPTR>(str.data()) + startoffset,
         length,
         0,
         flags,
@@ -356,19 +398,33 @@ static inline bool pcre2_jit_match_priv(const pcre2_code* re, const std::string&
     return rc >= 0;
 }
 
-bool RegexJitSearch(const regex_code& regex, const std::string& str,
+template <typename STR>
+bool RegexJitSearch(const regex_code& regex, const STR& str,
                     uint32_t flags) noexcept {
     if (!regex) return false;
     return pcre2_jit_match_priv(regex.get(), str, 0, str.size(),
                                 re_result_temp.get(), flags);
 }
+template bool RegexJitSearch<std::string>(
+    const regex_code& regex, const std::string& str,
+    uint32_t flags) noexcept;
+template bool RegexJitSearch<std::string_view>(
+    const regex_code& regex, const std::string_view& str,
+    uint32_t flags) noexcept;
 
-bool RegexJitSearch(const regex_code& regex, const std::string& str,
+template <typename STR>
+bool RegexJitSearch(const regex_code& regex, const STR& str,
                     regex_match& result,
                     uint32_t flags) noexcept {
     if (!regex) return false;
     return pcre2_jit_match_priv(regex.get(), str, 0, str.size(), result.get(), flags);
 }
+template bool RegexJitSearch<std::string>(
+    const regex_code& regex, const std::string& str,
+    regex_match& result, uint32_t flags) noexcept;
+template bool RegexJitSearch<std::string_view>(
+    const regex_code& regex, const std::string_view& str,
+    regex_match& result, uint32_t flags) noexcept;
 
 std::string RegexJitReplace(const regex_code& regex, const char* fmt,
                             const std::string& str,

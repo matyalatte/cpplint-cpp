@@ -148,8 +148,6 @@ const std::string& CloseExpression(const CleansedLines& clean_lines, size_t* lin
 void FindStartOfExpressionInLine(const std::string& line,
                                  size_t* endpos,
                                  std::stack<char>* stack) {
-    regex_match re_result = RegexCreateMatchData(RE_PATTERN_OPERATOR);
-
     size_t i = *endpos;
     while (i != INDEX_NONE) {
         char c = line[i];

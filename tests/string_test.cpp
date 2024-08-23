@@ -135,7 +135,7 @@ TEST(StringTest, StrSplitTwo) {
 }
 
 TEST(StringTest, StrSplitLast) {
-    std::string res = StrSplitLast("test foo bar");
+    std::string res = StrSplitLast(std::string("test foo bar"));
     EXPECT_STREQ("bar", res.c_str());
 }
 
@@ -163,7 +163,7 @@ TEST(StringTest, ParseCommaSeparetedList) {
     std::set<std::string> expected =
         { "a", "b", "see", "d"};
     std::set<std::string> actual =
-        ParseCommaSeparetedList("a,b, see ,,d");
+        ParseCommaSeparetedList(std::string("a,b, see ,,d"));
     ASSERT_EQ(expected.size(), actual.size());
     auto ex_it = expected.begin();
     auto ac_it = actual.begin();

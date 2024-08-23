@@ -185,7 +185,7 @@ void FileLinter::ParseNolintSuppressions(const std::string& raw_line,
         } else {
             ProcessCategory = ProcessCategoryDefault;
         }
-        std::string categories = GetMatchStr(m_re_result, raw_line, 2);
+        std::string_view categories = GetMatchStrView(m_re_result, raw_line, 2);
         if (categories.empty() || categories == "(*)") {  // => "suppress all"
             ProcessCategory(this, &m_error_suppressions, "", linenum);
         } else if (categories.starts_with('(') && categories.ends_with(')')) {
@@ -488,7 +488,7 @@ void FileLinter::CheckForFunctionLengths(const CleansedLines& clean_lines, size_
     if (match) {
         // If the name is all caps and underscores, figure it's a macro and
         // ignore it, unless it's TEST or TEST_F.
-        std::string function_name = StrSplitLast(GetMatchStr(m_re_result, line, 1));
+        std::string_view function_name = StrSplitLast(GetMatchStrView(m_re_result, line, 1));
         if (function_name == "TEST" || function_name == "TEST_F" ||
                 !RegexMatch("[A-Z_]+$", function_name))
             starting_func = true;
@@ -900,9 +900,9 @@ void FileLinter::CheckTrailingSemicolon(const CleansedLines& clean_lines,
                             "TEST", "TEST_F", "MATCHER", "MATCHER_P", "TYPED_TEST",
                             "EXCLUSIVE_LOCKS_REQUIRED", "SHARED_LOCKS_REQUIRED",
                             "LOCKS_EXCLUDED", "INTERFACE_DEF"},
-                            GetMatchStr(macro_m, line_prefix, 1))) ||
+                            GetMatchStrView(macro_m, line_prefix, 1))) ||
                     (func && !RegexSearch(R"(\boperator\s*\[\s*\])",
-                                GetMatchStr(func_m, line_prefix, 1))) ||
+                                GetMatchStrView(func_m, line_prefix, 1))) ||
                     RegexSearch(RE_PATTERN_ALIGNAS, line_prefix) ||
                     RegexSearch(RE_PATTERN_DECLTYPE, line_prefix) ||
                     RegexSearch(RE_PATTERN_INCOP, line_prefix)) {
@@ -1546,14 +1546,14 @@ const regex_code RE_PATTERN_TYPES =
 
 static bool IsType(const CleansedLines& clean_lines,
                    NestingState* nesting_state,
-                   const std::string& expr,
+                   const std::string_view& expr,
                    regex_match& re_result) {
     // Check if expression looks like a type name, returns true if so.
     // Keep only the last token in the expression
     bool match = RegexMatch(R"(^.*(\b\S+)$)", expr, re_result);
-    std::string token;
+    std::string_view token;
     if (match)
-        token = GetMatchStr(re_result, expr, 1);
+        token = GetMatchStrView(re_result, expr, 1);
     else
         token = expr;
 
@@ -1651,7 +1651,7 @@ void FileLinter::CheckBracesSpacing(const CleansedLines& clean_lines,
         // There is a false negative with this approach if people inserted
         // spurious semicolons, e.g. "if (cond){};", but we will catch the
         // spurious semicolon with a separate check.
-        const std::string& leading_text = GetMatchStr(m_re_result, line, 1);
+        std::string_view leading_text = GetMatchStrView(m_re_result, line, 1);
         size_t endlinenum = linenum;
         size_t endpos = GetMatchEnd(m_re_result, 1);
         const std::string& endline = CloseExpression(clean_lines, &endlinenum, &endpos);
@@ -1811,14 +1811,13 @@ void FileLinter::CheckSpacingForFunctionCallBase(const std::string& line,
 
     // If the closing parenthesis is preceded by only whitespaces,
     // try to give a more descriptive error message.
-    static const regex_code RE_PATTERN_CLOSE_PARENS =
-        RegexCompile(R"(^\s+\))");
-    if (RegexSearch(RE_PATTERN_CLOSE_PARENS, fncall)) {
+    if (IS_SPACE(fncall[0]) && GetFirstNonSpace(fncall) == ')') {
+        // ^\s+\)
         Error(linenum, "whitespace/parens", 2,
-                              "Closing ) should be moved to the previous line");
+              "Closing ) should be moved to the previous line");
     } else {
         Error(linenum, "whitespace/parens", 2,
-                              "Extra space before )");
+              "Extra space before )");
     }
 }
 
