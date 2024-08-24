@@ -10,3 +10,13 @@
 
 // Platform tag for pip
 #define PLATFORM_TAG "@PLATFORM_TAG@"
+
+// "buildtype" option for meson
+#define BUILD_TYPE "@BUILD_TYPE@"
+
+// JIT compiler for regex operations is enabled or not.
+#ifdef SUPPORT_JIT
+#define JIT_SUPPORT "enabled"
+#else
+#define JIT_SUPPORT "disabled"
+#endif

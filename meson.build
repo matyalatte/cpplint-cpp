@@ -127,6 +127,7 @@ endif
 conf_data = configuration_data()
 conf_data.set('VERSION', meson.project_version())
 conf_data.set('PLATFORM_TAG', cpplint_platform_tag)
+conf_data.set('BUILD_TYPE', get_option('buildtype'))
 configure_file(input : 'src/version.h.in',
                output : 'version.h',
                configuration : conf_data)

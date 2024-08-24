@@ -32,6 +32,7 @@ static const char* USAGE[] = {
     "                    [--config=filename]\n"
     "                    [--quiet]\n"
     "                    [--version]\n"
+    "                    [--build]\n"
     "                    [--timing]\n"
     "                    [--threads=#]\n"
     "                    <file> [file] ...\n"
@@ -203,6 +204,9 @@ static const char* USAGE[] = {
     "        --headers=hpp,hxx\n"
     "        --headers=hpp\n"
     "\n"
+    "    build\n"
+    "      Display build configuration for cpplint-cpp.\n"
+    "\n"
     "    timing\n"
     "      Display elapsed processing time.\n"
     "\n"
@@ -288,9 +292,15 @@ void Options::PrintUsage(const std::string& message) {
 }
 
 static void PrintVersion() {
-    std::cout << "cpplint-cpp " << CPPLINT_VERSION <<
-                 " " << PLATFORM_TAG << "\n"
+    std::cout << "cpplint-cpp " << CPPLINT_VERSION << "\n"
                  "Reimplementation of cpplint.py " << ORIGINAL_VERSION << "\n";
+    exit(0);
+}
+
+static void PrintBuildConfig() {
+    std::cout << "platform tag: " << PLATFORM_TAG << "\n"
+                 "build type: " << BUILD_TYPE << "\n"
+                 "jit support: " << JIT_SUPPORT << "\n";
     exit(0);
 }
 
@@ -357,6 +367,8 @@ std::vector<fs::path> Options::ParseArguments(int argc, char** argv,
             PrintUsage();
         } else if (opt == "--version") {
             PrintVersion();
+        } else if (opt == "--build") {
+            PrintBuildConfig();
         } else if (opt.starts_with("--output=")) {
             output_format = ArgToValue(opt);
             if (output_format == "junit") {
