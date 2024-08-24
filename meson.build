@@ -12,7 +12,7 @@ project('cpplint-cpp', ['c', 'cpp'],
         'cpp_winlibs=',                 # likewise as with c_winlibs
         'wrap_mode=forcefallback'       # we don't use installed libraries.
     ],
-    version: '0.2.0')
+    version: '0.2.1')
 
 cpplint_link_args = []
 cpplint_c_args = []
