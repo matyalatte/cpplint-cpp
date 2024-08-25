@@ -14,7 +14,7 @@ It used to be developed and maintained by Google Inc. One of its forks now maint
 You can install the `cpplint-cpp` command via pip.
 
 ```sh
-pip install cpplint-cpp --find-links https://github.com/matyalatte/cpplint-cpp/releases/latest
+pip install cpplint-cpp --no-index --find-links https://matyalatte.github.io/cpplint-cpp/packages.html
 ```
 
 ## cpplint-cpp vs. cpplint.py
