@@ -171,8 +171,8 @@ void FileLinter::ParseNolintSuppressions(const std::string& raw_line,
         } else if (no_lint_type == "BEGIN") {
             if (m_error_suppressions.HasOpenBlock()) {
                 Error(linenum, "readability/nolint", 5,
-                      "NONLINT block already defined on line " +
-                      m_error_suppressions.GetOpenBlockStart());
+                      "NOLINT block already defined on line " +
+                      std::to_string(m_error_suppressions.GetOpenBlockStart()));
             }
             ProcessCategory = ProcessCategoryBegin;
         } else if (no_lint_type == "END") {
@@ -1415,7 +1415,7 @@ void FileLinter::CheckOperatorSpacing(const CleansedLines& clean_lines,
             !(GetMatchStrView(m_re_result, line, 1) == "operator" &&
               StrIsChar(GetMatchStrView(m_re_result, line, 2), ';'))) {
         Error(linenum, "whitespace/operators", 3,
-                              "Missing spaces around <<");
+              "Missing spaces around <<");
     }
 
     // We allow no-spaces around >> for almost anything.  This is because
@@ -1773,8 +1773,7 @@ void FileLinter::CheckSpacingForFunctionCallBase(const std::string& line,
         RegexCompile(R"(\w\s*\(\s(?!\s*\\$))");
     static const regex_code RE_PATTERN_PARENS =
         RegexCompile(R"(\(\s+(?!(\s*\\)|\())");
-    if (GetLastNonSpace(fncall) == '\\' &&  // This can avoid the next RegexSearch()
-            RegexSearch(RE_PATTERN_FUNC_PARENS, fncall)) {
+    if (RegexSearch(RE_PATTERN_FUNC_PARENS, fncall)) {
         // a ( used for a fn call
         Error(linenum, "whitespace/parens", 4,
               "Extra space after ( in function call");
@@ -3660,8 +3659,8 @@ void FileLinter::CheckRedundantOverrideOrFinal(const CleansedLines& clean_lines,
     // Check that at most one of "override" or "final" is present, not both
     if (has_error) {
         Error(linenum, "readability/inheritance", 4,
-                              "\"override\" is redundant since function is "
-                              "already declared as \"final\"");
+              "\"override\" is redundant since function is "
+              "already declared as \"final\"");
     }
 }
 
@@ -4021,7 +4020,7 @@ void FileLinter::ProcessFileData(std::vector<std::string>& lines) {
         }
         if (m_error_suppressions.HasOpenBlock()) {
             Error(m_error_suppressions.GetOpenBlockStart(), "readability/nolint", 5,
-                  "NONLINT block never ended");
+                  "NOLINT block never ended");
         }
     }
 

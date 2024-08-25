@@ -40,8 +40,14 @@ class LinesLinterTest : public ::testing::Test {
         cpplint_state.ResetErrorCounts();
         linter = FileLinter(filename, &cpplint_state, options);
     }
+
+    void ExpectErrorStr(const char* expected, const char* file, int linenum) {
+        std::string error_str = cpplint_state.GetErrorStreamAsStr();
+        EXPECT_STREQ(expected, error_str.c_str()) << "  line: " << file << "(" << linenum << ")";
+    }
 };
 
+#define EXPECT_ERROR_STR(expected) ExpectErrorStr(expected, __FILE__, __LINE__)
 
 // TODO(matyalatte): add more test cases
 
@@ -61,6 +67,12 @@ TEST_F(LinesLinterTest, CopywriteNoCopywrite) {
     ProcessLines({""});
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("legal/copyright"));
+    const char* expected =
+        "test/test.cpp:0:  "
+        "No copyright message found.  "
+        "You should have a line: \"Copyright [year] <Copyright Owner>\""
+        "  [legal/copyright] [5]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, CopywriteAfterTenLines) {
@@ -80,6 +92,12 @@ TEST_F(LinesLinterTest, CopywriteAfterTenLines) {
         "// Copyright (c) 2024 matyalatte"});
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("legal/copyright"));
+    const char* expected =
+        "test/test.cpp:0:  "
+        "No copyright message found.  "
+        "You should have a line: \"Copyright [year] <Copyright Owner>\""
+        "  [legal/copyright] [5]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, MultiLineCommentPass) {
@@ -102,9 +120,17 @@ TEST_F(LinesLinterTest, MultiLineCommentComplex) {
         "*/",
         "",
     });
-    // Complex multi-line /*...*/-style comment found.
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("readability/multiline_comment"));
+    const char* expected =
+        "test/test.cpp:2:  "
+        "Complex multi-line /*...*/-style comment found. "
+        "Lint may give bogus warnings.  "
+        "Consider replacing these with //-style comments, "
+        "with #if 0...#endif, "
+        "or with more clearly structured multi-line comments."
+        "  [readability/multiline_comment] [5]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, RemoveMultiLineCommentsPass) {
@@ -127,9 +153,13 @@ TEST_F(LinesLinterTest, RemoveMultiLineCommentsFailed) {
     };
     linter.RemoveMultiLineComments(lines);
 
-    // Could not find end of multi-line comment
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("readability/multiline_comment"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Could not find end of multi-line comment"
+        "  [readability/multiline_comment] [5]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, NewLinePass) {
@@ -143,6 +173,11 @@ TEST_F(LinesLinterTest, NewLineFail) {
     ProcessLines({"// There is no new lines at EOF"});
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("whitespace/ending_newline"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Could not find a newline character at the end of the file."
+        "  [whitespace/ending_newline] [5]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, HeaderGuardIgnore) {
@@ -173,9 +208,13 @@ TEST_F(LinesLinterTest, HeaderGuardNoIfndef) {
         "#define TEST_H_",
         "#endif  // TEST_H_",
     });
-    // No #ifndef header guard found
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("build/header_guard"));
+    const char* expected =
+        "test.h:0:  "
+        "No #ifndef header guard found, suggested CPP variable is: TEST_H_"
+        "  [build/header_guard] [5]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, HeaderGuardWrongIfndef) {
@@ -185,9 +224,13 @@ TEST_F(LinesLinterTest, HeaderGuardWrongIfndef) {
         "#define TEST_C_",
         "#endif  // TEST_H_",
     });
-    // #ifndef header guard has wrong style
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("build/header_guard"));
+    const char* expected =
+        "test.h:1:  "
+        "#ifndef header guard has wrong style, please use: TEST_H_"
+        "  [build/header_guard] [5]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, HeaderGuardNoDefine) {
@@ -196,9 +239,13 @@ TEST_F(LinesLinterTest, HeaderGuardNoDefine) {
         "#ifndef TEST_H_",
         "#endif  // TEST_H_",
     });
-    // No #ifndef header guard found
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("build/header_guard"));
+    const char* expected =
+        "test.h:0:  "
+        "No #ifndef header guard found, suggested CPP variable is: TEST_H_"
+        "  [build/header_guard] [5]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, HeaderGuardWrongDefine) {
@@ -208,9 +255,13 @@ TEST_F(LinesLinterTest, HeaderGuardWrongDefine) {
         "#define TEST_C_",
         "#endif  // TEST_H_",
     });
-    // No #ifndef header guard found
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("build/header_guard"));
+    const char* expected =
+        "test.h:0:  "
+        "No #ifndef header guard found, suggested CPP variable is: TEST_H_"
+        "  [build/header_guard] [5]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, HeaderGuardWrongEndif) {
@@ -220,9 +271,13 @@ TEST_F(LinesLinterTest, HeaderGuardWrongEndif) {
         "#define TEST_H_",
         "#endif  // TEST_H__",
     });
-    // #endif line should be "#endif  //...
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("build/header_guard"));
+    const char* expected =
+        "test.h:3:  "
+        "#endif line should be \"#endif  // TEST_H_\""
+        "  [build/header_guard] [0]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, HeaderGuardEndifAnotherStyle) {
@@ -242,9 +297,13 @@ TEST_F(LinesLinterTest, HeaderGuardWrongEndif2) {
         "#define TEST_H_",
         "#endif  /* TEST_H__ */",
     });
-    // #endif line should be "#endif  //...
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("build/header_guard"));
+    const char* expected =
+        "test.h:3:  "
+        "#endif line should be \"#endif  /* TEST_H_ */\""
+        "  [build/header_guard] [0]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, HeaderGuardNoEndifComment) {
@@ -254,9 +313,13 @@ TEST_F(LinesLinterTest, HeaderGuardNoEndifComment) {
         "#define TEST_H_",
         "#endif"
     });
-    // #endif line should be "#endif  //...
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("build/header_guard"));
+    const char* expected =
+        "test.h:3:  "
+        "#endif line should be \"#endif  // TEST_H_\""
+        "  [build/header_guard] [5]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, NamespaceIndentationPass) {
@@ -291,6 +354,11 @@ TEST_F(LinesLinterTest, NamespaceIndentationFial) {
     });
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("whitespace/indent_namespace"));
+    const char* expected =
+        "test/test.cpp:2:  "
+        "Do not indent within a namespace."
+        "  [whitespace/indent_namespace] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, FunctionLengthPass) {
@@ -309,9 +377,13 @@ TEST_F(LinesLinterTest, FunctionLengthNoStart) {
     std::vector<std::string> lines = { "void func()" };
     ProcessLines(lines);
 
-    // Lint failed to find start of function body
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("readability/fn_size"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Lint failed to find start of function body."
+        "  [readability/fn_size] [5]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, FunctionLengthTooLong) {
@@ -324,9 +396,14 @@ TEST_F(LinesLinterTest, FunctionLengthTooLong) {
     lines.emplace_back("}");
     ProcessLines(lines);
 
-    // Small and focused functions are preferred
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("readability/fn_size"));
+    const char* expected =
+        "test/test.cpp:253:  "
+        "Small and focused functions are preferred: "
+        "func() has 251 non-comment lines (error triggered by exceeding 250 lines)."
+        "  [readability/fn_size] [0]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, FunctionLengthTestFuncPass) {
@@ -354,8 +431,13 @@ TEST_F(LinesLinterTest, FunctionLengthTestFuncTooLong) {
     // Small and focused functions are preferred
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("readability/fn_size"));
+    const char* expected =
+        "test/test.cpp:403:  "
+        "Small and focused functions are preferred: "
+        "TEST() has 401 non-comment lines (error triggered by exceeding 400 lines)."
+        "  [readability/fn_size] [0]\n";
+    EXPECT_ERROR_STR(expected);
 }
-
 
 TEST_F(LinesLinterTest, MultilineStringPass) {
     ProcessLines({
@@ -372,6 +454,18 @@ TEST_F(LinesLinterTest, MultilineStringFail) {
     });
     EXPECT_EQ(2, cpplint_state.ErrorCount());
     EXPECT_EQ(2, cpplint_state.ErrorCount("readability/multiline_string"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Multi-line string (\"...\") found.  This lint script doesn\'t "
+        "do well with such strings, and may give bogus warnings.  "
+        "Use C++11 raw strings or concatenation instead."
+        "  [readability/multiline_string] [5]\n"
+        "test/test.cpp:2:  "
+        "Multi-line string (\"...\") found.  This lint script doesn\'t "
+        "do well with such strings, and may give bogus warnings.  "
+        "Use C++11 raw strings or concatenation instead."
+        "  [readability/multiline_string] [5]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, BracePass) {
@@ -402,9 +496,13 @@ TEST_F(LinesLinterTest, BraceIfLineFeed) {
         "    }",
         "}",
     });
-    // { should almost always be at the end of the previous line
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("whitespace/braces"));
+    const char* expected =
+        "test/test.cpp:3:  "
+        "{ should almost always be at the end of the previous line"
+        "  [whitespace/braces] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, BraceElseIfLineFeed) {
@@ -420,9 +518,13 @@ TEST_F(LinesLinterTest, BraceElseIfLineFeed) {
         "    }",
         "}",
     });
-    // { should almost always be at the end of the previous line
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("whitespace/braces"));
+    const char* expected =
+        "test/test.cpp:5:  "
+        "{ should almost always be at the end of the previous line"
+        "  [whitespace/braces] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, BraceElseLineFeed) {
@@ -430,7 +532,7 @@ TEST_F(LinesLinterTest, BraceElseLineFeed) {
         "void func() {",
         "    if (true)",
         "        int a = 0;",
-        "    else if (true)"
+        "    else if (true)",
         "        int a = 0;",
         "    else",
         "    {",
@@ -438,9 +540,13 @@ TEST_F(LinesLinterTest, BraceElseLineFeed) {
         "    }",
         "}",
     });
-    // { should almost always be at the end of the previous line
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("whitespace/braces"));
+    const char* expected =
+        "test/test.cpp:7:  "
+        "{ should almost always be at the end of the previous line"
+        "  [whitespace/braces] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 
@@ -456,14 +562,19 @@ TEST_F(LinesLinterTest, BraceElseIfLineFeed2) {
         "        int a = 0;",
         "}",
     });
-    // An else should appear on the same line as the preceding }
+    EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("whitespace/newline"));
+    const char* expected =
+        "test/test.cpp:5:  "
+        "An else should appear on the same line as the preceding }"
+        "  [whitespace/newline] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, BraceElseIfOneSide) {
     ProcessLines({
         "void func() {",
-        "    if (true)"
+        "    if (true)",
         "        int a = 0;",
         "    } else if (true)",
         "        int a = 0;",
@@ -471,15 +582,19 @@ TEST_F(LinesLinterTest, BraceElseIfOneSide) {
         "        int a = 0;",
         "}",
     });
-    // If an else has a brace on one side
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("readability/braces"));
+    const char* expected =
+        "test/test.cpp:4:  "
+        "If an else has a brace on one side, it should have it on both"
+        "  [readability/braces] [5]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, BraceElseOneSide) {
     ProcessLines({
         "void func() {",
-        "    if (true)"
+        "    if (true)",
         "        int a = 0;",
         "    } else if (true) {",
         "        int a = 0;",
@@ -490,6 +605,11 @@ TEST_F(LinesLinterTest, BraceElseOneSide) {
     // If an else has a brace on one side
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("readability/braces"));
+    const char* expected =
+        "test/test.cpp:6:  "
+        "If an else has a brace on one side, it should have it on both"
+        "  [readability/braces] [5]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, BraceIfControled) {
@@ -497,6 +617,11 @@ TEST_F(LinesLinterTest, BraceIfControled) {
     // Controlled statements inside brackets of if clause should be on a separate line
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("whitespace/newline"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Controlled statements inside brackets of if clause should be on a separate line"
+        "  [whitespace/newline] [5]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, BraceIfControledNoParen) {
@@ -505,9 +630,13 @@ TEST_F(LinesLinterTest, BraceIfControledNoParen) {
         "    int a = 0;",
         "} else { hello; }",
     });
-    // Controlled statements inside brackets of if clause should be on a separate line
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("whitespace/newline"));
+    const char* expected =
+        "test/test.cpp:3:  "
+        "Controlled statements inside brackets of else clause should be on a separate line"
+        "  [whitespace/newline] [5]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, BraceIfMultiline) {
@@ -519,6 +648,11 @@ TEST_F(LinesLinterTest, BraceIfMultiline) {
     // If/else bodies with multiple statements require braces
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("readability/braces"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "If/else bodies with multiple statements require braces"
+        "  [readability/braces] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, BraceIfMultiline2) {
@@ -526,8 +660,15 @@ TEST_F(LinesLinterTest, BraceIfMultiline2) {
         "if (test)",
         "    int a = 0; int a = 0;",
     });
-    // If/else bodies with multiple statements require braces
     EXPECT_EQ(1, cpplint_state.ErrorCount("readability/braces"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "If/else bodies with multiple statements require braces"
+        "  [readability/braces] [4]\n"
+        "test/test.cpp:2:  "
+        "More than one command on the same line"
+        "  [whitespace/newline] [0]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, BraceIfMultiline3) {
@@ -538,9 +679,13 @@ TEST_F(LinesLinterTest, BraceIfMultiline3) {
         "    int a = 0;",
         "    int a = 0;",
     });
-    // If/else bodies with multiple statements require braces
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("readability/braces"));
+    const char* expected =
+        "test/test.cpp:3:  "
+        "If/else bodies with multiple statements require braces"
+        "  [readability/braces] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, BraceElseIndent) {
@@ -551,9 +696,14 @@ TEST_F(LinesLinterTest, BraceElseIndent) {
         "    else",
         "        int a = 0;",
     });
-    // Else clause should be indented at the same level as if.
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("readability/braces"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Else clause should be indented at the same level as if. "
+        "Ambiguous nested if/else chains require braces."
+        "  [readability/braces] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, BraceElseIndent2) {
@@ -564,9 +714,14 @@ TEST_F(LinesLinterTest, BraceElseIndent2) {
         "else",
         "    int a = 0;",
     });
-    // Else clause should be indented at the same level as if.
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("readability/braces"));
+    const char* expected =
+        "test/test.cpp:2:  "
+        "Else clause should be indented at the same level as if. "
+        "Ambiguous nested if/else chains require braces."
+        "  [readability/braces] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, TrailingSemicolonPass) {
@@ -589,9 +744,25 @@ TEST_F(LinesLinterTest, TrailingSemicolonFail) {
         "    hello;",
         "};",
     });
-    // You don't need a ; after a }
     EXPECT_EQ(5, cpplint_state.ErrorCount());
     EXPECT_EQ(5, cpplint_state.ErrorCount("readability/braces"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "You don't need a ; after a }"
+        "  [readability/braces] [4]\n"
+        "test/test.cpp:2:  "
+        "You don't need a ; after a }"
+        "  [readability/braces] [4]\n"
+        "test/test.cpp:3:  "
+        "You don't need a ; after a }"
+        "  [readability/braces] [4]\n"
+        "test/test.cpp:4:  "
+        "You don't need a ; after a }"
+        "  [readability/braces] [4]\n"
+        "test/test.cpp:7:  "
+        "You don't need a ; after a }"
+        "  [readability/braces] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, EmptyBlockPass) {
@@ -611,9 +782,13 @@ TEST_F(LinesLinterTest, EmptyBlockPass) {
 
 TEST_F(LinesLinterTest, EmptyBlockConditional) {
     ProcessLines({"if (true);"});
-    // Empty conditional bodies should use {}
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("whitespace/empty_conditional_body"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Empty conditional bodies should use {}"
+        "  [whitespace/empty_conditional_body] [5]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, EmptyBlockLoop) {
@@ -621,9 +796,16 @@ TEST_F(LinesLinterTest, EmptyBlockLoop) {
         "while (true);",
         "for (;;);",
     });
-    // Empty loop bodies should use {} or continue
     EXPECT_EQ(2, cpplint_state.ErrorCount());
     EXPECT_EQ(2, cpplint_state.ErrorCount("whitespace/empty_loop_body"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Empty loop bodies should use {} or continue"
+        "  [whitespace/empty_loop_body] [5]\n"
+        "test/test.cpp:2:  "
+        "Empty loop bodies should use {} or continue"
+        "  [whitespace/empty_loop_body] [5]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, EmptyBlockIf) {
@@ -632,9 +814,13 @@ TEST_F(LinesLinterTest, EmptyBlockIf) {
         "    func({})) {",
         "}",
     });
-    // If statement had no body and no else clause
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("whitespace/empty_if_body"));
+    const char* expected =
+        "test/test.cpp:2:  "
+        "If statement had no body and no else clause"
+        "  [whitespace/empty_if_body] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, CommentPass) {
@@ -647,37 +833,58 @@ TEST_F(LinesLinterTest, CommentPass) {
 
 TEST_F(LinesLinterTest, CommentLeftSpaces) {
     ProcessLines({"int a = 0; // comment"});
-    // At least two spaces is best between code and comments
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("whitespace/comments"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "At least two spaces is best between code and comments"
+        "  [whitespace/comments] [2]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, CommentRightSpaces) {
     ProcessLines({"int a = 0;  //comment"});
-    // Should have a space between // and comment
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("whitespace/comments"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Should have a space between // and comment"
+        "  [whitespace/comments] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, CommentTodoLeftSpaces) {
     ProcessLines({"int a = 0;  //  TODO(me): test"});
-    // Too many spaces before TODO
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("whitespace/todo"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Too many spaces before TODO"
+        "  [whitespace/todo] [2]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, CommentTodoName) {
     ProcessLines({"int a = 0;  // TODO: test"});
-    // Missing username in TODO; it should look like
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("readability/todo"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Missing username in TODO; it should look like "
+        "\"// TODO(my_username): Stuff.\""
+        "  [readability/todo] [2]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, CommentTodoRightSpaces) {
     ProcessLines({"int a = 0;  // TODO(me):test"});
-    // TODO(my_username) should be followed by a space
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("whitespace/todo"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "TODO(my_username) should be followed by a space"
+        "  [whitespace/todo] [2]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, BlankLinePass) {
@@ -707,9 +914,22 @@ TEST_F(LinesLinterTest, BlankLineBlockStart) {
         "    func();",
         "}",
     });
-    // Redundant blank line at the start of a code block should be deleted.
     EXPECT_EQ(3, cpplint_state.ErrorCount());
     EXPECT_EQ(3, cpplint_state.ErrorCount("whitespace/blank_line"));
+    const char* expected =
+        "test/test.cpp:2:  "
+        "Redundant blank line at the start of a code block "
+        "should be deleted."
+        "  [whitespace/blank_line] [2]\n"
+        "test/test.cpp:5:  "
+        "Redundant blank line at the start of a code block "
+        "should be deleted."
+        "  [whitespace/blank_line] [2]\n"
+        "test/test.cpp:8:  "
+        "Redundant blank line at the start of a code block "
+        "should be deleted."
+        "  [whitespace/blank_line] [2]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, BlankLineBlockEnd) {
@@ -725,9 +945,14 @@ TEST_F(LinesLinterTest, BlankLineBlockEnd) {
         "",  // Only the else block should raises an error.
         "}",
     });
-    // Redundant blank line at the end of a code block should be deleted.
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("whitespace/blank_line"));
+    const char* expected =
+        "test/test.cpp:9:  "
+        "Redundant blank line at the end of a code block "
+        "should be deleted."
+        "  [whitespace/blank_line] [3]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, BlankLineAfterSection) {
@@ -744,9 +969,19 @@ TEST_F(LinesLinterTest, BlankLineAfterSection) {
         "    };",
         "};",
     });
-    // Do not leave a blank line after public:, private:, protected:
     EXPECT_EQ(3, cpplint_state.ErrorCount());
     EXPECT_EQ(3, cpplint_state.ErrorCount("whitespace/blank_line"));
+    const char* expected =
+        "test/test.cpp:3:  "
+        "Do not leave a blank line after \"public:\""
+        "  [whitespace/blank_line] [3]\n"
+        "test/test.cpp:5:  "
+        "Do not leave a blank line after \"private:\""
+        "  [whitespace/blank_line] [3]\n"
+        "test/test.cpp:8:  "
+        "Do not leave a blank line after \"protected:\""
+        "  [whitespace/blank_line] [3]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, SpacingBeforeBracketsPass) {
@@ -763,6 +998,11 @@ TEST_F(LinesLinterTest, SpacingBeforeBracketsFail) {
     ProcessLines({"int a [] = { 1, 2, 3 };"});
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("whitespace/braces"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Extra space before ["
+        "  [whitespace/braces] [5]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, SpacingForRangePass) {
@@ -782,6 +1022,20 @@ TEST_F(LinesLinterTest, SpacingForRangeFail) {
     });
     EXPECT_EQ(4, cpplint_state.ErrorCount());
     EXPECT_EQ(4, cpplint_state.ErrorCount("whitespace/forcolon"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Missing space around colon in range-based for loop"
+        "  [whitespace/forcolon] [2]\n"
+        "test/test.cpp:2:  "
+        "Missing space around colon in range-based for loop"
+        "  [whitespace/forcolon] [2]\n"
+        "test/test.cpp:3:  "
+        "Missing space around colon in range-based for loop"
+        "  [whitespace/forcolon] [2]\n"
+        "test/test.cpp:4:  "
+        "Missing space around colon in range-based for loop"
+        "  [whitespace/forcolon] [2]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, SpacingEqualsOperatorPass) {
@@ -816,9 +1070,34 @@ TEST_F(LinesLinterTest, SpacingEqualsOperatorFail) {
         "int* tmp=*p",
         "int* tmp= *p",
     });
-    // Missing spaces around =
     EXPECT_EQ(8, cpplint_state.ErrorCount());
     EXPECT_EQ(8, cpplint_state.ErrorCount("whitespace/operators"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Missing spaces around ="
+        "  [whitespace/operators] [4]\n"
+        "test/test.cpp:2:  "
+        "Missing spaces around ="
+        "  [whitespace/operators] [4]\n"
+        "test/test.cpp:3:  "
+        "Missing spaces around ="
+        "  [whitespace/operators] [4]\n"
+        "test/test.cpp:4:  "
+        "Missing spaces around ="
+        "  [whitespace/operators] [4]\n"
+        "test/test.cpp:5:  "
+        "Missing spaces around ="
+        "  [whitespace/operators] [4]\n"
+        "test/test.cpp:6:  "
+        "Missing spaces around ="
+        "  [whitespace/operators] [4]\n"
+        "test/test.cpp:7:  "
+        "Missing spaces around ="
+        "  [whitespace/operators] [4]\n"
+        "test/test.cpp:8:  "
+        "Missing spaces around ="
+        "  [whitespace/operators] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, SpacingEqualsOperatorBoolFail) {
@@ -828,9 +1107,22 @@ TEST_F(LinesLinterTest, SpacingEqualsOperatorBoolFail) {
         "bool result = a!=42",
         "int a = b!=c",
     });
-    // Missing spaces around =
     EXPECT_EQ(4, cpplint_state.ErrorCount());
     EXPECT_EQ(4, cpplint_state.ErrorCount("whitespace/operators"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Missing spaces around <="
+        "  [whitespace/operators] [3]\n"
+        "test/test.cpp:2:  "
+        "Missing spaces around =="
+        "  [whitespace/operators] [3]\n"
+        "test/test.cpp:3:  "
+        "Missing spaces around !="
+        "  [whitespace/operators] [3]\n"
+        "test/test.cpp:4:  "
+        "Missing spaces around !="
+        "  [whitespace/operators] [3]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, SpacingShiftOperatorPass) {
@@ -847,9 +1139,16 @@ TEST_F(LinesLinterTest, SpacingShiftOperatorFail) {
         "a<<b",
         "a>>b",
     });
-    // Missing spaces around << or >>
     EXPECT_EQ(2, cpplint_state.ErrorCount());
     EXPECT_EQ(2, cpplint_state.ErrorCount("whitespace/operators"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Missing spaces around <<"
+        "  [whitespace/operators] [3]\n"
+        "test/test.cpp:2:  "
+        "Missing spaces around >>"
+        "  [whitespace/operators] [3]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, SpacingCompOperatorPass) {
@@ -871,9 +1170,25 @@ TEST_F(LinesLinterTest, SpacingCompOperatorFail) {
         "if (foo>bar->baz) return;",
         "CHECK_LT(x<42)",
     });
-    // Missing spaces around < or >
     EXPECT_EQ(5, cpplint_state.ErrorCount());
     EXPECT_EQ(5, cpplint_state.ErrorCount("whitespace/operators"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Missing spaces around <"
+        "  [whitespace/operators] [3]\n"
+        "test/test.cpp:2:  "
+        "Missing spaces around >"
+        "  [whitespace/operators] [3]\n"
+        "test/test.cpp:3:  "
+        "Missing spaces around <"
+        "  [whitespace/operators] [3]\n"
+        "test/test.cpp:4:  "
+        "Missing spaces around >"
+        "  [whitespace/operators] [3]\n"
+        "test/test.cpp:5:  "
+        "Missing spaces around <"
+        "  [whitespace/operators] [3]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, SpacingUnaryOperatorFail) {
@@ -883,9 +1198,22 @@ TEST_F(LinesLinterTest, SpacingUnaryOperatorFail) {
         "! flag;",
         "~ flag;",
     });
-    // Extra space for ++, --, !, ~
     EXPECT_EQ(4, cpplint_state.ErrorCount());
     EXPECT_EQ(4, cpplint_state.ErrorCount("whitespace/operators"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Extra space for operator  ++;"
+        "  [whitespace/operators] [4]\n"
+        "test/test.cpp:2:  "
+        "Extra space for operator  --;"
+        "  [whitespace/operators] [4]\n"
+        "test/test.cpp:3:  "
+        "Extra space for operator ! "
+        "  [whitespace/operators] [4]\n"
+        "test/test.cpp:4:  "
+        "Extra space for operator ~ "
+        "  [whitespace/operators] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, SpacingParensNoSpaceBefore) {
@@ -894,9 +1222,19 @@ TEST_F(LinesLinterTest, SpacingParensNoSpaceBefore) {
         "if(true) return;",
         "while(true) continue;",
     });
-    // Missing space before ( in for, if, while
     EXPECT_EQ(3, cpplint_state.ErrorCount());
     EXPECT_EQ(3, cpplint_state.ErrorCount("whitespace/parens"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Missing space before ( in for("
+        "  [whitespace/parens] [5]\n"
+        "test/test.cpp:2:  "
+        "Missing space before ( in if("
+        "  [whitespace/parens] [5]\n"
+        "test/test.cpp:3:  "
+        "Missing space before ( in while("
+        "  [whitespace/parens] [5]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, SpacingParensInsideSpace) {
@@ -914,6 +1252,17 @@ TEST_F(LinesLinterTest, SpacingParensInsideSpace) {
     // Mismatching spaces inside ()
     EXPECT_EQ(3, cpplint_state.ErrorCount());
     EXPECT_EQ(3, cpplint_state.ErrorCount("whitespace/parens"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Mismatching spaces inside () in if"
+        "  [whitespace/parens] [5]\n"
+        "test/test.cpp:4:  "
+        "Mismatching spaces inside () in switch"
+        "  [whitespace/parens] [5]\n"
+        "test/test.cpp:7:  "
+        "Mismatching spaces inside () in for"
+        "  [whitespace/parens] [5]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, SpacingParensInsideSpace2) {
@@ -925,6 +1274,11 @@ TEST_F(LinesLinterTest, SpacingParensInsideSpace2) {
     // Should have zero or one spaces inside ( and ) in while
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("whitespace/parens"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Should have zero or one spaces inside ( and ) in while"
+        "  [whitespace/parens] [5]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, SpacingCommaPass) {
@@ -950,9 +1304,19 @@ TEST_F(LinesLinterTest, SpacingCommaFail) {
         "int tmp = a,a = b,b = tmp;",
         "operator,(a,b)",
     });
-    // Missing space after ,
     EXPECT_EQ(3, cpplint_state.ErrorCount());
     EXPECT_EQ(3, cpplint_state.ErrorCount("whitespace/comma"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Missing space after ,"
+        "  [whitespace/comma] [3]\n"
+        "test/test.cpp:2:  "
+        "Missing space after ,"
+        "  [whitespace/comma] [3]\n"
+        "test/test.cpp:3:  "
+        "Missing space after ,"
+        "  [whitespace/comma] [3]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, SpacingAfterSemicolon) {
@@ -961,9 +1325,16 @@ TEST_F(LinesLinterTest, SpacingAfterSemicolon) {
         "    func();a = b",
         "}",
     });
-    // Missing space after ;
     EXPECT_EQ(2, cpplint_state.ErrorCount());
     EXPECT_EQ(2, cpplint_state.ErrorCount("whitespace/semicolon"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Missing space after ;"
+        "  [whitespace/semicolon] [3]\n"
+        "test/test.cpp:2:  "
+        "Missing space after ;"
+        "  [whitespace/semicolon] [3]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, SpacingBeforeBracePass) {
@@ -995,9 +1366,19 @@ TEST_F(LinesLinterTest, SpacingBeforeBraceFail) {
         "}",
         "blah{32}",
     });
-    // Missing space before {
     EXPECT_EQ(3, cpplint_state.ErrorCount());
     EXPECT_EQ(3, cpplint_state.ErrorCount("whitespace/braces"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Missing space before {"
+        "  [whitespace/braces] [5]\n"
+        "test/test.cpp:4:  "
+        "Missing space before {"
+        "  [whitespace/braces] [5]\n"
+        "test/test.cpp:7:  "
+        "Missing space before {"
+        "  [whitespace/braces] [5]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, SpacingBeforeElse) {
@@ -1008,23 +1389,36 @@ TEST_F(LinesLinterTest, SpacingBeforeElse) {
         "    func();",
         "}",
     });
-    // Missing space before else
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("whitespace/braces"));
+    const char* expected =
+        "test/test.cpp:3:  "
+        "Missing space before else"
+        "  [whitespace/braces] [5]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, SpacingSemicolonEmptyState) {
     ProcessLines({"default:;"});
-    // Semicolon defining empty statement.
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("whitespace/semicolon"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Semicolon defining empty statement. Use {} instead."
+        "  [whitespace/semicolon] [5]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, SpacingSemicolonOnly) {
     ProcessLines({"    ;"});
-    // Line contains only semicolon.
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("whitespace/semicolon"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Line contains only semicolon. If this should be an empty statement, "
+        "use {} instead."
+        "  [whitespace/semicolon] [5]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, SpacingBeforeSemicolon) {
@@ -1032,9 +1426,18 @@ TEST_F(LinesLinterTest, SpacingBeforeSemicolon) {
         "func() ;",
         "while (true) ;",
     });
-    // Line contains only semicolon.
     EXPECT_EQ(2, cpplint_state.ErrorCount());
     EXPECT_EQ(2, cpplint_state.ErrorCount("whitespace/semicolon"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Extra space before last semicolon. If this should be an empty "
+        "statement, use {} instead."
+        "  [whitespace/semicolon] [5]\n"
+        "test/test.cpp:2:  "
+        "Extra space before last semicolon. If this should be an empty "
+        "statement, use {} instead."
+        "  [whitespace/semicolon] [5]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, SpacingFuncCallAfterParensPass) {
@@ -1050,9 +1453,16 @@ TEST_F(LinesLinterTest, SpacingFuncCallAfterParensFail) {
         "EXPECT_LT( 42 < x);",
         "foo( bar);",
     });
-    // Extra space after ( in function call
     EXPECT_EQ(2, cpplint_state.ErrorCount());
     EXPECT_EQ(2, cpplint_state.ErrorCount("whitespace/parens"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Extra space after ( in function call"
+        "  [whitespace/parens] [4]\n"
+        "test/test.cpp:2:  "
+        "Extra space after ( in function call"
+        "  [whitespace/parens] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, SpacingAfterParens) {
@@ -1060,9 +1470,16 @@ TEST_F(LinesLinterTest, SpacingAfterParens) {
         "( a + b)",
         "void operator=(  ) { }",
     });
-    // Extra space after (
     EXPECT_EQ(2, cpplint_state.ErrorCount());
     EXPECT_EQ(2, cpplint_state.ErrorCount("whitespace/parens"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Extra space after ("
+        "  [whitespace/parens] [2]\n"
+        "test/test.cpp:2:  "
+        "Extra space after ("
+        "  [whitespace/parens] [2]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, SpacingFuncCallBeforeParensPass) {
@@ -1086,9 +1503,19 @@ TEST_F(LinesLinterTest, SpacingFuncCallBeforeParensFail) {
         ");",
         "__VA_OPT__ (,)",
     });
-    // Extra space before ( in function call
     EXPECT_EQ(3, cpplint_state.ErrorCount());
     EXPECT_EQ(3, cpplint_state.ErrorCount("whitespace/parens"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Extra space before ( in function call"
+        "  [whitespace/parens] [4]\n"
+        "test/test.cpp:2:  "
+        "Extra space before ( in function call"
+        "  [whitespace/parens] [4]\n"
+        "test/test.cpp:4:  "
+        "Extra space before ( in function call"
+        "  [whitespace/parens] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, SpacingFuncCallClosingParensPass) {
@@ -1108,9 +1535,16 @@ TEST_F(LinesLinterTest, SpacingFuncCallClosingParens) {
         "      Nest(3",
         "      ));",
     });
-    // Closing ) should be moved to the previous line
     EXPECT_EQ(2, cpplint_state.ErrorCount());
     EXPECT_EQ(2, cpplint_state.ErrorCount("whitespace/parens"));
+    const char* expected =
+        "test/test.cpp:2:  "
+        "Closing ) should be moved to the previous line"
+        "  [whitespace/parens] [2]\n"
+        "test/test.cpp:5:  "
+        "Closing ) should be moved to the previous line"
+        "  [whitespace/parens] [2]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, SpacingFuncCallBeforeClosingParens) {
@@ -1119,9 +1553,16 @@ TEST_F(LinesLinterTest, SpacingFuncCallBeforeClosingParens) {
         "Func(1,",
         "     3 );",
     });
-    // Extra space before )
     EXPECT_EQ(2, cpplint_state.ErrorCount());
     EXPECT_EQ(2, cpplint_state.ErrorCount("whitespace/parens"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Extra space before )"
+        "  [whitespace/parens] [2]\n"
+        "test/test.cpp:3:  "
+        "Extra space before )"
+        "  [whitespace/parens] [2]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, CheckPass) {
@@ -1141,9 +1582,28 @@ TEST_F(LinesLinterTest, CheckCheck) {
         "CHECK(x <= 42);",
         "CHECK(x < 42);",
     });
-    // Consider using CHECK_EQ instead of CHECK(a == b)
     EXPECT_EQ(6, cpplint_state.ErrorCount());
     EXPECT_EQ(6, cpplint_state.ErrorCount("readability/check"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Consider using CHECK_EQ instead of CHECK(a == b)"
+        "  [readability/check] [2]\n"
+        "test/test.cpp:2:  "
+        "Consider using CHECK_NE instead of CHECK(a != b)"
+        "  [readability/check] [2]\n"
+        "test/test.cpp:3:  "
+        "Consider using CHECK_GE instead of CHECK(a >= b)"
+        "  [readability/check] [2]\n"
+        "test/test.cpp:4:  "
+        "Consider using CHECK_GT instead of CHECK(a > b)"
+        "  [readability/check] [2]\n"
+        "test/test.cpp:5:  "
+        "Consider using CHECK_LE instead of CHECK(a <= b)"
+        "  [readability/check] [2]\n"
+        "test/test.cpp:6:  "
+        "Consider using CHECK_LT instead of CHECK(a < b)"
+        "  [readability/check] [2]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, CheckDcheck) {
@@ -1155,9 +1615,28 @@ TEST_F(LinesLinterTest, CheckDcheck) {
         "DCHECK(x <= 42);",
         "DCHECK(x < 42);",
     });
-    // Consider using DCHECK_EQ instead of DCHECK(a == b)
     EXPECT_EQ(6, cpplint_state.ErrorCount());
     EXPECT_EQ(6, cpplint_state.ErrorCount("readability/check"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Consider using DCHECK_EQ instead of DCHECK(a == b)"
+        "  [readability/check] [2]\n"
+        "test/test.cpp:2:  "
+        "Consider using DCHECK_NE instead of DCHECK(a != b)"
+        "  [readability/check] [2]\n"
+        "test/test.cpp:3:  "
+        "Consider using DCHECK_GE instead of DCHECK(a >= b)"
+        "  [readability/check] [2]\n"
+        "test/test.cpp:4:  "
+        "Consider using DCHECK_GT instead of DCHECK(a > b)"
+        "  [readability/check] [2]\n"
+        "test/test.cpp:5:  "
+        "Consider using DCHECK_LE instead of DCHECK(a <= b)"
+        "  [readability/check] [2]\n"
+        "test/test.cpp:6:  "
+        "Consider using DCHECK_LT instead of DCHECK(a < b)"
+        "  [readability/check] [2]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, CheckExpect) {
@@ -1169,9 +1648,28 @@ TEST_F(LinesLinterTest, CheckExpect) {
         "EXPECT_FALSE(x != 42);",
         "EXPECT_FALSE(x >= 42);",
     });
-    // Consider using EXPECT_EQ instead of EXPECT_TRUE(a == b)
     EXPECT_EQ(6, cpplint_state.ErrorCount());
     EXPECT_EQ(6, cpplint_state.ErrorCount("readability/check"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Consider using EXPECT_EQ instead of EXPECT_TRUE(a == b)"
+        "  [readability/check] [2]\n"
+        "test/test.cpp:2:  "
+        "Consider using EXPECT_NE instead of EXPECT_TRUE(a != b)"
+        "  [readability/check] [2]\n"
+        "test/test.cpp:3:  "
+        "Consider using EXPECT_GE instead of EXPECT_TRUE(a >= b)"
+        "  [readability/check] [2]\n"
+        "test/test.cpp:4:  "
+        "Consider using EXPECT_NE instead of EXPECT_FALSE(a == b)"
+        "  [readability/check] [2]\n"
+        "test/test.cpp:5:  "
+        "Consider using EXPECT_EQ instead of EXPECT_FALSE(a != b)"
+        "  [readability/check] [2]\n"
+        "test/test.cpp:6:  "
+        "Consider using EXPECT_LT instead of EXPECT_FALSE(a >= b)"
+        "  [readability/check] [2]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, CheckAssert) {
@@ -1187,6 +1685,29 @@ TEST_F(LinesLinterTest, CheckAssert) {
     // Consider using ASSERT_EQ instead of ASSERT_TRUE(a == b)
     EXPECT_EQ(7, cpplint_state.ErrorCount());
     EXPECT_EQ(7, cpplint_state.ErrorCount("readability/check"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Consider using ASSERT_EQ instead of ASSERT_TRUE(a == b)"
+        "  [readability/check] [2]\n"
+        "test/test.cpp:2:  "
+        "Consider using ASSERT_NE instead of ASSERT_TRUE(a != b)"
+        "  [readability/check] [2]\n"
+        "test/test.cpp:3:  "
+        "Consider using ASSERT_GE instead of ASSERT_TRUE(a >= b)"
+        "  [readability/check] [2]\n"
+        "test/test.cpp:4:  "
+        "Consider using ASSERT_NE instead of ASSERT_FALSE(a == b)"
+        "  [readability/check] [2]\n"
+        "test/test.cpp:5:  "
+        "Consider using ASSERT_EQ instead of ASSERT_FALSE(a != b)"
+        "  [readability/check] [2]\n"
+        "test/test.cpp:6:  "
+        "Consider using ASSERT_LT instead of ASSERT_FALSE(a >= b)"
+        "  [readability/check] [2]\n"
+        "test/test.cpp:7:  "
+        "Consider using ASSERT_EQ instead of ASSERT_TRUE(a == b)"
+        "  [readability/check] [2]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, AltTokensPass) {
@@ -1213,18 +1734,62 @@ TEST_F(LinesLinterTest, AltTokensFail) {
         "x not_eq y;",
         "if (true and(foo)) return;",
     });
-    // Use operator || instead of or
     EXPECT_EQ(11, cpplint_state.ErrorCount());
     EXPECT_EQ(11, cpplint_state.ErrorCount("readability/alt_tokens"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Use operator || instead of or"
+        "  [readability/alt_tokens] [2]\n"
+        "test/test.cpp:2:  "
+        "Use operator && instead of and"
+        "  [readability/alt_tokens] [2]\n"
+        "test/test.cpp:3:  "
+        "Use operator ! instead of not"
+        "  [readability/alt_tokens] [2]\n"
+        "test/test.cpp:4:  "
+        "Use operator | instead of bitor"
+        "  [readability/alt_tokens] [2]\n"
+        "test/test.cpp:5:  "
+        "Use operator ^ instead of xor"
+        "  [readability/alt_tokens] [2]\n"
+        "test/test.cpp:6:  "
+        "Use operator ~ instead of compl"
+        "  [readability/alt_tokens] [2]\n"
+        "test/test.cpp:7:  "
+        "Use operator &= instead of and_eq"
+        "  [readability/alt_tokens] [2]\n"
+        "test/test.cpp:8:  "
+        "Use operator |= instead of or_eq"
+        "  [readability/alt_tokens] [2]\n"
+        "test/test.cpp:9:  "
+        "Use operator ^= instead of xor_eq"
+        "  [readability/alt_tokens] [2]\n"
+        "test/test.cpp:10:  "
+        "Use operator != instead of not_eq"
+        "  [readability/alt_tokens] [2]\n"
+        "test/test.cpp:11:  "
+        "Use operator && instead of and"
+        "  [readability/alt_tokens] [2]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, AltTokensMultipleFails) {
     ProcessLines({
         "if (true or true and (not true)) return;",
     });
-    // Use operator || instead of or
     EXPECT_EQ(3, cpplint_state.ErrorCount());
     EXPECT_EQ(3, cpplint_state.ErrorCount("readability/alt_tokens"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Use operator || instead of or"
+        "  [readability/alt_tokens] [2]\n"
+        "test/test.cpp:1:  "
+        "Use operator && instead of and"
+        "  [readability/alt_tokens] [2]\n"
+        "test/test.cpp:1:  "
+        "Use operator ! instead of not"
+        "  [readability/alt_tokens] [2]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, SpacingSectionPass) {
@@ -1260,16 +1825,30 @@ TEST_F(LinesLinterTest, SpacingSectionFail) {
     }
     ProcessLines(lines);
 
-    // "private:" should be preceded by a blank line
     EXPECT_EQ(3, cpplint_state.ErrorCount());
     EXPECT_EQ(3, cpplint_state.ErrorCount("whitespace/blank_line"));
+    const char* expected =
+        "test/test.cpp:3:  "
+        "\"protected:\" should be preceded by a blank line"
+        "  [whitespace/blank_line] [3]\n"
+        "test/test.cpp:4:  "
+        "\"private:\" should be preceded by a blank line"
+        "  [whitespace/blank_line] [3]\n"
+        "test/test.cpp:29:  "
+        "\"private:\" should be preceded by a blank line"
+        "  [whitespace/blank_line] [3]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, IndentTab) {
     ProcessLines({"    \tfoo;"});
-    // Tab found; better to use spaces
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("whitespace/tab"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Tab found; better to use spaces"
+        "  [whitespace/tab] [1]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, IndentOddPass) {
@@ -1291,9 +1870,22 @@ TEST_F(LinesLinterTest, IndentOddFail) {
         "   int three_space;",
         " char* one_space = \"public:\";",
     });
-    // Weird number of spaces at line-start.
     EXPECT_EQ(3, cpplint_state.ErrorCount());
     EXPECT_EQ(3, cpplint_state.ErrorCount("whitespace/indent"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Weird number of spaces at line-start.  "
+        "Are you using a 2-space indent?"
+        "  [whitespace/indent] [3]\n"
+        "test/test.cpp:2:  "
+        "Weird number of spaces at line-start.  "
+        "Are you using a 2-space indent?"
+        "  [whitespace/indent] [3]\n"
+        "test/test.cpp:3:  "
+        "Weird number of spaces at line-start.  "
+        "Are you using a 2-space indent?"
+        "  [whitespace/indent] [3]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, SpacingEndOfLine) {
@@ -1301,9 +1893,16 @@ TEST_F(LinesLinterTest, SpacingEndOfLine) {
         "int foo; ",
         "// Hello there  ",
     });
-    // Line ends in whitespace.
     EXPECT_EQ(2, cpplint_state.ErrorCount());
     EXPECT_EQ(2, cpplint_state.ErrorCount("whitespace/end_of_line"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Line ends in whitespace.  Consider deleting these extra spaces."
+        "  [whitespace/end_of_line] [4]\n"
+        "test/test.cpp:2:  "
+        "Line ends in whitespace.  Consider deleting these extra spaces."
+        "  [whitespace/end_of_line] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, LineLengthPass) {
@@ -1397,6 +1996,14 @@ TEST_F(LinesLinterTest, LineLengthFail) {
     });
     EXPECT_EQ(6, cpplint_state.ErrorCount());
     EXPECT_EQ(6, cpplint_state.ErrorCount("whitespace/line_length"));
+    std::string expected;
+    for (int i = 1; i <= 6; i++) {
+        expected +=
+            "test/test.cpp:" + std::to_string(i) + ":  "
+            "Lines should be <= 80 characters long"
+            "  [whitespace/line_length] [2]\n";
+    }
+    EXPECT_ERROR_STR(expected.c_str());
 }
 
 TEST_F(LinesLinterTest, MultipleCommandsPass) {
@@ -1410,9 +2017,13 @@ TEST_F(LinesLinterTest, MultipleCommandsPass) {
 
 TEST_F(LinesLinterTest, MultipleCommandsFail) {
     ProcessLines({"int foo; int bar;"});
-    // More than one command on the same line
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("whitespace/newline"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "More than one command on the same line"
+        "  [whitespace/newline] [0]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, IncludeSubdirPass) {
@@ -1430,9 +2041,16 @@ TEST_F(LinesLinterTest, IncludeSubdirFail) {
         "#include \"bar.hh\"",
         "#include \"foo.h\"",
     });
-    // Include the directory when naming header files
     EXPECT_EQ(2, cpplint_state.ErrorCount());
     EXPECT_EQ(2, cpplint_state.ErrorCount("build/include_subdir"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Include the directory when naming header files"
+        "  [build/include_subdir] [4]\n"
+        "test/test.cpp:2:  "
+        "Include the directory when naming header files"
+        "  [build/include_subdir] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, IncludeDuplication) {
@@ -1440,16 +2058,24 @@ TEST_F(LinesLinterTest, IncludeDuplication) {
         "#include <string>",
         "#include <string>",
     });
-    // "string" already included at test.cpp:1
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("build/include"));
+    const char* expected =
+        "test/test.cpp:2:  "
+        "\"string\" already included at test/test.cpp:1"
+        "  [build/include] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, IncludeOtherPackages) {
     ProcessLines({"#include \"other/package.c\""});
-    // Do not include .c files from other packages
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("build/include"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Do not include .c files from other packages"
+        "  [build/include] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, IncludeOrderPass) {
@@ -1483,9 +2109,14 @@ TEST_F(LinesLinterTest, IncludeOrderCAfterCpp) {
         "#include <string>",
         "#include <stdio.h>",
     });
-    // Found C system header after C++ system header.
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("build/include_order"));
+    const char* expected =
+        "test/test.cpp:2:  "
+        "Found C system header after C++ system header. "
+        "Should be: test.h, c system, c++ system, other."
+        "  [build/include_order] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, IncludeOrderCppAfterOther) {
@@ -1494,9 +2125,14 @@ TEST_F(LinesLinterTest, IncludeOrderCppAfterOther) {
         "#include \"dir/foo.h\"",
         "#include <initializer_list>",
     });
-    // Found C++ system header after other header.
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("build/include_order"));
+    const char* expected =
+        "test/test.cpp:3:  "
+        "Found C++ system header after other header. "
+        "Should be: test.h, c system, c++ system, other."
+        "  [build/include_order] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, IncludeOrderCppAfterOtherWithMacro) {
@@ -1507,9 +2143,14 @@ TEST_F(LinesLinterTest, IncludeOrderCppAfterOtherWithMacro) {
         "#include <initializer_list>",
         "#endif  // LANG_CXX11",
     });
-    // Found C++ system header after other header.
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("build/include_order"));
+    const char* expected =
+        "test/test.cpp:4:  "
+        "Found C++ system header after other header. "
+        "Should be: test.h, c system, c++ system, other."
+        "  [build/include_order] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, IncludeAlphabetOrderPass) {
@@ -1539,9 +2180,13 @@ TEST_F(LinesLinterTest, IncludeAlphabetOrderFail) {
         "#include \"foo/b.h\"",
         "#include \"foo/c.h\"",
     });
-    // Include "foo/b.h" not in alphabetical order
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("build/include_alpha"));
+    const char* expected =
+        "test/test.cpp:2:  "
+        "Include \"foo/b.h\" not in alphabetical order"
+        "  [build/include_alpha] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, CastCstylePass) {
@@ -1592,9 +2237,34 @@ TEST_F(LinesLinterTest, CastCstyleFail) {
         "char *a = (char *) \"foo\";",
     });
 
-    // Using C-style cast.
     EXPECT_EQ(8, cpplint_state.ErrorCount());
     EXPECT_EQ(8, cpplint_state.ErrorCount("readability/casting"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Using C-style cast.  Use static_cast<int>(...) instead"
+        "  [readability/casting] [4]\n"
+        "test/test.cpp:2:  "
+        "Using C-style cast.  Use static_cast<int>(...) instead"
+        "  [readability/casting] [4]\n"
+        "test/test.cpp:3:  "
+        "Using C-style cast.  Use reinterpret_cast<int *>(...) instead"
+        "  [readability/casting] [4]\n"
+        "test/test.cpp:4:  "
+        "Using C-style cast.  Use static_cast<uint16>(...) instead"
+        "  [readability/casting] [4]\n"
+        "test/test.cpp:5:  "
+        "Using C-style cast.  Use static_cast<int32>(...) instead"
+        "  [readability/casting] [4]\n"
+        "test/test.cpp:6:  "
+        "Using C-style cast.  Use static_cast<uint64>(...) instead"
+        "  [readability/casting] [4]\n"
+        "test/test.cpp:7:  "
+        "Using C-style cast.  Use static_cast<size_t>(...) instead"
+        "  [readability/casting] [4]\n"
+        "test/test.cpp:8:  "
+        "Using C-style cast.  Use const_cast<char *>(...) instead"
+        "  [readability/casting] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, CastDeprecatedPass) {
@@ -1638,9 +2308,22 @@ TEST_F(LinesLinterTest, CastDeprecatedFail) {
         "bool a = bool(1);",
         "double a = double(1);",
     });
-    // Using deprecated casting style.
     EXPECT_EQ(3, cpplint_state.ErrorCount());
     EXPECT_EQ(3, cpplint_state.ErrorCount("readability/casting"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Using deprecated casting style.  "
+        "Use static_cast<int>(...) instead"
+        "  [readability/casting] [4]\n"
+        "test/test.cpp:2:  "
+        "Using deprecated casting style.  "
+        "Use static_cast<bool>(...) instead"
+        "  [readability/casting] [4]\n"
+        "test/test.cpp:3:  "
+        "Using deprecated casting style.  "
+        "Use static_cast<double>(...) instead"
+        "  [readability/casting] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, CastMockIgnore) {
@@ -1675,9 +2358,28 @@ TEST_F(LinesLinterTest, CastRuntimeFail) {
         "int* x = &reinterpret_cast<int *>(foo);",
         "int* x = &(int*)foo;",
     });
-    // Are you taking an address of a cast?
     EXPECT_EQ(4, cpplint_state.ErrorCount());
     EXPECT_EQ(3, cpplint_state.ErrorCount("runtime/casting"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Are you taking an address of a cast?  "
+        "This is dangerous: could be a temp var.  "
+        "Take the address before doing the cast, rather than after"
+        "  [runtime/casting] [4]\n"
+        "test/test.cpp:2:  "
+        "Are you taking an address of a cast?  "
+        "This is dangerous: could be a temp var.  "
+        "Take the address before doing the cast, rather than after"
+        "  [runtime/casting] [4]\n"
+        "test/test.cpp:3:  "
+        "Using C-style cast.  Use reinterpret_cast<int*>(...) instead"
+        "  [readability/casting] [4]\n"
+        "test/test.cpp:3:  "
+        "Are you taking an address of a cast?  "
+        "This is dangerous: could be a temp var.  "
+        "Take the address before doing the cast, rather than after"
+        "  [runtime/casting] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, CastRuntimeAltPass) {
@@ -1695,9 +2397,25 @@ TEST_F(LinesLinterTest, CastRuntimeAltFail) {
         "int* x = &down_cast<Obj*>(obj)[index];",
         "int* x = &down_cast<Obj*>(obj)\n->member_;",
     });
-    // Are you taking an address of something dereferenced from a cast?
     EXPECT_EQ(3, cpplint_state.ErrorCount());
     EXPECT_EQ(3, cpplint_state.ErrorCount("readability/casting"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Are you taking an address of something dereferenced "
+        "from a cast?  Wrapping the dereferenced expression in "
+        "parentheses will make the binding more obvious"
+        "  [readability/casting] [4]\n"
+        "test/test.cpp:2:  "
+        "Are you taking an address of something dereferenced "
+        "from a cast?  Wrapping the dereferenced expression in "
+        "parentheses will make the binding more obvious"
+        "  [readability/casting] [4]\n"
+        "test/test.cpp:3:  "
+        "Are you taking an address of something dereferenced "
+        "from a cast?  Wrapping the dereferenced expression in "
+        "parentheses will make the binding more obvious"
+        "  [readability/casting] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, GlobalStringPass) {
@@ -1756,6 +2474,22 @@ TEST_F(LinesLinterTest, GlobalString) {
         "std::string foo;",
         "std::string kFoo = \"hello\";  // English",
         "static std::string foo;",
+    });
+    EXPECT_EQ(7, cpplint_state.ErrorCount());
+    EXPECT_EQ(7, cpplint_state.ErrorCount("runtime/string"));
+    std::string expected;
+    for (int i = 2; i <= 8; i++) {
+        expected +=
+            "test/test.cpp:" + std::to_string(i) + ":  "
+            "Static/global string variables are not permitted."
+            "  [runtime/string] [4]\n";
+    }
+    EXPECT_ERROR_STR(expected.c_str());
+}
+
+TEST_F(LinesLinterTest, GlobalString2) {
+    ProcessLines({
+        "#include <string>",
         "std::string Foo::bar;",
         "::std::string foo;",
         "::std::string kFoo = \"hello\";  // English",
@@ -1763,9 +2497,16 @@ TEST_F(LinesLinterTest, GlobalString) {
         "::std::string Foo::bar;",
         "string foo(\"foobar\");"
     });
-    // Static/global string variables are not permitted.
-    EXPECT_EQ(13, cpplint_state.ErrorCount());
-    EXPECT_EQ(13, cpplint_state.ErrorCount("runtime/string"));
+    EXPECT_EQ(6, cpplint_state.ErrorCount());
+    EXPECT_EQ(6, cpplint_state.ErrorCount("runtime/string"));
+    std::string expected;
+    for (int i = 2; i <= 7; i++) {
+        expected +=
+            "test/test.cpp:" + std::to_string(i) + ":  "
+            "Static/global string variables are not permitted."
+            "  [runtime/string] [4]\n";
+    }
+    EXPECT_ERROR_STR(expected.c_str());
 }
 
 TEST_F(LinesLinterTest, GlobalStringConst) {
@@ -1775,9 +2516,22 @@ TEST_F(LinesLinterTest, GlobalStringConst) {
         "static const std::string foo;",
         "static const ::std::string foo;",
     });
-    // For a static/global string constant, use a C style
     EXPECT_EQ(3, cpplint_state.ErrorCount());
     EXPECT_EQ(3, cpplint_state.ErrorCount("runtime/string"));
+    const char* expected =
+        "test/test.cpp:2:  "
+        "For a static/global string constant, use a C style string instead: "
+        "\"static const char foo[]\"."
+        "  [runtime/string] [4]\n"
+        "test/test.cpp:3:  "
+        "For a static/global string constant, use a C style string instead: "
+        "\"static const char foo[]\"."
+        "  [runtime/string] [4]\n"
+        "test/test.cpp:4:  "
+        "For a static/global string constant, use a C style string instead: "
+        "\"static const char foo[]\"."
+        "  [runtime/string] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, GlobalStringMultiline) {
@@ -1790,10 +2544,21 @@ TEST_F(LinesLinterTest, GlobalStringMultiline) {
         "string Class::",
         "static_member_variable3;",
     });
-    // For a static/global string constant, use a C style
-    // Static/global string variables are not permitted.
     EXPECT_EQ(3, cpplint_state.ErrorCount());
     EXPECT_EQ(3, cpplint_state.ErrorCount("runtime/string"));
+    const char* expected =
+        "test/test.cpp:2:  "
+        "For a static/global string constant, use a C style string instead: "
+        "\"const char Class::static_member_variable1[]\"."
+        "  [runtime/string] [4]\n"
+        "test/test.cpp:4:  "
+        "For a static/global string constant, use a C style string instead: "
+        "\"const char Class::static_member_variable2[]\"."
+        "  [runtime/string] [4]\n"
+        "test/test.cpp:6:  "
+        "Static/global string variables are not permitted."
+        "  [runtime/string] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, SelfinitPass) {
@@ -1809,9 +2574,16 @@ TEST_F(LinesLinterTest, SelfinitFail) {
         "Foo::Foo(Bar r, Bel l) : r_(r_), l_(l_) { }",
         "Foo::Foo(Bar r, Bel l) : r_(CHECK_NOTNULL(r_)) { }",
     });
-    // You seem to be initializing a member variable with itself.
     EXPECT_EQ(2, cpplint_state.ErrorCount());
     EXPECT_EQ(2, cpplint_state.ErrorCount("runtime/init"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "You seem to be initializing a member variable with itself."
+        "  [runtime/init] [4]\n"
+        "test/test.cpp:2:  "
+        "You seem to be initializing a member variable with itself."
+        "  [runtime/init] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, PrintfSnprintfSizePass) {
@@ -1828,9 +2600,13 @@ TEST_F(LinesLinterTest, PrintfSnprintfSizeFail) {
         "#include <cstdio>",
         "snprintf(fisk, 1, format);"
     });
-    // If you can, use sizeof(fisk) instead of 1 as the 2nd arg to snprintf
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("runtime/printf"));
+    const char* expected =
+        "test/test.cpp:2:  "
+        "If you can, use sizeof(fisk) instead of 1 as the 2nd arg to snprintf."
+        "  [runtime/printf] [3]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, PrintfSprintf) {
@@ -1838,9 +2614,13 @@ TEST_F(LinesLinterTest, PrintfSprintf) {
         "#include <cstdio>",
         "i = sprintf(foo, bar, 3);"
     });
-    // Never use sprintf. Use snprintf instead.
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("runtime/printf"));
+    const char* expected =
+        "test/test.cpp:2:  "
+        "Never use sprintf. Use snprintf instead."
+        "  [runtime/printf] [5]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, PrintfStrcpyStrcat) {
@@ -1848,9 +2628,16 @@ TEST_F(LinesLinterTest, PrintfStrcpyStrcat) {
         "foo = strcpy(foo, bar);",
         "foo = strcat(foo, bar);",
     });
-    // Almost always, snprintf is better than strcpy/strcat
     EXPECT_EQ(2, cpplint_state.ErrorCount());
     EXPECT_EQ(2, cpplint_state.ErrorCount("runtime/printf"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Almost always, snprintf is better than strcpy"
+        "  [runtime/printf] [4]\n"
+        "test/test.cpp:2:  "
+        "Almost always, snprintf is better than strcat"
+        "  [runtime/printf] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, IntPortPass) {
@@ -1860,9 +2647,13 @@ TEST_F(LinesLinterTest, IntPortPass) {
 
 TEST_F(LinesLinterTest, IntPortFail) {
     ProcessLines({"short port;"});
-    // Use "unsigned short" for ports, not "short"
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("runtime/int"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Use \"unsigned short\" for ports, not \"short\""
+        "  [runtime/int] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, IntDeclarationPass) {
@@ -1878,9 +2669,16 @@ TEST_F(LinesLinterTest, IntDeclarationFail) {
         "long long aa = 6565;",
         "long a = 65;",
     });
-    // Use int16/int64/etc, rather than the C type long
     EXPECT_EQ(2, cpplint_state.ErrorCount());
     EXPECT_EQ(2, cpplint_state.ErrorCount("runtime/int"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Use int16/int64/etc, rather than the C type long"
+        "  [runtime/int] [4]\n"
+        "test/test.cpp:2:  "
+        "Use int16/int64/etc, rather than the C type long"
+        "  [runtime/int] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, OperatorUnaryPass) {
@@ -1896,9 +2694,16 @@ TEST_F(LinesLinterTest, OperatorUnaryFail) {
         "void operator&() { }",
         "void operator & () { }",
     });
-    // Unary operator& is dangerous.
     EXPECT_EQ(2, cpplint_state.ErrorCount());
     EXPECT_EQ(2, cpplint_state.ErrorCount("runtime/operator"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Unary operator& is dangerous.  Do not use it."
+        "  [runtime/operator] [4]\n"
+        "test/test.cpp:2:  "
+        "Unary operator& is dangerous.  Do not use it."
+        "  [runtime/operator] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, BraceBeforeIf) {
@@ -1909,9 +2714,13 @@ TEST_F(LinesLinterTest, BraceBeforeIf) {
         "    int a;",
         "}",
     });
-    // Did you mean "else if"? If not, start a new line for "if".
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("readability/braces"));
+    const char* expected =
+        "test/test.cpp:3:  "
+        "Did you mean \"else if\"? If not, start a new line for \"if\"."
+        "  [readability/braces] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, PrintFormatPass) {
@@ -1936,9 +2745,22 @@ TEST_F(LinesLinterTest, PrintFormatFail) {
         "printf(foo->c_str());",
         "StringPrintf(foo->c_str());",
     });
-    // Potential format string bug. Do printf("%s", foo) instead.
     EXPECT_EQ(4, cpplint_state.ErrorCount());
     EXPECT_EQ(4, cpplint_state.ErrorCount("runtime/printf"));
+    const char* expected =
+        "test/test.cpp:2:  "
+        "Potential format string bug. Do printf(\"%s\", foo) instead."
+        "  [runtime/printf] [4]\n"
+        "test/test.cpp:3:  "
+        "Potential format string bug. Do printf(\"%s\", foo.c_str()) instead."
+        "  [runtime/printf] [4]\n"
+        "test/test.cpp:4:  "
+        "Potential format string bug. Do printf(\"%s\", foo->c_str()) instead."
+        "  [runtime/printf] [4]\n"
+        "test/test.cpp:5:  "
+        "Potential format string bug. Do StringPrintf(\"%s\", foo->c_str()) instead."
+        "  [runtime/printf] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, MemsetPass) {
@@ -1959,9 +2781,16 @@ TEST_F(LinesLinterTest, MemsetFail) {
         "  memset(buf, sizeof(buf), 0);",
         "  memset(buf, xsize * ysize, 0);",
     });
-    // Did you mean "memset(buf, 0, sizeof(buf))"
     EXPECT_EQ(2, cpplint_state.ErrorCount());
     EXPECT_EQ(2, cpplint_state.ErrorCount("runtime/memset"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Did you mean \"memset(buf, 0, sizeof(buf))\"?"
+        "  [runtime/memset] [4]\n"
+        "test/test.cpp:2:  "
+        "Did you mean \"memset(buf, 0, xsize * ysize)\"?"
+        "  [runtime/memset] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, NamespaceUsingPass) {
@@ -1971,9 +2800,14 @@ TEST_F(LinesLinterTest, NamespaceUsingPass) {
 
 TEST_F(LinesLinterTest, NamespaceUsingFail) {
     ProcessLines({"using namespace foo;"});
-    // Do not use namespace using-directives.
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("build/namespaces"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Do not use namespace using-directives.  "
+        "Use using-declarations instead."
+        "  [build/namespaces] [5]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, NamespaceUsingLiteralsPass) {
@@ -1989,9 +2823,18 @@ TEST_F(LinesLinterTest, NamespaceUsingLiteralsFail) {
         "using namespace std::literals;",
         "using namespace std::literals::chrono_literals;",
     });
-    // Do not use namespace using-directives.
     EXPECT_EQ(2, cpplint_state.ErrorCount());
     EXPECT_EQ(2, cpplint_state.ErrorCount("build/namespaces_literals"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Do not use namespace using-directives.  "
+        "Use using-declarations instead."
+        "  [build/namespaces_literals] [5]\n"
+        "test/test.cpp:2:  "
+        "Do not use namespace using-directives.  "
+        "Use using-declarations instead."
+        "  [build/namespaces_literals] [5]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, ArrayLengthPass) {
@@ -2026,9 +2869,18 @@ TEST_F(LinesLinterTest, ArrayLengthFail) {
         "bool a_list[items_->size()];",
         "namespace::Type buffer[len+1];",
     });
-    // Do not use variable-length arrays.
     EXPECT_EQ(6, cpplint_state.ErrorCount());
     EXPECT_EQ(6, cpplint_state.ErrorCount("runtime/arrays"));
+
+    std::string expected;
+    for (int i = 1; i <= 6; i++) {
+        expected +=
+            "test/test.cpp:" + std::to_string(i) + ":  "
+            "Do not use variable-length arrays.  Use an appropriately named "
+            "('k' followed by CamelCase) compile-time constant for the size."
+            "  [runtime/arrays] [1]\n";
+    }
+    EXPECT_ERROR_STR(expected.c_str());
 }
 
 TEST_F(LinesLinterTest, NamespaceInHeaderPass) {
@@ -2043,9 +2895,15 @@ TEST_F(LinesLinterTest, NamespaceInHeaderFail) {
         "#pragma once",
         "namespace {}",
     });
-    // Do not use unnamed namespaces in header files.
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("build/namespaces_headers"));
+    const char* expected =
+        "test.h:2:  "
+        "Do not use unnamed namespaces in header files.  See "
+        "https://google-styleguide.googlecode.com/svn/trunk/cppguide.xml#Namespaces"
+        " for more information."
+        "  [build/namespaces_headers] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, NonConstReferencePass) {
@@ -2182,6 +3040,32 @@ TEST_F(LinesLinterTest, NonConstReferenceFail) {
     });
     EXPECT_EQ(6, cpplint_state.ErrorCount());
     EXPECT_EQ(6, cpplint_state.ErrorCount("runtime/references"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Is this a non-const reference? "
+        "If so, make const or use a pointer: Foo& s"
+        "  [runtime/references] [2]\n"
+        "test/test.cpp:1:  "
+        "Is this a non-const reference? "
+        "If so, make const or use a pointer: Foo& f"
+        "  [runtime/references] [2]\n"
+        "test/test.cpp:2:  "
+        "Is this a non-const reference? "
+        "If so, make const or use a pointer: Foo& s"
+        "  [runtime/references] [2]\n"
+        "test/test.cpp:2:  "
+        "Is this a non-const reference? "
+        "If so, make const or use a pointer: Foo& f"
+        "  [runtime/references] [2]\n"
+        "test/test.cpp:3:  "
+        "Is this a non-const reference? "
+        "If so, make const or use a pointer: Foo& s"
+        "  [runtime/references] [2]\n"
+        "test/test.cpp:4:  "
+        "Is this a non-const reference? "
+        "If so, make const or use a pointer: std::vector<int>& p"
+        "  [runtime/references] [2]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, NonConstReferenceFailPointer) {
@@ -2196,6 +3080,32 @@ TEST_F(LinesLinterTest, NonConstReferenceFailPointer) {
     });
     EXPECT_EQ(6, cpplint_state.ErrorCount());
     EXPECT_EQ(6, cpplint_state.ErrorCount("runtime/references"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Is this a non-const reference? "
+        "If so, make const or use a pointer: Bar*& p"
+        "  [runtime/references] [2]\n"
+        "test/test.cpp:2:  "
+        "Is this a non-const reference? "
+        "If so, make const or use a pointer: const Bar*& p"
+        "  [runtime/references] [2]\n"
+        "test/test.cpp:3:  "
+        "Is this a non-const reference? "
+        "If so, make const or use a pointer: Bar const*& p"
+        "  [runtime/references] [2]\n"
+        "test/test.cpp:4:  "
+        "Is this a non-const reference? "
+        "If so, make const or use a pointer: struct Bar*& p"
+        "  [runtime/references] [2]\n"
+        "test/test.cpp:5:  "
+        "Is this a non-const reference? "
+        "If so, make const or use a pointer: const struct Bar*& p"
+        "  [runtime/references] [2]\n"
+        "test/test.cpp:6:  "
+        "Is this a non-const reference? "
+        "If so, make const or use a pointer: struct Bar const*& p"
+        "  [runtime/references] [2]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, NonConstReferenceFailMemberFunc) {
@@ -2206,6 +3116,16 @@ TEST_F(LinesLinterTest, NonConstReferenceFailMemberFunc) {
     });
     EXPECT_EQ(2, cpplint_state.ErrorCount());
     EXPECT_EQ(2, cpplint_state.ErrorCount("runtime/references"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Is this a non-const reference? "
+        "If so, make const or use a pointer: X& x"
+        "  [runtime/references] [2]\n"
+        "test/test.cpp:2:  "
+        "Is this a non-const reference? "
+        "If so, make const or use a pointer: X& x"
+        "  [runtime/references] [2]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, NonConstReferenceFailTemplateArg) {
@@ -2219,6 +3139,12 @@ TEST_F(LinesLinterTest, NonConstReferenceFailTemplateArg) {
     });
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("runtime/references"));
+    const char* expected =
+        "test/test.cpp:2:  "
+        "Is this a non-const reference? "
+        "If so, make const or use a pointer: vector<int> &nonconst_x"
+        "  [runtime/references] [2]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, NonConstReferenceFailMultiline) {
@@ -2239,6 +3165,20 @@ TEST_F(LinesLinterTest, NonConstReferenceFailMultiline) {
     });
     EXPECT_EQ(3, cpplint_state.ErrorCount());
     EXPECT_EQ(3, cpplint_state.ErrorCount("runtime/references"));
+    const char* expected =
+        "test/test.cpp:8:  "
+        "Is this a non-const reference? "
+        "If so, make const or use a pointer: Outer::Inner& nonconst_x"
+        "  [runtime/references] [2]\n"
+        "test/test.cpp:10:  "
+        "Is this a non-const reference? "
+        "If so, make const or use a pointer: Outer::Inner& nonconst_y"
+        "  [runtime/references] [2]\n"
+        "test/test.cpp:12:  "
+        "Is this a non-const reference? "
+        "If so, make const or use a pointer: Outer<int>::Inner& nonconst_z"
+        "  [runtime/references] [2]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 // NOLINTBEGIN(runtime/printf_format)
@@ -2252,9 +3192,16 @@ TEST_F(LinesLinterTest, PrintFormatQ) {
         "printf(file, \"The number is\" \"%+12q\", value);",
         "printf(file, \"The number is\" \"% 12q\", value);",
     });
-    // %q in format strings is deprecated.
     EXPECT_EQ(5, cpplint_state.ErrorCount());
     EXPECT_EQ(5, cpplint_state.ErrorCount("runtime/printf_format"));
+    std::string expected;
+    for (int i = 2; i <= 6; i++) {
+        expected +=
+            "test/test.cpp:" + std::to_string(i) + ":  "
+            "%q in format strings is deprecated.  Use %ll instead."
+            "  [runtime/printf_format] [3]\n";
+    }
+    EXPECT_ERROR_STR(expected.c_str());
 }
 
 TEST_F(LinesLinterTest, PrintFormatN) {
@@ -2262,9 +3209,13 @@ TEST_F(LinesLinterTest, PrintFormatN) {
         "#include <cstdio>",
         "snprintf(file, \"Never mix %d and %1$d parameters!\", value);"
     });
-    // %N$ formats are unconventional.
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("runtime/printf_format"));
+    const char* expected =
+        "test/test.cpp:2:  "
+        "%N$ formats are unconventional.  Try rewriting to avoid them."
+        "  [runtime/printf_format] [2]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, PrintFormatEscapePass) {
@@ -2285,9 +3236,17 @@ TEST_F(LinesLinterTest, PrintFormatEscapeFail) {
         "fprintf(file, \"\\(%d\", value);",
         "vsnprintf(buffer, sizeof(buffer), \"\\\\\\{%d\", ap);",
     });
-    // %, [, (, and { are undefined character escapes.
     EXPECT_EQ(4, cpplint_state.ErrorCount());
     EXPECT_EQ(4, cpplint_state.ErrorCount("build/printf_format"));
+
+    std::string expected;
+    for (int i = 2; i <= 5; i++) {
+        expected +=
+            "test/test.cpp:" + std::to_string(i) + ":  "
+            "%, [, (, and { are undefined character escapes.  Unescape them."
+            "  [build/printf_format] [3]\n";
+    }
+    EXPECT_ERROR_STR(expected.c_str());
 }
 
 // NOLINTEND
@@ -2300,10 +3259,18 @@ TEST_F(LinesLinterTest, StorageClass) {
         "uint64 typedef unsigned_long_long;",
         "int register foo = 0;"
     });
-    // Storage-class specifier (static, extern, typedef, etc) should be
-    // at the beginning of the declaration
     EXPECT_EQ(5, cpplint_state.ErrorCount());
     EXPECT_EQ(5, cpplint_state.ErrorCount("build/storage_class"));
+
+    std::string expected;
+    for (int i = 1; i <= 5; i++) {
+        expected +=
+            "test/test.cpp:" + std::to_string(i) + ":  "
+            "Storage-class specifier (static, extern, typedef, etc) should be "
+            "at the beginning of the declaration."
+            "  [build/storage_class] [5]\n";
+    }
+    EXPECT_ERROR_STR(expected.c_str());
 }
 
 TEST_F(LinesLinterTest, EndifComment) {
@@ -2311,16 +3278,24 @@ TEST_F(LinesLinterTest, EndifComment) {
         "#if 0",
         "#endif Not a comment",
     });
-    // Uncommented text after #endif is non-standard.
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("build/endif_comment"));
+    const char* expected =
+        "test/test.cpp:2:  "
+        "Uncommented text after #endif is non-standard.  Use a comment."
+        "  [build/endif_comment] [5]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, ForwardDecl) {
     ProcessLines({"class Foo::Goo;"});
-    // Inner-style forward declarations are invalid.
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("build/forward_decl"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Inner-style forward declarations are invalid.  Remove this line."
+        "  [build/forward_decl] [5]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, OperatorDeprecated) {
@@ -2330,9 +3305,17 @@ TEST_F(LinesLinterTest, OperatorDeprecated) {
         "int a >?= b;",
         "int a <?= b;",
     });
-    // >? and <? (max and min) operators are non-standard and deprecated.
     EXPECT_EQ(4, cpplint_state.ErrorCount());
     EXPECT_EQ(4, cpplint_state.ErrorCount("build/deprecated"));
+
+    std::string expected;
+    for (int i = 1; i <= 4; i++) {
+        expected +=
+            "test/test.cpp:" + std::to_string(i) + ":  "
+            ">? and <? (max and min) operators are non-standard and deprecated."
+            "  [build/deprecated] [3]\n";
+    }
+    EXPECT_ERROR_STR(expected.c_str());
 }
 
 TEST_F(LinesLinterTest, MemberStringReferencesPass) {
@@ -2363,9 +3346,17 @@ TEST_F(LinesLinterTest, MemberStringReferencesFail) {
         "const string &turing;",
         "const string & godel;",
     });
-    // const string& members are dangerous.
     EXPECT_EQ(3, cpplint_state.ErrorCount());
     EXPECT_EQ(3, cpplint_state.ErrorCount("runtime/member_string_references"));
+    std::string expected;
+    for (int i = 2; i <= 4; i++) {
+        expected +=
+            "test/test.cpp:" + std::to_string(i) + ":  "
+            "const string& members are dangerous. It is much better to use "
+            "alternatives, such as pointers or simple constants."
+            "  [runtime/member_string_references] [2]\n";
+    }
+    EXPECT_ERROR_STR(expected.c_str());
 }
 
 TEST_F(LinesLinterTest, ExplicitSingleParamPass) {
@@ -2401,7 +3392,6 @@ TEST_F(LinesLinterTest, ExplicitSingleParamFail) {
     ProcessLines({
         "class Foo {",
         "    Foo(int f);",
-        "    Foo (int f);",
         "    Foo(int f);  // simpler than Foo(blar, blar)",
         "    inline Foo(int f);",
         "    constexpr Foo(int f);",
@@ -2418,8 +3408,33 @@ TEST_F(LinesLinterTest, ExplicitSingleParamFail) {
         "    inline Foo(int f);",
         "};",
     });
-    // Single-parameter constructors should be marked explicit.
-    EXPECT_EQ(10, cpplint_state.ErrorCount("runtime/explicit"));
+    EXPECT_EQ(9, cpplint_state.ErrorCount());
+    EXPECT_EQ(9, cpplint_state.ErrorCount("runtime/explicit"));
+    std::string expected;
+    for (int i : { 2, 3, 4, 5, 6, 9, 12, 15, 16 }) {
+        expected +=
+            "test/test.cpp:" + std::to_string(i) + ":  "
+            "Single-parameter constructors should be marked explicit."
+            "  [runtime/explicit] [4]\n";
+    }
+    EXPECT_ERROR_STR(expected.c_str());
+}
+
+TEST_F(LinesLinterTest, ExplicitSingleParamFail2) {
+    ProcessLines({
+        "class Foo {",
+        "    Foo (int f);",
+        "};",
+    });
+    EXPECT_EQ(1, cpplint_state.ErrorCount("runtime/explicit"));
+    const char* expected =
+        "test/test.cpp:2:  "
+        "Extra space before ( in function call"
+        "  [whitespace/parens] [4]\n"
+        "test/test.cpp:2:  "
+        "Single-parameter constructors should be marked explicit."
+        "  [runtime/explicit] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, ExplicitSingleParamWithTemplatePass) {
@@ -2437,8 +3452,13 @@ TEST_F(LinesLinterTest, ExplicitSingleParamWithTemplateFail) {
         "    Foo(A<B, C> d);",
         "};",
     });
-    // Single-parameter constructors should be marked explicit.
+    EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("runtime/explicit"));
+    const char* expected =
+        "test/test.cpp:2:  "
+        "Single-parameter constructors should be marked explicit."
+        "  [runtime/explicit] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, ExplicitCallableWithSingleParamPass) {
@@ -2460,8 +3480,17 @@ TEST_F(LinesLinterTest, ExplicitCallableWithSingleParamFail) {
         "    Foo(int f = 0, int g = 0);",
         "};",
     });
-    // Constructors callable with one argument should be marked explicit.
+    EXPECT_EQ(3, cpplint_state.ErrorCount());
     EXPECT_EQ(3, cpplint_state.ErrorCount("runtime/explicit"));
+    std::string expected;
+    for (int i = 2; i <= 4; i++) {
+        expected +=
+            "test/test.cpp:" + std::to_string(i) + ":  "
+            "Constructors callable with one argument "
+            "should be marked explicit."
+            "  [runtime/explicit] [4]\n";
+    }
+    EXPECT_ERROR_STR(expected.c_str());
 }
 
 TEST_F(LinesLinterTest, VlogPass) {
@@ -2486,14 +3515,39 @@ TEST_F(LinesLinterTest, VlogFail) {
         "VLOG(WARNING)",
         "VLOG(FATAL)",
         "VLOG(DFATAL)",
+    });
+    EXPECT_EQ(5, cpplint_state.ErrorCount());
+    EXPECT_EQ(5, cpplint_state.ErrorCount("runtime/vlog"));
+    std::string expected;
+    for (int i = 1; i <= 5; i++) {
+        expected +=
+            "test/test.cpp:" + std::to_string(i) + ":  "
+            "VLOG() should be used with numeric verbosity level.  "
+              "Use LOG() if you want symbolic severity levels."
+            "  [runtime/vlog] [5]\n";
+    }
+    EXPECT_ERROR_STR(expected.c_str());
+}
+
+TEST_F(LinesLinterTest, VlogWithIndentFail) {
+    ProcessLines({
         "    VLOG(ERROR)",
         "    VLOG(INFO)",
         "    VLOG(WARNING)",
         "    VLOG(FATAL)",
         "    VLOG(DFATAL)",
     });
-    EXPECT_EQ(10, cpplint_state.ErrorCount());
-    EXPECT_EQ(10, cpplint_state.ErrorCount("runtime/vlog"));
+    EXPECT_EQ(5, cpplint_state.ErrorCount());
+    EXPECT_EQ(5, cpplint_state.ErrorCount("runtime/vlog"));
+    std::string expected;
+    for (int i = 1; i <= 5; i++) {
+        expected +=
+            "test/test.cpp:" + std::to_string(i) + ":  "
+            "VLOG() should be used with numeric verbosity level.  "
+              "Use LOG() if you want symbolic severity levels."
+            "  [runtime/vlog] [5]\n";
+    }
+    EXPECT_ERROR_STR(expected.c_str());
 }
 
 TEST_F(LinesLinterTest, PosixThreadPass) {
@@ -2518,6 +3572,16 @@ TEST_F(LinesLinterTest, PosixThreadFail) {
     });
     EXPECT_EQ(2, cpplint_state.ErrorCount());
     EXPECT_EQ(2, cpplint_state.ErrorCount("runtime/threadsafe_fn"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Consider using rand_r(...) instead of rand(...)"
+        " for improved thread safety."
+        "  [runtime/threadsafe_fn] [2]\n"
+        "test/test.cpp:2:  "
+        "Consider using strtok_r(...) instead of strtok(...)"
+        " for improved thread safety."
+        "  [runtime/threadsafe_fn] [2]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, InvalidIncrementPass) {
@@ -2529,6 +3593,11 @@ TEST_F(LinesLinterTest, InvalidIncrementFail) {
     ProcessLines({"*count++;"});
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("runtime/invalid_increment"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Changing pointer instead of value (or unused value of operator*)."
+        "  [runtime/invalid_increment] [5]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, ExplicitMakePairPass) {
@@ -2545,11 +3614,18 @@ TEST_F(LinesLinterTest, ExplicitMakePairFail) {
         "make_pair<int, int>",
         "make_pair <int, int>",
     });
-    // For C++11-compatibility, omit template arguments from
-    // make_pair OR use pair directly OR if appropriate,
-    // construct a pair directly
     EXPECT_EQ(2, cpplint_state.ErrorCount());
     EXPECT_EQ(2, cpplint_state.ErrorCount("build/explicit_make_pair"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "For C++11-compatibility, omit template arguments from make_pair"
+        " OR use pair directly OR if appropriate, construct a pair directly"
+        "  [build/explicit_make_pair] [4]\n"
+        "test/test.cpp:2:  "
+        "For C++11-compatibility, omit template arguments from make_pair"
+        " OR use pair directly OR if appropriate, construct a pair directly"
+        "  [build/explicit_make_pair] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, RedundantVirtualPass) {
@@ -2580,6 +3656,47 @@ TEST_F(LinesLinterTest, RedundantVirtualFail) {
         "    override;",
         "virtual int F() final;",
         "virtual int F() final {}",
+    });
+    EXPECT_EQ(8, cpplint_state.ErrorCount());
+    EXPECT_EQ(8, cpplint_state.ErrorCount("readability/inheritance"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "\"virtual\" is redundant since function is "
+        "already declared as \"override\""
+        "  [readability/inheritance] [4]\n"
+        "test/test.cpp:1:  "
+        "\"virtual\" is redundant since function is "
+        "already declared as \"final\""
+        "  [readability/inheritance] [4]\n"
+        "test/test.cpp:3:  "
+        "\"virtual\" is redundant since function is "
+        "already declared as \"override\""
+        "  [readability/inheritance] [4]\n"
+        "test/test.cpp:4:  "
+        "\"virtual\" is redundant since function is "
+        "already declared as \"override\""
+        "  [readability/inheritance] [4]\n"
+        "test/test.cpp:5:  "
+        "\"virtual\" is redundant since function is "
+        "already declared as \"final\""
+        "  [readability/inheritance] [4]\n"
+        "test/test.cpp:5:  "
+        "\"virtual\" is redundant since function is "
+        "already declared as \"override\""
+        "  [readability/inheritance] [4]\n"
+        "test/test.cpp:7:  "
+        "\"virtual\" is redundant since function is "
+        "already declared as \"final\""
+        "  [readability/inheritance] [4]\n"
+        "test/test.cpp:8:  "
+        "\"virtual\" is redundant since function is "
+        "already declared as \"final\""
+        "  [readability/inheritance] [4]\n";
+    EXPECT_ERROR_STR(expected);
+}
+
+TEST_F(LinesLinterTest, RedundantVirtualMultilineFail) {
+    ProcessLines({
         "virtual void F(int a,",
         "               int b) override;",
         "virtual void F(int a,",
@@ -2588,10 +3705,22 @@ TEST_F(LinesLinterTest, RedundantVirtualFail) {
         "               int b)",
         "    LOCKS_EXCLUDED(lock) override;",
     });
-    // virtual is redundant since function is already
-    // declared as override/final
-    EXPECT_EQ(11, cpplint_state.ErrorCount());
-    EXPECT_EQ(11, cpplint_state.ErrorCount("readability/inheritance"));
+    EXPECT_EQ(3, cpplint_state.ErrorCount());
+    EXPECT_EQ(3, cpplint_state.ErrorCount("readability/inheritance"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "\"virtual\" is redundant since function is "
+        "already declared as \"override\""
+        "  [readability/inheritance] [4]\n"
+        "test/test.cpp:3:  "
+        "\"virtual\" is redundant since function is "
+        "already declared as \"override\""
+        "  [readability/inheritance] [4]\n"
+        "test/test.cpp:5:  "
+        "\"virtual\" is redundant since function is "
+        "already declared as \"override\""
+        "  [readability/inheritance] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, RedundantOverrideFail) {
@@ -2603,10 +3732,17 @@ TEST_F(LinesLinterTest, RedundantOverrideFail) {
         "int F() final override;",
         "int F() final override {}",
     });
-    // override is redundant since function is already
-    // declared as final
     EXPECT_EQ(6, cpplint_state.ErrorCount());
     EXPECT_EQ(6, cpplint_state.ErrorCount("readability/inheritance"));
+    std::string expected;
+    for (int i = 1; i <= 6; i++) {
+        expected +=
+            "test/test.cpp:" + std::to_string(i) + ":  "
+            "\"override\" is redundant since function is "
+            "already declared as \"final\""
+            "  [readability/inheritance] [4]\n";
+    }
+    EXPECT_ERROR_STR(expected.c_str());
 }
 
 TEST_F(LinesLinterTest, DeprecatedHeaderCpp11) {
@@ -2616,16 +3752,30 @@ TEST_F(LinesLinterTest, DeprecatedHeaderCpp11) {
         "#include <cfenv>",
         "#include <ratio>",
     });
-    // <cfenv> is an unapproved C++11 header.
     EXPECT_EQ(3, cpplint_state.ErrorCount());
     EXPECT_EQ(3, cpplint_state.ErrorCount("build/c++11"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "<fenv.h> is an unapproved C++11 header."
+        "  [build/c++11] [5]\n"
+        "test/test.cpp:3:  "
+        "<cfenv> is an unapproved C++11 header."
+        "  [build/c++11] [5]\n"
+        "test/test.cpp:4:  "
+        "<ratio> is an unapproved C++11 header."
+        "  [build/c++11] [5]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, DeprecatedHeaderCpp17) {
     ProcessLines({"#include <filesystem>"});
-    // <filesystem> is an unapproved C++17 header.
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("build/c++17"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "<filesystem> is an unapproved C++17 header."
+        "  [build/c++17] [5]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, IncludeWhatYouUsePass) {
@@ -2675,9 +3825,22 @@ TEST_F(LinesLinterTest, IncludeWhatYouUseFail) {
         "std::pair<int, int> pair;",
         "std::map<int, int> map;",
     });
-    // Add Add #include <...> for ...
     EXPECT_EQ(4, cpplint_state.ErrorCount());
     EXPECT_EQ(4, cpplint_state.ErrorCount("build/include_what_you_use"));
+    const char* expected =
+        "test/test.cpp:4:  "
+        "Add #include <map> for map<>"
+        "  [build/include_what_you_use] [4]\n"
+        "test/test.cpp:1:  "
+        "Add #include <string> for string"
+        "  [build/include_what_you_use] [4]\n"
+        "test/test.cpp:3:  "
+        "Add #include <utility> for pair<>"
+        "  [build/include_what_you_use] [4]\n"
+        "test/test.cpp:2:  "
+        "Add #include <vector> for vector<>"
+        "  [build/include_what_you_use] [4]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, NolintBlockPass) {
@@ -2719,16 +3882,24 @@ TEST_F(LinesLinterTest, NolintNoEnd) {
     ProcessLines({
         "// NOLINTBEGIN(build/include)",
     });
-    // NONLINT block never ended
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("readability/nolint"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "NOLINT block never ended"
+        "  [readability/nolint] [5]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, NolintNoBegin) {
     ProcessLines({"// NOLINTEND"});
-    // Not in a NOLINT block
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("readability/nolint"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Not in a NOLINT block"
+        "  [readability/nolint] [5]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, NolintBlockDefined) {
@@ -2737,9 +3908,13 @@ TEST_F(LinesLinterTest, NolintBlockDefined) {
         "// NOLINTBEGIN(build/include)",
         "// NOLINTEND",
     });
-    // NONLINT block already defined on line
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("readability/nolint"));
+    const char* expected =
+        "test/test.cpp:2:  "
+        "NOLINT block already defined on line 1"
+        "  [readability/nolint] [5]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, NolintEndWithCategory) {
@@ -2747,18 +3922,26 @@ TEST_F(LinesLinterTest, NolintEndWithCategory) {
         "// NOLINTBEGIN(build/include)",
         "// NOLINTEND(build/include)",
     });
-    // NOLINT categories not supported in block END
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("readability/nolint"));
+    const char* expected =
+        "test/test.cpp:2:  "
+        "NOLINT categories not supported in block END: build/include"
+        "  [readability/nolint] [5]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, NolintUnknownCategory) {
     ProcessLines({
         "// NOLINT(unknown/category)",
     });
-    // Unknown NOLINT error category
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("readability/nolint"));
+    const char* expected =
+        "test/test.cpp:1:  "
+        "Unknown NOLINT error category: unknown/category"
+        "  [readability/nolint] [5]\n";
+    EXPECT_ERROR_STR(expected);
 }
 
 TEST_F(LinesLinterTest, NolintLineSuppressAll) {

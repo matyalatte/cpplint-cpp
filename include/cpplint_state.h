@@ -124,6 +124,9 @@ class CppLintState {
     // Flush buffers for cout and cerr
     void FlushThreadStream();
 
+    // Get error buffer as string
+    std::string GetErrorStreamAsStr();
+
     // Print a summary of errors by category, and the total.
     void PrintErrorCounts();
     void PrintInfo(const std::string& message);
