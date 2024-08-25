@@ -1,0 +1,32 @@
+build*
+!build*.yml
+cpplint-cpp
+*.exe
+*.bat
+*.sh
+!memory_usage.sh
+!check_glibc_compatibility.sh
+*.txt
+!meson_options.txt
+
+# subprojects
+subprojects/*
+!subprojects/gtest.wrap
+!subprojects/pcre2.wrap
+
+# coverage report
+coverage-report
+*.log
+
+# python
+*.py
+!benchmark.py
+!setup.py
+python*
+dist
+*.egg-info
+*.whl
+*.tar.gz
+
+# vscode
+.vscode
