@@ -2,18 +2,21 @@
 #include <stack>
 #include <string>
 #include "cleanse.h"
+#include "common.h"
 #include "regex_utils.h"
 #include "string_utils.h"
 
 size_t GetIndentLevel(const std::string& line) {
-    static const regex_code RE_PATTERN_INDENT =
-        RegexCompile(R"(^( *)\S)");
-    thread_local regex_match re_result = RegexCreateMatchData(RE_PATTERN_INDENT);
-    bool indent = RegexMatch(RE_PATTERN_INDENT, line, re_result);
-    if (indent)
-        return GetMatchSize(re_result, 1);
-    else
-        return 0;
+    const char* str_p = line.data();
+    while (*str_p == ' ')
+        str_p++;
+    const char c = *str_p;
+    if (c == '\0' || !IS_SPACE(c)) {
+        // matched with ^( *)\S
+        return TO_SIZE(str_p - line.data());
+    }
+    // matched with ^( *)\s
+    return 0;
 }
 
 const regex_code RE_PATTERN_OPERATOR = RegexCompile(R"(\boperator\s*$)");
@@ -148,8 +151,6 @@ const std::string& CloseExpression(const CleansedLines& clean_lines, size_t* lin
 void FindStartOfExpressionInLine(const std::string& line,
                                  size_t* endpos,
                                  std::stack<char>* stack) {
-    regex_match re_result = RegexCreateMatchData(RE_PATTERN_OPERATOR);
-
     size_t i = *endpos;
     while (i != INDEX_NONE) {
         char c = line[i];

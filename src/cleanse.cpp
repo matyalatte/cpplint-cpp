@@ -109,12 +109,12 @@ CleansedLines::CleanseRawStrings(const std::vector<std::string>& raw_lines) {
                     break;
 
                 delimiter = ")" + GetMatchStr(m_re_result, new_line, 2) + "\"";
-                std::string match_str_3 = GetMatchStr(m_re_result, new_line, 3);
+                std::string_view match_str_3 = GetMatchStrView(m_re_result, new_line, 3);
                 size_t end = match_str_3.find(delimiter);
                 if (end != std::string::npos) {
                     // Raw string ended on same line
                     new_line = match_str_1 + "\"\"" +
-                               match_str_3.substr(end + delimiter.size());
+                               std::string(match_str_3.substr(end + delimiter.size()));
                     delimiter = "";
                 } else {
                     // Start of a multi-line raw string
@@ -181,7 +181,7 @@ std::string CleansedLines::ReplaceAlternateTokens(const std::string& line) {
         const std::string& key = GetMatchStr(m_re_result, str, 2);
         const std::string& token = AltTokenToToken(key);
         std::string tail = ((key == "not" || key == "compl") &&
-                            StrIsChar(GetMatchStr(m_re_result, str, 3), ' ')) ? "" : "\\3";
+                            StrIsChar(GetMatchStrView(m_re_result, str, 3), ' ')) ? "" : "\\3";
         // replace the found token
         RegexReplace(RE_PATTERN_ALT_TOKEN_REPLACEMENT,
                      std::string("\\1") + token + tail, &ret, false);
@@ -218,15 +218,15 @@ std::string CleansedLines::CollapseStrings(const std::string& elided) {
             collapsed += new_elided;
             break;
         }
-        std::string head = GetMatchStr(m_re_result, new_elided, 1);
+        std::string_view head = GetMatchStrView(m_re_result, new_elided, 1);
         bool has_double_quote = new_elided[GetMatchStart(m_re_result, 2)] == '"';
-        std::string tail = GetMatchStr(m_re_result, new_elided, 3);
+        std::string_view tail = GetMatchStrView(m_re_result, new_elided, 3);
 
         if (has_double_quote) {
             // Collapse double quoted strings
             size_t second_quote = tail.find('"');
             if (second_quote != std::string::npos) {
-                collapsed += head + R"("")";
+                collapsed += std::string(head) + R"("")";
                 new_elided = tail.substr(second_quote + 1);
             } else {
                 // Unmatched double quote, don't bother processing the rest
@@ -245,16 +245,17 @@ std::string CleansedLines::CollapseStrings(const std::string& elided) {
             static const regex_code RE_PATTERN_DIGIT =
                 RegexJitCompile(R"(\b(?:0[bBxX]?|[1-9])[0-9a-fA-F]*$)");
             if (RegexJitSearch(RE_PATTERN_DIGIT, head)) {
-                std::string subject = "'" + tail;
+                std::string subject = "'" + std::string(tail);
                 static const regex_code RE_PATTERN_DIGIT2 =
                     RegexCompile(R"(^((?:\'?[0-9a-zA-Z_])*)(.*)$)");
                 RegexMatch(RE_PATTERN_DIGIT2, subject, m_re_result);
-                collapsed += head + StrReplaceAll(GetMatchStr(m_re_result, subject, 1), "'", "");
+                collapsed += std::string(head) +
+                             StrReplaceAll(GetMatchStr(m_re_result, subject, 1), "'", "");
                 new_elided = GetMatchStr(m_re_result, subject, 2);
             } else {
                 size_t second_quote = tail.find("\'");
                 if (second_quote != std::string::npos) {
-                    collapsed += head + "''";
+                    collapsed += std::string(head) + "''";
                     new_elided = tail.substr(second_quote + 1);
                 } else {
                     // Unmatched single quote

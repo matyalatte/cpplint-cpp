@@ -1,5 +1,4 @@
 #include "string_utils.h"
-#include <ctype.h>
 #include <algorithm>
 #include <cstdint>
 #include <iostream>
@@ -9,9 +8,6 @@
 #include <utility>
 #include <vector>
 #include "common.h"
-
-#define IS_SPACE(c) isspace((uint8_t)(c))
-#define IS_DIGIT(c) isdigit((uint8_t)(c))
 
 std::string StrBeforeChar(const std::string& str, char c) {
     const char* str_p = &str[0];
@@ -146,7 +142,8 @@ std::vector<std::string> StrSplit(const std::string& str, size_t max_size) {
     return split;
 }
 
-std::string StrSplitLast(const std::string& str) {
+template <typename STR>
+STR StrSplitLast(const STR& str) {
     if (str.empty())
         return "";
 
@@ -164,8 +161,10 @@ std::string StrSplitLast(const std::string& str) {
     while (!IS_SPACE(*str_p) && str_p >= start)
         str_p--;
 
-    return std::string(str_p + 1, end);
+    return STR(str_p + 1, end);
 }
+template std::string StrSplitLast(const std::string& str);
+template std::string_view StrSplitLast(const std::string_view& str);
 
 std::vector<std::string> StrSplitBy(const std::string &str, const std::string &delimiter) {
     std::string copied = str;
@@ -182,12 +181,14 @@ std::vector<std::string> StrSplitBy(const std::string &str, const std::string &d
     return tokens;
 }
 
-std::set<std::string> ParseCommaSeparetedList(const std::string& str) {
+template <typename STR>
+std::set<std::string> ParseCommaSeparetedList(const STR& str) {
     std::set<std::string> set = {};
-    const char* str_p = &str[0];
+    const char* str_p = str.data();
     const char* start = str_p;
+    const char* end = str_p + str.size();
 
-    while (*str_p != '\0') {
+    while (str_p < end) {
         if (*str_p == ',') {
             std::string item = StrStrip(start, str_p - 1);
             if (item.size() > 0)
@@ -201,6 +202,10 @@ std::set<std::string> ParseCommaSeparetedList(const std::string& str) {
         set.insert(item);
     return set;
 }
+template std::set<std::string>
+ParseCommaSeparetedList<std::string>(const std::string& str);
+template std::set<std::string>
+ParseCommaSeparetedList<std::string_view>(const std::string_view& str);
 
 std::string SetToStr(const std::set<std::string>& set,
                      const std::string& prefix,
@@ -280,14 +285,18 @@ std::string StrReplaceAll(const std::string &str, const std::string& from, const
 std::string StrToLower(const std::string &str) {
     std::string lower = str;
     std::transform(lower.begin(), lower.end(), lower.begin(),
-        [](unsigned char c){ return std::tolower(c); });
+        [](unsigned char c) -> char {
+            return static_cast<char>(std::tolower(c));
+        });
     return lower;
 }
 
 std::string StrToUpper(const std::string &str) {
     std::string upper = str;
     std::transform(upper.begin(), upper.end(), upper.begin(),
-        [](unsigned char c){ return std::toupper(c); });
+        [](unsigned char c) -> char {
+            return static_cast<char>(std::toupper(c));
+        });
     return upper;
 }
 
@@ -307,10 +316,52 @@ size_t GetFirstNonSpacePos(const std::string& str, size_t pos) noexcept {
     return TO_SIZE(start - &str[0]);
 }
 
+char GetLastNonSpace(const std::string& str) noexcept {
+    if (str.empty()) return '\0';
+    const char* start = str.data();
+    const char* end = &str.back();
+    while (end >= start && IS_SPACE(*end))
+        end--;
+    if (end < start)
+        return '\0';
+    return *end;
+}
+
+size_t GetLastNonSpacePos(const std::string& str) noexcept {
+    if (str.empty()) return INDEX_NONE;
+    const char* start = str.data();
+    const char* end = &str.back();
+    while (end >= start && IS_SPACE(*end))
+        end--;
+    if (end < start)
+        return INDEX_NONE;
+    return TO_SIZE(end - start);
+}
+
 bool StrIsDigit(const std::string& str) noexcept {
     if (str.empty()) return false;
     const char* start = &str[0];
     while (IS_DIGIT(*start))
         start++;
     return *start == '\0';
+}
+
+bool StrIsDigit(const std::string_view& str) noexcept {
+    if (str.empty()) return false;
+    const char* start = str.data();
+    const char* end = start + str.size();
+    while (start < end && IS_DIGIT(*start)) {
+        ++start;
+    }
+    return start == end;
+}
+
+std::set<std::string> SetDiff(const std::set<std::string>& set1,
+                              const std::set<std::string>& set2) {
+    std::set<std::string> difference;
+    std::set_difference(
+        set1.begin(), set1.end(),
+        set2.begin(), set2.end(),
+        std::inserter(difference, difference.begin()));
+    return difference;
 }

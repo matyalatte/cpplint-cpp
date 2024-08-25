@@ -1,7 +1,7 @@
 test_cpp_args = []
 
 if cpplint_os == 'windows'
-    if cpplint_compiler == 'msvc'
+    if cpplint_compiler_id == 'msvc'
         test_cpp_args += ['/source-charset:utf-8']
     else
         test_cpp_args += ['-finput-charset=UTF-8']

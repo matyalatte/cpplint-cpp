@@ -18,7 +18,7 @@ enum LineStatus : int {
  * @param stream An istream object. (e.g., std::cin, std::ifstream)
  * @returns Bitwise OR of LineStatus values.
  */
-std::string GetLine(std::istream& stream, int* status);
+std::string GetLine(std::istream& stream, std::string* buffer, int* status);
 
 // Gets the number of characters in a line that was read with GetLine().
 // It might crash when the line has broken bytes.

@@ -45,3 +45,6 @@ jobs:
           python benchmark.py ../googletest-${{ env.GTEST_VER }} --cpplint_cpp="./build/cpplint-cpp"
           sh memory_usage.sh "python cpplint.py" ../googletest-${{ env.GTEST_VER }}
           sh memory_usage.sh "./build/cpplint-cpp" ../googletest-${{ env.GTEST_VER }}
+
+      - name: Check required GLIBC version
+        run: bash .github/workflows/check_glibc_compatibility.sh ./build/cpplint-cpp

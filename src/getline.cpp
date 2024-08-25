@@ -1,5 +1,6 @@
 #include "getline.h"
 #include <stdint.h>
+#include <cstring>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -49,12 +50,21 @@ size_t GetLineWidth(const std::string& line) noexcept {
     return length;
 }
 
-std::string GetLine(std::istream& stream, int* status) {
+// Realloc a string buffer when it requires a larger length
+static inline void ResizeBuffer(std::string* buffer, char** buf_p,
+                                size_t length, size_t append_size) {
+    if (length + append_size > buffer->size()) {
+        buffer->resize(buffer->size() * 2);
+        *buf_p = buffer->data() + length;
+    }
+}
+
+std::string GetLine(std::istream& stream, std::string* buffer, int* status) {
     *status = LINE_OK;
     int c = 0;
-    unsigned char rune[5];
-    std::string buffer;
-    buffer.reserve(120);
+    unsigned char rune[4];
+    char* buf_p = buffer->data();
+    size_t length = 0;
 
     while (c != EOF) {
         size_t rune_size = 0;
@@ -62,21 +72,25 @@ std::string GetLine(std::istream& stream, int* status) {
 
         if (c == EOF) {
             *status |= LINE_EOF;
-            buffer.shrink_to_fit();
-            return buffer;
+            return std::string(buffer->data(), length);
         } else if (c <= ASCII_MAX) {
             // ascii
             if (c == '\n') {
                 // a line found
-                buffer.shrink_to_fit();
-                return buffer;
+                return std::string(buffer->data(), length);
             } else if (c == '\0') {
+                ResizeBuffer(buffer, &buf_p, length, 3);
                 // replace null byte with a bad rune
+                memcpy(buf_p, BAD_RUNE, 3);
+                buf_p += 3;
+                length += 3;
                 *status |= LINE_NULL;
-                buffer += BAD_RUNE;
             } else {
                 // ascii
-                buffer += (unsigned char)c;
+                ResizeBuffer(buffer, &buf_p, length, 1);
+                *buf_p = (unsigned char)c;
+                buf_p++;
+                length++;
             }
             continue;
         } else if (c <= MULTIBYTE_SEQ_MAX) {
@@ -93,14 +107,14 @@ std::string GetLine(std::istream& stream, int* status) {
 
         // Read a multi-byte character
         rune[0] = (unsigned char)c;
-        for (size_t pos = 1; pos < rune_size; pos++) {
+        for (size_t i = 1; i < rune_size; i++) {
             c = stream.get();
             if (c == EOF) {
                 rune_size = 0;
                 *status |= LINE_EOF;
                 break;
             } else if (is_multibyte_seq(c)) {
-                rune[pos] = (unsigned char)c;
+                rune[i] = (unsigned char)c;
             } else {
                 // bad rune
                 rune_size = 0;
@@ -108,17 +122,22 @@ std::string GetLine(std::istream& stream, int* status) {
                 break;
             }
         }
+
         if (rune_size == 0) {
-            buffer += BAD_RUNE;
+            ResizeBuffer(buffer, &buf_p, length, 3);
+            memcpy(buf_p, BAD_RUNE, 3);
+            buf_p += 3;
+            length += 3;
             *status |= LINE_BAD_RUNE;
         } else {
-            rune[rune_size] = '\0';
-            buffer.append(rune, rune + rune_size * sizeof(unsigned char));
+            ResizeBuffer(buffer, &buf_p, length, 1);
+            memcpy(buf_p, rune, rune_size * sizeof(unsigned char));
+            buf_p += rune_size;
+            length += rune_size;
         }
     }
 
-    buffer.shrink_to_fit();
-    return buffer;
+    return std::string(buffer->data(), length);
 }
 
 /* An inclusive range of characters. */

@@ -9,6 +9,14 @@ C++ reimplementation of [cpplint 1.7](https://github.com/cpplint/cpplint/tree/ab
 [Cpplint](https://github.com/cpplint/cpplint) is a command-line tool to check C/C++ files for style issues according to [Google's C++ style guide](http://google.github.io/styleguide/cppguide.html).
 It used to be developed and maintained by Google Inc. One of its forks now maintains the project.
 
+## Installation
+
+You can install the `cpplint-cpp` command via pip.
+
+```sh
+pip install cpplint-cpp --find-links https://github.com/matyalatte/cpplint-cpp/releases/latest
+```
+
 ## cpplint-cpp vs. cpplint.py
 
 Here is an analysis of the performance differences between `cpplint-cpp` and `cpplint.py` against two repositories:
@@ -21,8 +29,8 @@ You can see `cpplint-cpp` has significantly better performance, being over 30 ti
 
 |             | googletest-1.14.0 (s) | cpplint-cpp (s) |
 | ----------- | --------------------- | --------------- |
-| cpplint-cpp | 0.530342              | 0.106502        |
-| cpplint.py  | 25.555369             | 3.526787        |
+| cpplint-cpp | 0.443100              | 0.090062        |
+| cpplint.py  | 25.826862             | 3.865572        |
 
 ### Memory usage
 
@@ -30,8 +38,8 @@ Despite using multithreading with 4 cores, `cpplint-cpp` has lower memory usage 
 
 |             | googletest-1.14.0 | cpplint-cpp |
 | ----------- | ----------------- | ----------- |
-| cpplint-cpp | 15.61 MiB         | 10.07 MiB   |
-| cpplint.py  | 22.98 MiB         | 22.20 MiB   |
+| cpplint-cpp | 15.55 MiB         | 10.32 MiB   |
+| cpplint.py  | 23.01 MiB         | 22.43 MiB   |
 
 ## Changes from cpplint.py
 
@@ -53,12 +61,8 @@ cpplint-cpp is a WIP project. Please note that the following features are not im
 - JUnit style outputs.
 - Multibyte characters in stdin on Windows.
 - UNIX convention of using "-" for stdin.
-- Installation by package managers.
 
 ## Building
-
-> [!Warning]
-> There is no installers yet. You need to build cpplint-cpp from the source and setup the environment by yourself.
 
 ### Requirements
 
@@ -73,7 +77,7 @@ You can build `cpplint-cpp` with the following commands.
 meson setup build
 meson compile -C build
 meson test -C build
-./build/cpplint-cpp --recursive .
+./build/cpplint-cpp --version
 ```
 
 ### Release build
@@ -83,6 +87,18 @@ You can use [`presets/release.ini`](./presets/release.ini) to enable options for
 ```sh
 meson setup build --native-file=presets/release.ini
 meson compile -C build
+```
+
+### Build wheel package
+
+You can make a pip package with the following commands.
+
+```sh
+mkdir dist
+cp ./build/cpplint-cpp ./dist
+cp ./build/version.h ./dist
+pip install build
+python -m build
 ```
 
 ## Submitting Feature Requests

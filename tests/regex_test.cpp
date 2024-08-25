@@ -6,7 +6,7 @@
 
 struct RegexCase {
     const char* pattern;
-    const char* str;
+    const std::string str;
     bool expected;
 };
 
@@ -145,6 +145,6 @@ TEST(RegexTest, RegexReplaceNoCopy) {
 }
 
 TEST(RegexTest, RegexMatchWithRange) {
-    bool match = RegexMatchWithRange("^test$", "rangetest", 5, 4);
+    bool match = RegexMatchWithRange("^test$", std::string("rangetest"), 5, 4);
     EXPECT_EQ(true, match);
 }

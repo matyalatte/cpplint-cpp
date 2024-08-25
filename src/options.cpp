@@ -15,14 +15,9 @@
 #include "error_suppressions.h"
 #include "regex_utils.h"
 #include "string_utils.h"
+#include "version.h"
 
 namespace fs = std::filesystem;
-
-// The version of cpplint.cpp
-static const char* CPPLINT_CPP_VERSION = "0.2.0";
-
-// The version of cpplint.py
-static const char* ORIGINAL_VERSION = "1.7";
 
 static const char* USAGE[] = {
     "Syntax: cpplint.cpp [--verbose=#] [--output=emacs|eclipse|vs7|junit|sed|gsed]\n"
@@ -37,6 +32,7 @@ static const char* USAGE[] = {
     "                    [--config=filename]\n"
     "                    [--quiet]\n"
     "                    [--version]\n"
+    "                    [--build]\n"
     "                    [--timing]\n"
     "                    [--threads=#]\n"
     "                    <file> [file] ...\n"
@@ -208,6 +204,9 @@ static const char* USAGE[] = {
     "        --headers=hpp,hxx\n"
     "        --headers=hpp\n"
     "\n"
+    "    build\n"
+    "      Display build configuration for cpplint-cpp.\n"
+    "\n"
     "    timing\n"
     "      Display elapsed processing time.\n"
     "\n"
@@ -293,9 +292,15 @@ void Options::PrintUsage(const std::string& message) {
 }
 
 static void PrintVersion() {
-    std::cout << "Cpplint.cpp " << CPPLINT_CPP_VERSION <<
-                 " (https://github.com/matyalatte/cpplint.cpp)\n"
+    std::cout << "cpplint-cpp " << CPPLINT_VERSION << "\n"
                  "Reimplementation of cpplint.py " << ORIGINAL_VERSION << "\n";
+    exit(0);
+}
+
+static void PrintBuildConfig() {
+    std::cout << "platform tag: " << PLATFORM_TAG << "\n"
+                 "build type: " << BUILD_TYPE << "\n"
+                 "jit support: " << JIT_SUPPORT << "\n";
     exit(0);
 }
 
@@ -362,6 +367,8 @@ std::vector<fs::path> Options::ParseArguments(int argc, char** argv,
             PrintUsage();
         } else if (opt == "--version") {
             PrintVersion();
+        } else if (opt == "--build") {
+            PrintBuildConfig();
         } else if (opt.starts_with("--output=")) {
             output_format = ArgToValue(opt);
             if (output_format == "junit") {
@@ -558,14 +565,6 @@ std::set<std::string> Options::GetAllExtensions() const {
     return exts;
 }
 
-bool Options::IsHeaderExtension(const std::string& file_extension) const {
-    return InStrSet(GetHeaderExtensions(), file_extension);
-}
-
-bool Options::IsSourceExtension(const std::string& file_extension) const {
-    return InStrSet(GetNonHeaderExtensions(), file_extension);
-}
-
 std::set<std::string> Options::GetHeaderExtensions() const {
     if (m_hpp_headers.size() > 0) {
         return m_hpp_headers;
@@ -578,17 +577,6 @@ std::set<std::string> Options::GetHeaderExtensions() const {
         return exts;
     }
     return { "h", "hh", "hpp", "hxx", "h++", "cuh" };
-}
-
-std::set<std::string> Options::GetNonHeaderExtensions() const {
-    std::set<std::string> all_exts = GetAllExtensions();
-    std::set<std::string> header_exts = GetHeaderExtensions();
-    std::set<std::string> difference;
-    std::set_difference(
-        all_exts.begin(), all_exts.end(),
-        header_exts.begin(), header_exts.end(),
-        std::inserter(difference, difference.begin()));
-    return difference;
 }
 
 // Parses filters and append them to a vector.
@@ -712,13 +700,13 @@ bool Options::ProcessConfigOverrides(const fs::path& filename,
     bool noparent = false;
     while (!noparent) {
         fs::path root = path.parent_path();
-        fs::path basename = path.filename();
         if (root == path)
             break;
         fs::path cfg_path = root / m_config_filename;
-        path = root;
-        if (!fs::is_regular_file(cfg_path))
+        if (!fs::is_regular_file(cfg_path)) {
+            path = root;
             continue;
+        }
 
         CfgFile* cfg = GetCfg(cfg_path, cpplint_state);
         if (!cfg)
@@ -730,28 +718,31 @@ bool Options::ProcessConfigOverrides(const fs::path& filename,
             ConcatVec(m_filters, cfg->filters);
 
         if (!cfg->exclude_files.empty()) {
-            for (const std::string& exclude : cfg->exclude_files) {
-                // When matching exclude_files pattern, use the base_name of
-                // the current file name or the directory name we are processing.
-                // For example, if we are checking for lint errors in /foo/bar/baz.cc
-                // and we found the .cfg file at /foo/CPPLINT.cfg, then the config
-                // file's "exclude_files" filter is meant to be checked against "bar"
-                // and not "baz" nor "bar/baz.cc".
-                std::string base_name = basename.string();
-                if (base_name == "")
-                    continue;
-                bool match = RegexMatch(exclude, base_name);
-                if (match) {
-                    if (cpplint_state->Quiet()) {
-                        // Suppress "Ignoring file" warning when using --quiet.
+            fs::path basename = path.filename();
+            if (!basename.empty()) {
+                std::string basename_str = basename.string();
+                for (const std::string& exclude : cfg->exclude_files) {
+                    // When matching exclude_files pattern, use the base_name of
+                    // the current file name or the directory name we are processing.
+                    // For example, if we are checking for lint errors in /foo/bar/baz.cc
+                    // and we found the .cfg file at /foo/CPPLINT.cfg, then the config
+                    // file's "exclude_files" filter is meant to be checked against "bar"
+                    // and not "baz" nor "bar/baz.cc".
+                    regex_code regex = RegexCompile(exclude);
+                    regex_match result = RegexCreateMatchData(regex);
+                    bool match = RegexMatch(regex, basename_str, result);
+                    if (match) {
+                        if (cpplint_state->Quiet()) {
+                            // Suppress "Ignoring file" warning when using --quiet.
+                            return false;
+                        }
+                        cpplint_state->PrintInfo(
+                            "Ignoring \"" + filename.string() + "\": file excluded by \"" +
+                            cfg_path.string() + "\". " +
+                            "File path component " + basename_str + " matches "
+                            "pattern " + exclude + "\n");
                         return false;
                     }
-                    cpplint_state->PrintInfo(
-                        "Ignoring \"" + filename.string() + "\": file excluded by \"" +
-                        cfg_path.string() + "\". " +
-                        "File path component " + base_name + " matches "
-                        "pattern " + exclude + "\n");
-                    return false;
                 }
             }
         }
@@ -767,6 +758,8 @@ bool Options::ProcessConfigOverrides(const fs::path& filename,
 
         if (!cfg->include_order.empty())
             ProcessIncludeOrderOption(cfg->include_order);
+
+        path = root;
     }
 
     return true;

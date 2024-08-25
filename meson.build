@@ -12,34 +12,48 @@ project('cpplint-cpp', ['c', 'cpp'],
         'cpp_winlibs=',                 # likewise as with c_winlibs
         'wrap_mode=forcefallback'       # we don't use installed libraries.
     ],
-    version: '0.2.0')
+    version: '0.2.1')
 
 cpplint_link_args = []
 cpplint_c_args = []
-cpplint_os = host_machine.system()
-cpplint_cpu = host_machine.cpu_family()
-cpplint_compiler = meson.get_compiler('c').get_id()
+cpplint_os = target_machine.system()
+cpplint_cpu = target_machine.cpu_family()
+cpplint_compiler = meson.get_compiler('c')
+cpplint_compiler_id = cpplint_compiler.get_id()
 cpplint_is_debug = get_option('buildtype').startswith('debug')
+cpplint_platform_tag = 'unknown'
 
+# Use this when linking static libc
+static_libc_args = [
+    '-static',
+    '-static-libgcc',
+    '-static-libstdc++',
+]
+
+# Get options
 if cpplint_os == 'windows'
-    if cpplint_compiler == 'msvc'
+    if cpplint_compiler_id == 'msvc'
         cpplint_link_args += [
             '/LARGEADDRESSAWARE',
             '/INCREMENTAL:NO'
         ]
-        if (not cpplint_is_debug)
+        if not cpplint_is_debug
             # enable lto
             cpplint_c_args += ['/GL']
             cpplint_link_args += ['/OPT:ICF', '/LTCG']
         endif
     else
-		# don't require shipping the MinGW-w64 DLLs
-		cpplint_link_args += [
-			'-static',
-			'-static-libgcc',
-			'-static-libstdc++',
-		]
-	endif
+        # don't require shipping the MinGW-w64 DLLs
+        cpplint_link_args += static_libc_args
+    endif
+    arch = cpplint_cpu
+    if arch == 'aarch64'
+        arch = 'arm64'
+    endif
+    if arch == 'x86_64'
+        arch = 'amd64'
+    endif
+    cpplint_platform_tag = 'win_' + arch
 elif cpplint_os == 'darwin'
     # Set deployment targets
     languages = ['c', 'cpp']
@@ -49,31 +63,89 @@ elif cpplint_os == 'darwin'
 
     # Check if SDKs support universal binaries or not.
     arch = ['-arch', 'x86_64', '-arch', 'arm64']
-    c_compiler = meson.get_compiler('c')
-    result = c_compiler.run(
+    result = cpplint_compiler.run(
         'int main(void) { return 0; }',
         name : 'universal binary test',
         args: arch)
+
+    cpplint_platform_tag = 'macosx_' + get_option('macosx_version_min').replace('.', '_')
+
     if result.compiled()
         # set options for universal build
         add_global_arguments(arch, language: languages)
         add_global_link_arguments(arch, language: languages)
+        cpplint_platform_tag += '_universal2'
     else
+        arch = cpplint_cpu
+        if arch == 'aarch64'
+            arch = 'arm64'
+        endif
+        cpplint_platform_tag += '_' + arch
         warning('Universal build is disabled since your SDKs do not support it.')
     endif
+elif cpplint_os == 'linux'
+    # Check if libc is musl or not
+    result = cpplint_compiler.run(
+        '''
+        #include <features.h>
+        #include <stdio.h>
+
+        int main(void) {
+        #ifdef __GLIBC__
+        printf("glibc");
+        #else
+        printf("musl");
+        #endif
+        return 0;
+        }
+        ''',
+        name: 'libc test')
+
+    if result.stdout() == 'musl'
+        message('Use static linked musl.')
+        cpplint_link_args += static_libc_args
+        # built binary works on all linux distributions
+        cpplint_platform_tag = 'linux_'
+    else
+        message('Use dynamic linked glibc.')
+        # requires glibc 2.34 or later when building on ubuntu 22.04
+        cpplint_platform_tag = 'manylinux_2_34_'
+    endif
+    cpplint_platform_tag += cpplint_cpu
+else
+    # BSD seems to use uname to generate platform tags.
+    # 'uname -s'_'uname -r'_'uname -m'
+    # Idk about other systems tho.
+    version = run_command('uname', '-r').stdout().strip()
+    version = version.replace('.', '_').replace(' ', '_')
+    arch = run_command('uname', '-m').stdout().strip()
+    arch = arch.replace('.', '_').replace(' ', '_')
+    cpplint_platform_tag = cpplint_os + '_' + version + '_' + arch
 endif
+
+# Generate version info
+conf_data = configuration_data()
+conf_data.set('VERSION', meson.project_version())
+conf_data.set('PLATFORM_TAG', cpplint_platform_tag)
+conf_data.set('BUILD_TYPE', get_option('buildtype'))
+configure_file(input : 'src/version.h.in',
+               output : 'version.h',
+               configuration : conf_data)
 
 # enable JIT compiler in pcre2
 cpu_jit_supported = [ 'aarch64', 'arm', 'mips', 'mips64', 'ppc', 'ppc64', 'riscv32', 'riscv64', 's390x', 'x86', 'x86_64' ]
 pcre2_jit_supported = (cpplint_cpu in cpu_jit_supported and
-                       cpplint_compiler != 'tcc' and
+                       cpplint_compiler_id != 'tcc' and
                        cpplint_os != 'darwin')
 if pcre2_jit_supported
-    if cpplint_compiler == 'msvc'
+    message('JIT compiler is enabled.')
+    if cpplint_compiler_id == 'msvc'
         add_global_arguments('/DSUPPORT_JIT', language: ['c', 'cpp'])
     else
         add_global_arguments('-DSUPPORT_JIT', language: ['c', 'cpp'])
     endif
+else
+    message('JIT compiler is disabled on this platform.')
 endif
 
 # get pcre2

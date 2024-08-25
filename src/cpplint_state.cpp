@@ -60,7 +60,7 @@ thread_local std::ostringstream cout_buffer;
 thread_local std::ostringstream cerr_buffer;
 
 // Flush streams when the buffer size is larger than this value
-static const std::streampos FLUSH_THRESHOLD = 512;
+static const std::streampos FLUSH_THRESHOLD = 1024;
 
 void CppLintState::PrintInfo(const std::string& message) {
     // _quiet does not represent --quiet flag.
@@ -161,3 +161,7 @@ void CppLintState::FlushThreadStream() {
     }
 }
 
+std::string CppLintState::GetErrorStreamAsStr() {
+    std::lock_guard<std::mutex> lock(m_mtx);
+    return cerr_buffer.str();
+}

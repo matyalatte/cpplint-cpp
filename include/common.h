@@ -1,4 +1,5 @@
 #pragma once
+#include <cctype>
 #include <string>
 
 // You can suppress warnings about unused variables with this macro.
@@ -22,3 +23,7 @@ static_assert(std::string::npos == static_cast<size_t>(-1),
 
 // Maximum valid value
 constexpr size_t INDEX_MAX = SIZE_MAX - 1;
+
+// Macros for characters
+#define IS_SPACE(c) isspace((uint8_t)(c))
+#define IS_DIGIT(c) isdigit((uint8_t)(c))
