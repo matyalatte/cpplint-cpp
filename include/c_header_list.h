@@ -129,7 +129,7 @@ inline const char* const CPP_HEADERS[] = {
     "concepts",
     "coroutine",
     "format",
-    "latch"
+    "latch",
     "numbers",
     "ranges",
     "semaphore",
