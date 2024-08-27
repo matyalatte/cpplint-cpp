@@ -21,7 +21,7 @@ pip install cpplint-cpp --no-index --find-links https://matyalatte.github.io/cpp
 
 Here is an analysis of the performance differences between `cpplint-cpp` and `cpplint.py` against two repositories:
 [`googletest`](https://github.com/google/googletest) and `cpplint-cpp`.
-Measurements were taken on an Ubuntu runner with [`benchmark.yml`](.github/workflows/benchmark.yml).
+Measurements were taken on an Ubuntu runner with [`benchmark.yml`](../.github/workflows/benchmark.yml).
 
 ### Execution time
 
@@ -82,7 +82,7 @@ meson test -C build
 
 ### Release build
 
-You can use [`presets/release.ini`](./presets/release.ini) to enable options for release build.
+You can use [`presets/release.ini`](../presets/release.ini) to enable options for release build.
 
 ```sh
 meson setup build --native-file=presets/release.ini
