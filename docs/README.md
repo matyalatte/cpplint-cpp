@@ -21,7 +21,7 @@ pip install cpplint-cpp --no-index --find-links https://matyalatte.github.io/cpp
 
 Here is an analysis of the performance differences between `cpplint-cpp` and `cpplint.py` against two repositories:
 [`googletest`](https://github.com/google/googletest) and `cpplint-cpp`.
-Measurements were taken on an Ubuntu runner with [`benchmark.yml`](.github/workflows/benchmark.yml).
+Measurements were taken on an Ubuntu runner with [`benchmark.yml`](../.github/workflows/benchmark.yml).
 
 ### Execution time
 
@@ -82,7 +82,7 @@ meson test -C build
 
 ### Release build
 
-You can use [`presets/release.ini`](./presets/release.ini) to enable options for release build.
+You can use [`presets/release.ini`](../presets/release.ini) to enable options for release build.
 
 ```sh
 meson setup build --native-file=presets/release.ini
@@ -106,6 +106,10 @@ python -m build
 I do not accept feature requests related to cpplint specifications, including the addition of new rules.
 For such requests, please visit [the original cpplint project](https://github.com/cpplint/cpplint/issues) to submit your suggestions.
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md)
+
 ## Credits
 
 This software uses (or is inspired by) several open-source projects. I gratefully acknowledge the work of the following contributors:
@@ -121,6 +125,10 @@ This software uses (or is inspired by) several open-source projects. I gratefull
 - **[pcre2](https://github.com/PCRE2Project/pcre2)**
   - Contribution: Regex matching.
   - License: [PCRE2 LICENCE](https://github.com/PCRE2Project/pcre2/blob/master/LICENCE)
+
+- **[ThreadPool](https://github.com/progschj/ThreadPool)** by progschj
+  - Contribution: Thread pool implementation
+  - License: [zlib License](https://github.com/progschj/ThreadPool/blob/master/COPYING)
 
 - **[widechar_width.h](https://github.com/ridiculousfish/widecharwidth/blob/master/widechar_width.h)** by ridiculousfish
   - Contribution: Reference tables for character widths.

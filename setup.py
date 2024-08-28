@@ -37,7 +37,7 @@ setup(
     name='cpplint-cpp',
     version=version,
     description='C++ reimplementation of cpplint 1.7',
-    long_description=open('README.md').read(),
+    long_description=open('docs/README.md').read(),
     long_description_content_type='text/markdown',
     author='matyalatte',
     author_email='matyalatte@gmail.com',
