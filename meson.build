@@ -172,6 +172,7 @@ cpplint_sources = [
     'src/cleanse.cpp',
     'src/states.cpp',
     'src/nest_info.cpp',
+    'src/glob_match.cpp',
 ]
 
 # main binary

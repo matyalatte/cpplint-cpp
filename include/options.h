@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include "cpplint_state.h"
+#include "glob_match.h"
 
 namespace fs = std::filesystem;
 
@@ -81,7 +82,7 @@ class Options {
     // Filters out files listed in the --exclude command line switch. File paths
     // in the switch are evaluated relative to the current working directory
     std::vector<fs::path> FilterExcludedFiles(std::vector<fs::path> filenames,
-                                              const std::vector<fs::path>& excludes);
+                                              const std::vector<GlobPattern>& excludes);
 
  public:
     Options() :
