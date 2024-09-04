@@ -147,19 +147,19 @@ class LineRange {
         m_end = end;
     }
 
-    std::string ToStr() const {
+    [[nodiscard]] std::string ToStr() const {
         return "[" + std::to_string(m_begin) + "-" + std::to_string(m_end) +"]";
     }
 
-    bool Contain(size_t linenum) const {
+    [[nodiscard]] bool Contain(size_t linenum) const {
         return m_begin <= linenum && linenum <= m_end;
     }
 
-    bool ContainRange(const LineRange& other) const {
+    [[nodiscard]] bool ContainRange(const LineRange& other) const {
         return m_begin <= other.m_begin && other.m_end <= m_end;
     }
 
-    size_t GetBegin() {
+    [[nodiscard]] size_t GetBegin() const {
         return m_begin;
     }
 

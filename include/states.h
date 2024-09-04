@@ -41,7 +41,7 @@ class IncludeState {
  public:
     IncludeState() :
         m_section(0),
-        m_last_header(""),
+        m_last_header(),
         m_include_list({{}}) {
         ResetSection("");
     }
@@ -64,7 +64,7 @@ class IncludeState {
         - removes '-inl' since we don't require them to be after the main header.
         - lowercase everything, just in case.
     */
-    std::string CanonicalizeAlphabeticalOrder(const std::string& header_path);
+    static std::string CanonicalizeAlphabeticalOrder(const std::string& header_path);
 
     // Check if a header is in alphabetical order with the previous header.
     bool IsInAlphabeticalOrder(const CleansedLines& clean_lines,
@@ -79,7 +79,7 @@ class IncludeState {
     std::string CheckNextIncludeOrder(int header_type);
 
     std::vector<std::pair<std::string, size_t>>& LastIncludeList() { return m_include_list.back(); }
-    const auto& IncludeList() const { return m_include_list; }
+    [[nodiscard]] const auto& IncludeList() const { return m_include_list; }
     std::set<std::string> GetIncludes() {
         std::set<std::string> includes = {};
         for (const auto& sublist : m_include_list) {
@@ -102,10 +102,10 @@ class FunctionState {
     FunctionState() :
         m_in_a_function(false),
         m_lines_in_function(0),
-        m_current_function("") {}
+        m_current_function() {}
 
     // Start analyzing function body.
-    void Begin(const std::string function_name) {
+    void Begin(const std::string& function_name) {
         m_in_a_function = true;
         m_lines_in_function = 0;
         m_current_function = function_name;
@@ -203,7 +203,7 @@ class NestingState {
     }
 
     // Check if current position is inside template argument list.
-    bool InTemplateArgumentList(const CleansedLines& clean_lines, size_t linenum, size_t pos);
+    static bool InTemplateArgumentList(const CleansedLines& clean_lines, size_t linenum, size_t pos);
 
     /*Update preprocessor stack.
 

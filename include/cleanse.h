@@ -81,20 +81,20 @@ class CleansedLines {
     */
     std::string ReplaceAlternateTokens(const std::string& line);
 
-    size_t NumLines() const { return m_lines.size(); }
+    [[nodiscard]] size_t NumLines() const { return m_lines.size(); }
 
-    const std::string& GetLineAt(size_t id) const { return m_lines[id]; }
-    const std::string& GetElidedAt(size_t id) const { return m_elided[id]; }
-    const std::vector<std::string>& GetElidedLines() const {
+    [[nodiscard]] const std::string& GetLineAt(size_t id) const { return m_lines[id]; }
+    [[nodiscard]] const std::string& GetElidedAt(size_t id) const { return m_elided[id]; }
+    [[nodiscard]] const std::vector<std::string>& GetElidedLines() const {
         return m_elided;
     }
-    const std::string& GetRawLineAt(size_t id) const { return m_raw_lines[id]; }
-    const std::string& GetLineWithoutRawStringAt(size_t id) const {
+    [[nodiscard]] const std::string& GetRawLineAt(size_t id) const { return m_raw_lines[id]; }
+    [[nodiscard]] const std::string& GetLineWithoutRawStringAt(size_t id) const {
         return m_lines_without_raw_strings[id];
     }
-    const std::vector<std::string>& GetLinesWithoutRawStrings() const {
+    [[nodiscard]] const std::vector<std::string>& GetLinesWithoutRawStrings() const {
         return m_lines_without_raw_strings;
     }
 
-    bool HasComment(size_t id) const { return m_has_comment[id]; }
+    [[nodiscard]] bool HasComment(size_t id) const { return m_has_comment[id]; }
 };

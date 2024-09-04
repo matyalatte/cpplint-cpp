@@ -57,7 +57,7 @@ class CppLintState {
  public:
     CppLintState();
 
-    int OutputFormat() const { return m_output_format; }
+    [[nodiscard]] int OutputFormat() const { return m_output_format; }
     void SetOutputFormat(const std::string& output_format) {
         // Sets the output format for errors.
         if (output_format == "vs7")
@@ -74,7 +74,7 @@ class CppLintState {
             m_output_format = OUTPUT_EMACS;
     }
 
-    bool Quiet() const { return m_quiet; }
+    [[nodiscard]] bool Quiet() const { return m_quiet; }
     bool SetQuiet(bool quiet) {
         // Sets the module's quiet settings, and returns the previous setting.
         bool last_quiet = m_quiet;
@@ -82,7 +82,7 @@ class CppLintState {
         return last_quiet;
     }
 
-    int VerboseLevel() const { return m_verbose_level; }
+    [[nodiscard]] int VerboseLevel() const { return m_verbose_level; }
     int SetVerboseLevel(int level) {
         // Sets the module's verbosity, and returns the previous setting.
         int last_verbose_level = m_verbose_level;
@@ -106,11 +106,11 @@ class CppLintState {
         m_errors_by_category.clear();
     }
 
-    int ErrorCount() const { return m_error_count; }
-    int ErrorCount(const std::string& category) const;
+    [[nodiscard]] int ErrorCount() const { return m_error_count; }
+    [[nodiscard]] int ErrorCount(const std::string& category) const;
 
     void SetNumThreads(int num_threads) { m_num_threads = num_threads; }
-    int GetNumThreads() const { return m_num_threads; }
+    [[nodiscard]] int GetNumThreads() const { return m_num_threads; }
 
     // Bumps the module's error statistic.
     void IncrementErrorCount(const std::string& category);
@@ -129,10 +129,10 @@ class CppLintState {
 
     // Print a summary of errors by category, and the total.
     void PrintErrorCounts();
-    void PrintInfo(const std::string& message);
-    void PrintError(const std::string& message);
+    void PrintInfo(const std::string& message) const;
+    void PrintError(const std::string& message) const;
 
-    bool AddJUnitFailure(const std::string& filename,
+    static bool AddJUnitFailure(const std::string& filename,
                          size_t linenum,
                          const std::string& message,
                          const std::string& category,
@@ -145,5 +145,5 @@ class CppLintState {
         return false;
     }
 
-    std::string FormatJUnitXML() { return ""; }
+    static std::string FormatJUnitXML() { return ""; }
 };

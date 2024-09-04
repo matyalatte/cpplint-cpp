@@ -17,8 +17,8 @@ class Filter {
  public:
     Filter() :
         m_sign(false),
-        m_category(""),
-        m_file(""),
+        m_category(),
+        m_file(),
         m_linenum(INDEX_NONE) {}
 
     explicit Filter(const std::string& filter) {
@@ -27,9 +27,9 @@ class Filter {
 
     void ParseFilterSelector(const std::string& filter);
 
-    bool IsPositive() const { return m_sign; }
+    [[nodiscard]] bool IsPositive() const { return m_sign; }
 
-    bool IsMatched(const std::string& category,
+    [[nodiscard]] bool IsMatched(const std::string& category,
                    const std::string& file,
                    size_t linenum) const {
         return category.starts_with(m_category) &&
@@ -76,12 +76,13 @@ class Options {
     // Searches a list of filenames and replaces directories in the list with
     // all files descending from those directories. Files with extensions not in
     // the valid extensions list are excluded.
-    std::vector<fs::path> ExpandDirectories(const std::vector<fs::path>& filenames);
+    std::vector<fs::path> ExpandDirectories(const std::vector<fs::path>& filenames) const;
 
     // Filters out files listed in the --exclude command line switch. File paths
     // in the switch are evaluated relative to the current working directory
-    std::vector<fs::path> FilterExcludedFiles(std::vector<fs::path> filenames,
-                                              const std::vector<fs::path>& excludes);
+    static std::vector<fs::path> FilterExcludedFiles(
+		std::vector<fs::path> filenames,
+        const std::vector<fs::path>& excludes);
 
  public:
     Options() :
@@ -102,28 +103,29 @@ class Options {
     std::vector<fs::path> ParseArguments(int argc, char** argv,
                                          CppLintState* cpplint_state);
 
-    const fs::path& Root() const { return m_root; }
-    const fs::path& Repository() const { return m_repository; }
-    size_t LineLength() const { return m_line_length; }
+    [[nodiscard]] const fs::path& Root() const { return m_root; }
+    [[nodiscard]] const fs::path& Repository() const { return m_repository; }
+    [[nodiscard]] size_t LineLength() const { return m_line_length; }
 
-    std::set<std::string> GetAllExtensions() const;
-    std::set<std::string> GetHeaderExtensions() const;
+    [[nodiscard]] std::set<std::string> GetAllExtensions() const;
+    [[nodiscard]] std::set<std::string> GetHeaderExtensions() const;
 
     bool ProcessConfigOverrides(const fs::path& filename,
                                 CppLintState* cpplint_state);
 
-    void PrintUsage(const std::string& message = "");
+    void PrintUsage(const std::string& message = "") const;
 
-    int IncludeOrder() const { return m_include_order; }
+    [[nodiscard]] int IncludeOrder() const { return m_include_order; }
 
-    const std::vector<Filter>& Filters() const { return m_filters; }
+    [[nodiscard]] const std::vector<Filter>& Filters() const { return m_filters; }
 
     // Adds filters to the existing list of error-message filters.
     bool AddFilters(const std::string& filters);
 
     // Checks if the error is filtered or not.
-    bool ShouldPrintError(const std::string& category,
-                          const std::string& filename, size_t linenum) const;
+    [[nodiscard]] bool ShouldPrintError(
+        const std::string& category,
+        const std::string& filename, size_t linenum) const;
 
-    bool Timing() const { return m_timing; }
+    [[nodiscard]] bool Timing() const { return m_timing; }
 };

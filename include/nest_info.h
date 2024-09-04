@@ -44,7 +44,7 @@ class BlockInfo {
         m_check_namespace_indentation(false),
         m_block_type(BLOCK_INFO) {}
 
-    virtual ~BlockInfo() {}
+    virtual ~BlockInfo() = default;
 
     /* Run checks that applies to text up to the opening brace.
 
@@ -75,21 +75,21 @@ class BlockInfo {
        This is convenient for verifying that an object is an instance of
        a _BlockInfo, but not an instance of any of the derived classes.
     */
-    bool IsBlockInfo() const { return m_block_type == BLOCK_INFO; }
-    bool IsExternCInfo() const { return m_block_type == EXTERN_C_INFO; }
-    bool IsClassInfo() const { return m_block_type == CLASS_INFO; }
-    bool IsNamespaceInfo() const { return m_block_type == NAMESPACE_INFO; }
+    [[nodiscard]] bool IsBlockInfo() const { return m_block_type == BLOCK_INFO; }
+    [[nodiscard]] bool IsExternCInfo() const { return m_block_type == EXTERN_C_INFO; }
+    [[nodiscard]] bool IsClassInfo() const { return m_block_type == CLASS_INFO; }
+    [[nodiscard]] bool IsNamespaceInfo() const { return m_block_type == NAMESPACE_INFO; }
 
-    bool SeenOpenBrace() const { return m_seen_open_brace; }
+    [[nodiscard]] bool SeenOpenBrace() const { return m_seen_open_brace; }
     void SetSeenOpenBrace(bool seen_open_brace) { m_seen_open_brace = seen_open_brace; }
 
-    int OpenParentheses() const { return m_open_parentheses; }
+    [[nodiscard]] int OpenParentheses() const { return m_open_parentheses; }
     void IncOpenParentheses(int inc) { m_open_parentheses += inc; }
 
-    int InlineAsm() const { return m_inline_asm; }
+    [[nodiscard]] int InlineAsm() const { return m_inline_asm; }
     void SetInlineAsm(int inline_asm) { m_inline_asm = inline_asm; }
 
-    size_t StartingLinenum() const { return m_starting_linenum; }
+    [[nodiscard]] size_t StartingLinenum() const { return m_starting_linenum; }
 };
 
 // Stores information about an 'extern "C"' block.
@@ -124,13 +124,13 @@ class ClassInfo : public BlockInfo {
     void CheckEnd(const CleansedLines& clean_lines,
                   size_t linenum,
                   FileLinter* file_linter) override;
-    const std::string& Access() const { return m_access; }
+    [[nodiscard]] const std::string& Access() const { return m_access; }
     void SetAccess(const std::string& access) { m_access = access; }
-    bool IsStruct() const { return m_is_struct; }
-    size_t ClassIndent() const { return m_class_indent; }
-    const std::string& Name() const { return m_name; }
-    const std::string& Basename() const { return m_basename; }
-    size_t LastLine() { return m_last_line; }
+    [[nodiscard]] bool IsStruct() const { return m_is_struct; }
+    [[nodiscard]] size_t ClassIndent() const { return m_class_indent; }
+    [[nodiscard]] const std::string& Name() const { return m_name; }
+    [[nodiscard]] const std::string& Basename() const { return m_basename; }
+    [[nodiscard]] size_t LastLine() const { return m_last_line; }
 };
 
 // Stores information about a namespace.
@@ -140,9 +140,9 @@ class NamespaceInfo : public BlockInfo {
 
  public:
     NamespaceInfo(const std::string& name, size_t linenum) :
-        BlockInfo(linenum, false) {
+        BlockInfo(linenum, false),
+        m_name(name) {
         m_block_type = NAMESPACE_INFO;
-        m_name = name;
         m_check_namespace_indentation = true;
     }
 
@@ -159,18 +159,13 @@ class PreprocessorInfo {
     std::vector<BlockInfo*> m_stack_before_else;
 
  public:
-    explicit PreprocessorInfo(const std::vector<BlockInfo*>& stack_before_if) {
-        // The entire nesting stack before #if
-        m_stack_before_if = stack_before_if;
-
-        // The entire nesting stack up to #else
-        m_stack_before_else = {};
-
-        // Whether we have already seen #else or #elif
-        m_seen_else = false;
+    explicit PreprocessorInfo(const std::vector<BlockInfo*>& stack_before_if) :
+        m_stack_before_if(stack_before_if),  // The entire nesting stack before #if
+        m_stack_before_else({}),  // The entire nesting stack up to #else
+        m_seen_else(false) {  // Whether we have already seen #else or #elif
     }
 
-    bool SeenElse() { return m_seen_else; }
+    [[nodiscard]] bool SeenElse() const { return m_seen_else; }
     void SetSeenElse(bool seen_else) { m_seen_else = seen_else; }
 
     const std::vector<BlockInfo*>& StackBeforeIf() {

@@ -260,7 +260,7 @@ inline void RegexReplace(const regex_code& regex, const std::string& fmt,
 
 std::string RegexEscape(const std::string& str);
 
-inline std::string RegexEscape(const std::string_view& str) {
+inline std::string RegexEscape(std::string_view str) {
     return RegexEscape(std::string(str));
 }
 

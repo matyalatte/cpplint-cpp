@@ -62,7 +62,7 @@ thread_local std::ostringstream cerr_buffer;
 // Flush streams when the buffer size is larger than this value
 static const std::streampos FLUSH_THRESHOLD = 1024;
 
-void CppLintState::PrintInfo(const std::string& message) {
+void CppLintState::PrintInfo(const std::string& message) const {
     // _quiet does not represent --quiet flag.
     // Hide infos from stdout to keep stdout pure for machine consumption
     if (m_output_format != OUTPUT_JUNIT &&
@@ -71,7 +71,7 @@ void CppLintState::PrintInfo(const std::string& message) {
         cout_buffer << message;
 }
 
-void CppLintState::PrintError(const std::string& message) {
+void CppLintState::PrintError(const std::string& message) const {
     if (m_output_format == OUTPUT_JUNIT) {
         // m_junit_errors.push_back(message);
     } else {
