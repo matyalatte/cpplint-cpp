@@ -45,6 +45,7 @@ int main(int argc, char** argv) {
         // Multi-threading
         ThreadPool pool(num_threads);
         std::vector<std::future<void>> futures;
+        futures.reserve(filenames.size());
         for (const fs::path& filename : filenames) {
             futures.push_back(pool.enqueue([&filename, &cpplint_state, &global_options]() {
                 ProcessFile(filename, &cpplint_state, global_options);
