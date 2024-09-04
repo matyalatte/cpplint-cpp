@@ -4,6 +4,7 @@
  * Modified version of ThreadPool (https://github.com/progschj/ThreadPool/blob/master/ThreadPool.h)
  * Changes
  * - Replaced std::result_of with std::invoke_result_t for c++20
+ * - Added reserve call for workers to preallocate threads
  */
 
 #include <vector>
@@ -39,6 +40,7 @@ private:
 inline ThreadPool::ThreadPool(size_t threads)
     :   stop(false)
 {
+    workers.reserve(threads);
     for(size_t i = 0;i<threads;++i)
         workers.emplace_back(
             [this]

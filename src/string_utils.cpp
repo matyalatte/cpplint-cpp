@@ -346,7 +346,7 @@ bool StrIsDigit(const std::string& str) noexcept {
     return *start == '\0';
 }
 
-bool StrIsDigit(const std::string_view& str) noexcept {
+bool StrIsDigit(std::string_view str) noexcept {
     if (str.empty()) return false;
     const char* start = str.data();
     const char* end = start + str.size();

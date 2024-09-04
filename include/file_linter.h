@@ -31,7 +31,7 @@ class FileLinter {
     bool m_has_error;
 
  public:
-    FileLinter() {}
+    FileLinter() = default;
     FileLinter(const fs::path& file, CppLintState* state, const Options& options) :
                 m_cpplint_state(state),
                 m_options(options),
@@ -48,8 +48,8 @@ class FileLinter {
                 m_re_result(RegexCreateMatchData(16)),
                 m_has_error(false) {}
 
-    fs::path GetRelativeFromRepository(const fs::path& file, const fs::path& repository);
-    fs::path GetRelativeFromSubdir(const fs::path& file, const fs::path& subdir);
+    static fs::path GetRelativeFromRepository(const fs::path& file, const fs::path& repository);
+    static fs::path GetRelativeFromSubdir(const fs::path& file, const fs::path& subdir);
 
     // Logs an error if no Copyright message appears at the top of the file.
     void CheckForCopyright(const std::vector<std::string>& lines);
@@ -69,9 +69,9 @@ class FileLinter {
      */
     void CheckForHeaderGuard(const CleansedLines& clean_lines);
 
-    bool IsForwardClassDeclaration(const std::string& elided_line);
+    static bool IsForwardClassDeclaration(const std::string& elided_line);
 
-    bool IsMacroDefinition(const CleansedLines& clean_lines,
+    static bool IsMacroDefinition(const CleansedLines& clean_lines,
                            const std::string& elided_line, size_t linenum);
 
     void CheckForNamespaceIndentation(const CleansedLines& clean_lines,
@@ -231,7 +231,7 @@ class FileLinter {
                           IncludeState* include_state);
 
     // Checks whether where function type arguments are expected.
-    bool ExpectingFunctionArgs(const CleansedLines& clean_lines,
+    static bool ExpectingFunctionArgs(const CleansedLines& clean_lines,
                                const std::string& elided_line, size_t linenum);
 
     // Checks for a C-style cast by looking for the pattern.

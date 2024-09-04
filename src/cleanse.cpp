@@ -75,7 +75,7 @@ CleansedLines::CleanseRawStrings(const std::vector<std::string>& raw_lines) {
                 RegexMatch(R"(^(\s*)\S)", line, m_re_result);
                 new_line = GetMatchStr(m_re_result, line, 1) + "\"\"" +
                            line.substr(end + delimiter.size());
-                delimiter = "";
+                delimiter.clear();
             } else {
                 // Haven't found the end yet, append a blank line.
                 new_line = "\"\"";
@@ -115,7 +115,7 @@ CleansedLines::CleanseRawStrings(const std::vector<std::string>& raw_lines) {
                     // Raw string ended on same line
                     new_line = match_str_1 + "\"\"" +
                                std::string(match_str_3.substr(end + delimiter.size()));
-                    delimiter = "";
+                    delimiter.clear();
                 } else {
                     // Start of a multi-line raw string
                     new_line = match_str_1 + "\"\"";
@@ -280,9 +280,9 @@ CleansedLines::CleansedLines(std::vector<std::string>& lines,
             line = ReplaceAlternateTokens(line);
         }
     }
-    m_lines.reserve(lines.size());
-    m_elided.reserve(lines.size());
     m_lines_without_raw_strings = CleanseRawStrings(m_raw_lines);
+    m_lines.reserve(m_lines_without_raw_strings.size());
+    m_elided.reserve(m_lines_without_raw_strings.size());
     size_t linenum = 0;
     for (const std::string& line : m_lines_without_raw_strings) {
         bool is_comment = false;

@@ -1551,7 +1551,7 @@ const regex_code RE_PATTERN_TYPES =
 
 static bool IsType(const CleansedLines& clean_lines,
                    NestingState* nesting_state,
-                   const std::string_view& expr,
+                   std::string_view expr,
                    regex_match& re_result) {
     // Check if expression looks like a type name, returns true if so.
     // Keep only the last token in the expression
@@ -3211,7 +3211,7 @@ void FileLinter::CheckForNonConstReference(const CleansedLines& clean_lines,
                 if (startpos != INDEX_NONE && startline < linenum) {
                     // Found the matching < on an earlier line, collect all
                     // pieces up to current line.
-                    line = "";
+                    line.clear();
                     for (size_t i = startline; i < linenum + 1; i++)
                         line += StrStrip(clean_lines.GetElidedAt(i));
                 }
@@ -3721,7 +3721,7 @@ void FileLinter::ProcessLine(bool is_header_extension,
 typedef std::vector<std::pair<std::string, regex_code>> header_patterns_t;
 
 // Other scripts may reach in and modify this pattern.
-static const header_patterns_t CompileContainingTemplatesPatterns() {
+static header_patterns_t CompileContainingTemplatesPatterns() {
     const std::vector<std::pair<std::string, std::set<std::string>>>
     HEADERS_CONTAINING_TEMPLATES = {
         { "deque", { "deque", } },
@@ -3774,7 +3774,7 @@ static const header_patterns_t CompileContainingTemplatesPatterns() {
 static const header_patterns_t RE_PATTERNS_CONTAINING_TEMPLATES =
     CompileContainingTemplatesPatterns();
 
-static const header_patterns_t CompileMaybeTemplatesPatterns() {
+static header_patterns_t CompileMaybeTemplatesPatterns() {
     const std::vector<std::pair<std::string, std::set<std::string>>>
     HEADERS_MAYBE_TEMPLATES = {
         { "algorithm", { "copy", "max", "min", "min_element", "sort", "transform" } },
@@ -3795,7 +3795,7 @@ static const header_patterns_t RE_PATTERNS_MAYBE_TEMPLATES =
     CompileMaybeTemplatesPatterns();
 
 // Non templated types or global objects
-static const header_patterns_t CompileTypesOrObjsPatterns() {
+static header_patterns_t CompileTypesOrObjsPatterns() {
     const std::vector<std::pair<std::string, std::set<std::string>>>
     HEADERS_TYPES_OR_OBJS = {
         // String and others are special -- it is a non-templatized type in STL.
@@ -3817,7 +3817,7 @@ static const header_patterns_t RE_PATTERNS_TYPES_OR_OBJS =
     CompileTypesOrObjsPatterns();
 
 // Non templated functions
-static const regex_code CompileCstdioPatterns() {
+static regex_code CompileCstdioPatterns() {
     const std::set<std::string> HEADERS_CSTDIO_FUNCTIONS = {
         "fopen", "freopen",
         "fclose", "fflush", "setbuf", "setvbuf", "fread",
@@ -3983,7 +3983,7 @@ void FileLinter::CacheVariables() {
             m_file_extension.size());
     std::string ext = m_file.extension().string();
     if (ext.empty())
-        m_file_extension = "";
+        m_file_extension.clear();
     else
         m_file_extension = &(m_file.extension().string())[1];
     m_all_extensions = m_options.GetAllExtensions();

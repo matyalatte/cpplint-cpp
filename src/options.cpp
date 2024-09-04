@@ -261,7 +261,7 @@ static const char* USAGE[] = {
     "    file is located) and all sub-directories.\n"
 };
 
-void Options::PrintUsage(const std::string& message) {
+void Options::PrintUsage(const std::string& message) const {
     /*Prints a brief usage string and exits, optionally with an error message.
 
     Args:
@@ -276,7 +276,7 @@ void Options::PrintUsage(const std::string& message) {
     std::ostream* ostream = &std::cout;
     int status = 0;
 
-    if (message != "") {
+    if (!message.empty()) {
         ostream = &std::cerr;
         status = 1;
     }
@@ -286,7 +286,7 @@ void Options::PrintUsage(const std::string& message) {
                 USAGE[2] << header_exts_as_list <<
                 USAGE[3] << header_exts_as_opt <<
                 USAGE[4];
-    if (message != "")
+    if (!message.empty())
         *ostream << "\nFATAL ERROR: " << message << "\n";
     exit(status);
 }
@@ -386,7 +386,7 @@ std::vector<fs::path> Options::ParseArguments(int argc, char** argv,
                 PrintUsage("Verbosity should be an integer. (" + opt + ")");
         } else if (opt.starts_with("--filter=")) {
             std::string filters = ArgToValue(opt);
-            if (filters == "")
+            if (filters.empty())
                 PrintCategories();
             bool added = AddFilters(filters);
             if (!added) {
@@ -414,7 +414,7 @@ std::vector<fs::path> Options::ParseArguments(int argc, char** argv,
                 PrintUsage("Line length should be an integer. (" + opt + ")");
         } else if (opt.starts_with("--exclude=")) {
             std::string val = ArgToValue(opt);
-            if (val != "") {
+            if (!val.empty()) {
                 excludes.emplace_back(
                     fs::weakly_canonical(fs::absolute(val)).make_preferred());
             }
@@ -492,7 +492,7 @@ void Options::ProcessHppHeadersOption(const std::string& val) {
 }
 
 void Options::ProcessIncludeOrderOption(const std::string& val) {
-    if (val == "" || val == "default")
+    if (val.empty() || val == "default")
         m_include_order = INCLUDE_ORDER_DEFAULT;
     else if (val == "standardcfirst")
         m_include_order = INCLUDE_ORDER_STDCFIRST;
@@ -546,7 +546,7 @@ static void ExpandDirectoriesRec(const fs::path& root,
     }
 }
 
-std::vector<fs::path> Options::ExpandDirectories(const std::vector<fs::path>& filenames) {
+std::vector<fs::path> Options::ExpandDirectories(const std::vector<fs::path>& filenames) const {
     std::vector<fs::path> filtered = {};
     std::set<std::string> extensions = GetAllExtensions();
     for (const fs::path& f : filenames) {
@@ -624,7 +624,7 @@ class CfgFile {
         line_length(INDEX_NONE),
         extensions({}),
         headers({}),
-        include_order("")
+        include_order()
         {}
 
     bool ReadFile(const fs::path& file, CppLintState* cpplint_state) {
@@ -667,7 +667,7 @@ class CfgFile {
             } else if (name == "headers") {
                 headers = ParseCommaSeparetedList(val);
             } else if (name == "includeorder") {
-                include_order = val;
+                include_order = std::move(val);
             } else {
                 cpplint_state->PrintError(
                     "Invalid configuration option (" + name +
@@ -789,8 +789,8 @@ void Filter::ParseFilterSelector(const std::string& filter) {
     } else if (filter[0] == '-') {
         m_sign = false;
     } else {
-        m_category = "";
-        m_file = "";
+        m_category.clear();
+        m_file.clear();
         m_linenum = INDEX_NONE;
         return;
     }
@@ -798,7 +798,7 @@ void Filter::ParseFilterSelector(const std::string& filter) {
     size_t colon_pos = filter.find(':', 1);
     if (colon_pos == std::string::npos) {
         m_category = filter.substr(1);
-        m_file = "";
+        m_file.clear();
         m_linenum = INDEX_NONE;
         return;
     }

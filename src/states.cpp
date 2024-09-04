@@ -55,12 +55,12 @@ void IncludeState::ResetSection(const std::string& directive) {
     // The name of the current section.
     m_section = INITIAL_SECTION;
     // The path of last found header.
-    m_last_header = "";
+    m_last_header.clear();
 
     // Update list of includes.  Note that we never pop from the
     // include list.
     if (InStrVec({ "if", "ifdef", "ifndef" }, directive))
-        m_include_list.push_back({});
+        m_include_list.emplace_back();
     else if (directive == "else" || directive == "elif")
         m_include_list.back() = {};
 }
@@ -98,21 +98,21 @@ std::string IncludeState::CheckNextIncludeOrder(int header_type) {
         if (m_section <= C_SECTION) {
             m_section = C_SECTION;
         } else {
-            m_last_header = "";
+            m_last_header.clear();
             return error_message;
         }
     } else if (header_type == CPP_SYS_HEADER) {
         if (m_section <= CPP_SECTION) {
             m_section = CPP_SECTION;
         } else {
-            m_last_header = "";
+            m_last_header.clear();
             return error_message;
         }
     } else if (header_type == OTHER_SYS_HEADER) {
         if (m_section <= OTHER_SYS_SECTION) {
             m_section = OTHER_SYS_SECTION;
         } else {
-            m_last_header = "";
+            m_last_header.clear();
             return error_message;
         }
     } else if (header_type == LIKELY_MY_HEADER) {
@@ -134,7 +134,7 @@ std::string IncludeState::CheckNextIncludeOrder(int header_type) {
     }
 
     if (last_section != m_section)
-        m_last_header = "";
+        m_last_header.clear();
 
     return "";
 }
@@ -264,7 +264,7 @@ void NestingState::UpdatePreprocessor(const std::string& line) {
     if (RegexMatch(RE_PATTERN_IF_MACRO, line)) {
         // Beginning of #if block, save the nesting stack here.  The saved
         // stack will allow us to restore the parsing state in the #else case.
-        m_pp_stack.push(PreprocessorInfo(m_stack));
+        m_pp_stack.emplace(m_stack);
     } else if (RegexMatch(RE_PATTERN_ELSE_MACRO, line)) {
         // Beginning of #else block
         if (!m_pp_stack.empty()) {
