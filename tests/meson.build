@@ -14,6 +14,7 @@ test_sources = [
     'string_test.cpp',
     'lines_test.cpp',
     'file_test.cpp',
+    'glob_test.cpp',
 ]
 
 # build tests

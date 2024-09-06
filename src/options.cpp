@@ -13,6 +13,7 @@
 #include <vector>
 #include "cpplint_state.h"
 #include "error_suppressions.h"
+#include "glob_match.h"
 #include "regex_utils.h"
 #include "string_utils.h"
 #include "version.h"
@@ -353,7 +354,7 @@ std::vector<fs::path> Options::ParseArguments(int argc, char** argv,
     bool quiet = cpplint_state->Quiet();
     std::string counting_style = "";
     bool recursive = false;
-    std::vector<fs::path> excludes = {};
+    std::vector<GlobPattern> excludes = {};
     int num_threads = -1;
     m_filters = DEFAULT_FILTERS;
 
@@ -416,7 +417,8 @@ std::vector<fs::path> Options::ParseArguments(int argc, char** argv,
             std::string val = ArgToValue(opt);
             if (val != "") {
                 excludes.emplace_back(
-                    fs::weakly_canonical(fs::absolute(val)).make_preferred());
+                    fs::weakly_canonical(fs::absolute(val)).make_preferred().string(),
+                    true);
             }
         } else if (opt.starts_with("--extensions=")) {
             ProcessExtensionsOption(ArgToValue(opt));
@@ -501,28 +503,21 @@ void Options::ProcessIncludeOrderOption(const std::string& val) {
 }
 
 static bool ShouldBeExcluded(const fs::path& filename,
-                             const std::vector<fs::path>& excludes) {
-    for (const fs::path& exc : excludes) {
-        // TODO(matyalatte): support glob patterns for --exclude
-        if (filename == exc)  // same path
-            return true;
-
-        // Check if exc is a parent path of filename
-        std::string exc_str = exc.string();
-        if (exc_str.back() != fs::path::preferred_separator) {
-            exc_str += fs::path::preferred_separator;
-        }
-        if (StrContain(filename.string(), exc_str))
+                             const std::vector<GlobPattern>& excludes) {
+    std::string file_str = filename.string();
+    for (const GlobPattern& exc : excludes) {
+        // Check if file is the same as (or a child of) a glob pattern
+        if (exc.Match(file_str))
             return true;
     }
     return false;
 }
 
 std::vector<fs::path> Options::FilterExcludedFiles(std::vector<fs::path> filenames,
-                                                   const std::vector<fs::path>& excludes) {
+                                                   const std::vector<GlobPattern>& excludes) {
     // remove matching exclude patterns from m_filenames
     auto new_end = std::remove_if(filenames.begin(), filenames.end(),
-                                  [excludes](const fs::path& f)->bool {
+                                  [&excludes](const fs::path& f)->bool {
                                       return ShouldBeExcluded(f, excludes);
                                   });
     filenames.erase(new_end, filenames.end());
