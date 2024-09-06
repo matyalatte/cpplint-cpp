@@ -161,7 +161,7 @@ STR StrSplitLast(const STR& str) {
     while (!IS_SPACE(*str_p) && str_p >= start)
         str_p--;
 
-    return STR(str_p + 1, end);
+    return STR(str_p + 1, TO_SIZE(end - str_p - 1));
 }
 template std::string StrSplitLast(const std::string& str);
 template std::string_view StrSplitLast(const std::string_view& str);
