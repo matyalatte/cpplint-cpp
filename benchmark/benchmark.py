@@ -1,3 +1,5 @@
+# Script to measure the average execution time for cpplint-cpp and cpplint.py.
+
 import argparse
 import os
 import subprocess
