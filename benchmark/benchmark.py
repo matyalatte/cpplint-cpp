@@ -1,9 +1,11 @@
+# Script to measure the average execution time for cpplint-cpp and cpplint.py.
+
 import argparse
 import os
 import subprocess
 import time
 
-def measure_time(command, repeat_time=30):
+def measure_time(command, repeat_time=60):
     duration = 0
     count = 0
     while(duration < repeat_time):
@@ -30,8 +32,8 @@ def get_args():
                         help="command to run cpplint.py")
     parser.add_argument("--options", default="--recursive --quiet --counting=detailed", type=str,
                         help="options for cpplint")
-    parser.add_argument("--time", default=30, type=int,
-                        help="Minimum measurement time for a command. Default to 30 (sec)")
+    parser.add_argument("--time", default=60, type=int,
+                        help="Minimum measurement time for a command. Default to 60 (sec)")
     return parser.parse_args()
 
 

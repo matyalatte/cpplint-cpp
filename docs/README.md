@@ -21,7 +21,7 @@ pip install cpplint-cpp --no-index --find-links https://matyalatte.github.io/cpp
 
 Here is an analysis of the performance differences between `cpplint-cpp` and `cpplint.py` against two repositories:
 [`googletest`](https://github.com/google/googletest) and `cpplint-cpp`.
-Measurements were taken on an Ubuntu runner with [`benchmark.yml`](../.github/workflows/benchmark.yml).
+Measurements were taken on an Ubuntu runner with [some scripts](BENCHMARK.md).
 
 ### Execution time
 

@@ -1,6 +1,17 @@
 name: Benchmark
 
 on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'include/**'
+      - 'src/**'
+      - 'subprojects/**'
+      - 'meson.build'
+      - 'meson_options.txt'
+      - '.github/workflows/benchmark.yml'
+      - '*.cfg'
   workflow_dispatch:
 
 env:
@@ -36,15 +47,15 @@ jobs:
 
       - name: Lint cpplint-cpp
         run: |
-          python benchmark.py . --cpplint_cpp="./build/cpplint-cpp"
-          sh memory_usage.sh "python cpplint.py" .
-          sh memory_usage.sh "./build/cpplint-cpp" .
+          python ./benchmark/benchmark.py . --cpplint_cpp="./build/cpplint-cpp"
+          sh ./benchmark/memory_usage.sh "./build/cpplint-cpp" .
+          sh ./benchmark/memory_usage.sh "python cpplint.py" .
 
       - name: Lint googletest
         run: |
-          python benchmark.py ../googletest-${{ env.GTEST_VER }} --cpplint_cpp="./build/cpplint-cpp"
-          sh memory_usage.sh "python cpplint.py" ../googletest-${{ env.GTEST_VER }}
-          sh memory_usage.sh "./build/cpplint-cpp" ../googletest-${{ env.GTEST_VER }}
+          python ./benchmark/benchmark.py ../googletest-${{ env.GTEST_VER }} --cpplint_cpp="./build/cpplint-cpp"
+          sh ./benchmark/memory_usage.sh "./build/cpplint-cpp" ../googletest-${{ env.GTEST_VER }}
+          sh ./benchmark/memory_usage.sh "python cpplint.py" ../googletest-${{ env.GTEST_VER }}
 
       - name: Check required GLIBC version
         run: bash .github/workflows/check_glibc_compatibility.sh ./build/cpplint-cpp
