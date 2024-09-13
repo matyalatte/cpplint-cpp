@@ -7,11 +7,10 @@ on:
     paths:
       - 'include/**'
       - 'src/**'
-      - 'tests/**'
       - 'subprojects/**'
       - 'meson.build'
       - 'meson_options.txt'
-      - '.github/workflows/ci.yml'
+      - '.github/workflows/benchmark.yml'
       - '*.cfg'
   workflow_dispatch:
 
