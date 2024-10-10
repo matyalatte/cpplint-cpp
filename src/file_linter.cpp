@@ -894,6 +894,8 @@ void FileLinter::CheckTrailingSemicolon(const CleansedLines& clean_lines,
                 RegexCompile(R"(\b(?:struct|union)\s+alignas\s*$)");
             static const regex_code RE_PATTERN_DECLTYPE =
                 RegexCompile(R"(\bdecltype$)");
+            static const regex_code RE_PATTERN_REQUIRES =
+                RegexCompile(R"(\brequires.*$)");
             static const regex_code RE_PATTERN_INCOP =
                 RegexCompile(R"(\s+=\s*$)");
             if ((macro && !InStrVec({
@@ -905,6 +907,7 @@ void FileLinter::CheckTrailingSemicolon(const CleansedLines& clean_lines,
                                 GetMatchStrView(func_m, line_prefix, 1))) ||
                     RegexSearch(RE_PATTERN_ALIGNAS, line_prefix) ||
                     RegexSearch(RE_PATTERN_DECLTYPE, line_prefix) ||
+                    RegexSearch(RE_PATTERN_REQUIRES, line_prefix) ||
                     RegexSearch(RE_PATTERN_INCOP, line_prefix)) {
                 match = false;
             }
