@@ -18,7 +18,8 @@ class LinesLinterTest : public ::testing::Test {
 
     void SetUp() override {
         filename = "test/test.cpp";
-        ResetFilters("-legal/copyright,-whitespace/ending_newline,+build/include_alpha");
+        ResetFilters("-legal/copyright,-whitespace/ending_newline,"
+                     "+build/include_alpha,+readability/fn_size");
     }
 
     void TearDown() override {
