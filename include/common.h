@@ -1,6 +1,7 @@
 #pragma once
 #include <cctype>
 #include <string>
+#include <cstdint>
 
 // You can suppress warnings about unused variables with this macro.
 #define UNUSED(x) (void)(x)
