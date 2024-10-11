@@ -4059,21 +4059,21 @@ void FileLinter::ProcessFile() {
     std::vector<size_t> null_lines = {};
     std::vector<std::string> lines = {};
 
-    if (StrIsChar(m_filename, '-')) {
-        // TODO(matyalatte): support stdin code
-        /*
-        lines = codecs.StreamReaderWriter(sys.stdin,
-                                        codecs.getreader('utf8'),
-                                        codecs.getwriter('utf8'),
-                                        'replace').read().split('\n');
-        */
-        m_cpplint_state->PrintError("Skipping input \"-\": stdin is unsupported yet.\n");
-        return;
-    } else {
-        std::ifstream file(m_file, std::ios::binary);
-        if (!file) {
-            m_cpplint_state->PrintError(
-                "Skipping input '" + m_filename + "': Can't open for reading\n");
+    {
+        std::istream* stream;
+        std::ifstream file;
+        if (StrIsChar(m_filename, '-')) {
+            // Read from stdin
+            stream = &std::cin;
+        } else {
+            // Read from a file
+            file = std::ifstream(m_file, std::ios::binary);
+            if (!file) {
+                m_cpplint_state->PrintError(
+                    "Skipping input '" + m_filename + "': Can't open for reading\n");
+                return;
+            }
+            stream = &file;
         }
 
         // insert a comment line at the beginning of file.
@@ -4085,7 +4085,7 @@ void FileLinter::ProcessFile() {
         buffer.resize(120);
         // Note: We can't use getline cause it trims NUL bytes and a linefeed at EOF.
         while ((status & LINE_EOF) == 0) {
-            std::string line = GetLine(file, &buffer, &status);
+            std::string line = GetLine(*stream, &buffer, &status);
             if (!line.empty() && line.back() == '\r') {
                 // line ends with \r.
                 crlf_lines.push_back(linenum);

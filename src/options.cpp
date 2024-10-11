@@ -452,7 +452,8 @@ std::vector<fs::path> Options::ParseArguments(int argc, char** argv,
     std::vector<fs::path> filenames = {};
     for (; argp < argv + argc; argp++) {
         fs::path p = argp[0];
-        if (!fs::exists(p)) {
+        // Note: "-" is an alias for "read from stdin"
+        if (p != "-" && !fs::exists(p)) {
             // TODO(unknown): Maybe make this have an exit code of 2 after all is done
             cpplint_state->PrintError("Skipping input '" + p.string() + "': Path not found.");
             continue;
@@ -504,6 +505,10 @@ void Options::ProcessIncludeOrderOption(const std::string& val) {
 
 static bool ShouldBeExcluded(const fs::path& filename,
                              const std::vector<GlobPattern>& excludes) {
+    if (filename == "-") {
+        // "-" is an alias for "read from stdin"
+        return false;
+    }
     std::string file_str = filename.string();
     for (const GlobPattern& exc : excludes) {
         // Check if file is the same as (or a child of) a glob pattern
@@ -545,6 +550,11 @@ std::vector<fs::path> Options::ExpandDirectories(const std::vector<fs::path>& fi
     std::vector<fs::path> filtered = {};
     std::set<std::string> extensions = GetAllExtensions();
     for (const fs::path& f : filenames) {
+        if (f == "-") {
+            // "-" is an alias for "read from stdin"
+            filtered.emplace_back(f);
+            continue;
+        }
         ExpandDirectoriesRec(f, filtered, extensions);
     }
     return filtered;
