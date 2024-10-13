@@ -45,6 +45,7 @@ class Filter {
 // All entries here should start with a '-' or '+', as in the --filter= flag.
 const std::vector<Filter> DEFAULT_FILTERS = {
     Filter("-build/include_alpha"),
+    Filter("-readability/fn_size"),
 };
 
 enum : int {
