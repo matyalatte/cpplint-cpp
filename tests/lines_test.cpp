@@ -731,6 +731,25 @@ TEST_F(LinesLinterTest, TrailingSemicolonPass) {
         "func = []() {",
         "    func();",
         "};",
+        "file_tocs_[i] = (FileToc) {a, b, c};",
+        "class X : public Y,", "public Z {};",
+    });
+    EXPECT_EQ(0, cpplint_state.ErrorCount());
+}
+
+TEST_F(LinesLinterTest, TrailingSemicolonWithConceptPass) {
+    ProcessLines({
+        "#include <algorithm>",
+        "template<typename T>",
+        "concept C = requires(T a, T b) {",
+        "    requires a == b;",
+        "};",
+        "template <typename T, typename U>",
+        "concept C = (std::integral<T> || std::floating_point<T>) &&",
+        "            (std::integral<U> || std::floating_point<U>) &&",
+        "            requires(T t, U u) {",
+        "    std::min(static_cast<float>(t), static_cast<float>(u));",
+        "};",
     });
     EXPECT_EQ(0, cpplint_state.ErrorCount());
 }
