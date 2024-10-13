@@ -255,7 +255,7 @@ class FileLinter {
     Checks rules from the 'C++ language rules' section of cppguide.html.
 
     Some of these rules are hard to test (function overloading, using
-    uint32 inappropriately), but we do the best we can.
+    uint32_t inappropriately), but we do the best we can.
     */
     void CheckLanguage(const CleansedLines& clean_lines,
                        const std::string& elided_line, size_t linenum,

@@ -2231,9 +2231,9 @@ TEST_F(LinesLinterTest, CastCstyleFail) {
         "int a = (int)1.0;",
         "int a = (int)-1.0;",
         "int *a = (int *)NULL;",
-        "uint16 a = (uint16)1.0;",
-        "int32 a = (int32)1.0;",
-        "uint64 a = (uint64)1.0;",
+        "uint16_t a = (uint16_t)1.0;",
+        "int32_t a = (int32_t)1.0;",
+        "uint64_t a = (uint64_t)1.0;",
         "size_t a = (size_t)1.0;",
         "char *a = (char *) \"foo\";",
     });
@@ -2251,13 +2251,13 @@ TEST_F(LinesLinterTest, CastCstyleFail) {
         "Using C-style cast.  Use reinterpret_cast<int *>(...) instead"
         "  [readability/casting] [4]\n"
         "test/test.cpp:4:  "
-        "Using C-style cast.  Use static_cast<uint16>(...) instead"
+        "Using C-style cast.  Use static_cast<uint16_t>(...) instead"
         "  [readability/casting] [4]\n"
         "test/test.cpp:5:  "
-        "Using C-style cast.  Use static_cast<int32>(...) instead"
+        "Using C-style cast.  Use static_cast<int32_t>(...) instead"
         "  [readability/casting] [4]\n"
         "test/test.cpp:6:  "
-        "Using C-style cast.  Use static_cast<uint64>(...) instead"
+        "Using C-style cast.  Use static_cast<uint64_t>(...) instead"
         "  [readability/casting] [4]\n"
         "test/test.cpp:7:  "
         "Using C-style cast.  Use static_cast<size_t>(...) instead"
@@ -2274,8 +2274,8 @@ TEST_F(LinesLinterTest, CastDeprecatedPass) {
         "int a = int();",
         "X::X() : a(int()) {}",
         "operator bool();",
-        "new int64(123);",
-        "new   int64(123);",
+        "new int64_t(123);",
+        "new   int64_t(123);",
         "new const int(42);",
         "using a = bool(int arg);",
         "x = bit_cast<double(*)[3]>(y);",
@@ -2297,7 +2297,7 @@ TEST_F(LinesLinterTest, CastDeprecatedPass) {
         "typedef bool(MyClass::*MemberFunctionPointer)() const;",
         "void Function(bool(FunctionPointerArg)());",
         "void Function(bool(FunctionPointerArg)()) {}",
-        "typedef set<int64, bool(*)(int64, int64)> SortedIdSet",
+        "typedef set<int64_t, bool(*)(int64_t, int64_t)> SortedIdSet",
         "bool TraverseNode(T *Node, bool(VisitorBase:: *traverse) (T *t)) {}",
     });
     EXPECT_EQ(0, cpplint_state.ErrorCount());
@@ -2660,7 +2660,7 @@ TEST_F(LinesLinterTest, IntPortFail) {
 TEST_F(LinesLinterTest, IntDeclarationPass) {
     ProcessLines({
         "long double b = 65.0;",
-        "int64 a = 65;",
+        "int64_t a = 65;",
     });
     EXPECT_EQ(0, cpplint_state.ErrorCount());
 }
@@ -2674,10 +2674,10 @@ TEST_F(LinesLinterTest, IntDeclarationFail) {
     EXPECT_EQ(2, cpplint_state.ErrorCount("runtime/int"));
     const char* expected =
         "test/test.cpp:1:  "
-        "Use int16/int64/etc, rather than the C type long"
+        "Use int16_t/int64_t/etc, rather than the C type long"
         "  [runtime/int] [4]\n"
         "test/test.cpp:2:  "
-        "Use int16/int64/etc, rather than the C type long"
+        "Use int16_t/int64_t/etc, rather than the C type long"
         "  [runtime/int] [4]\n";
     EXPECT_ERROR_STR(expected);
 }
@@ -3257,7 +3257,7 @@ TEST_F(LinesLinterTest, StorageClass) {
         "const int static foo = 5;",
         "char static foo;",
         "double const static foo = 2.0;",
-        "uint64 typedef unsigned_long_long;",
+        "uint64_t typedef unsigned_long_long;",
         "int register foo = 0;"
     });
     EXPECT_EQ(5, cpplint_state.ErrorCount());
@@ -3855,11 +3855,11 @@ TEST_F(LinesLinterTest, NolintBlockPass) {
 TEST_F(LinesLinterTest, NolintBlockSuppressAll) {
     ProcessLines({
         "// NOLINTBEGIN",
-        "long a = (int64) 65;",
-        "long a = (int64) 65;",
-        "long a = (int64) 65;",
-        "long a = (int64) 65;",
-        "long a = (int64) 65;",
+        "long a = (int64_t) 65;",
+        "long a = (int64_t) 65;",
+        "long a = (int64_t) 65;",
+        "long a = (int64_t) 65;",
+        "long a = (int64_t) 65;",
     });
     EXPECT_EQ(0, cpplint_state.ErrorCount());
 }
@@ -3867,12 +3867,12 @@ TEST_F(LinesLinterTest, NolintBlockSuppressAll) {
 TEST_F(LinesLinterTest, NolintBlockSuppressAllInBlock) {
     ProcessLines({
         "// NOLINTBEGIN",
-        "long a = (int64) 65;",
-        "long a = (int64) 65;",
-        "long a = (int64) 65;",
-        "long a = (int64) 65;",
+        "long a = (int64_t) 65;",
+        "long a = (int64_t) 65;",
+        "long a = (int64_t) 65;",
+        "long a = (int64_t) 65;",
         "// NOLINTEND",
-        "long a = (int64) 65;",
+        "long a = (int64_t) 65;",
     });
     EXPECT_EQ(2, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("readability/casting"));
@@ -3947,14 +3947,14 @@ TEST_F(LinesLinterTest, NolintUnknownCategory) {
 
 TEST_F(LinesLinterTest, NolintLineSuppressAll) {
     ProcessLines({
-        "long a = (int64) 65;  // NOLINT(*)",
+        "long a = (int64_t) 65;  // NOLINT(*)",
     });
     EXPECT_EQ(0, cpplint_state.ErrorCount());
 }
 
 TEST_F(LinesLinterTest, NolintLineSuppressOneCategory) {
     ProcessLines({
-        "long a = (int64) 65;  // NOLINT(runtime/int)",
+        "long a = (int64_t) 65;  // NOLINT(runtime/int)",
     });
     EXPECT_EQ(1, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("readability/casting"));
@@ -3963,8 +3963,8 @@ TEST_F(LinesLinterTest, NolintLineSuppressOneCategory) {
 TEST_F(LinesLinterTest, NolintNextLine) {
     ProcessLines({
         "// NOLINTNEXTLINE",
-        "long a = (int64) 65;",
-        "long a = (int64) 65;",
+        "long a = (int64_t) 65;",
+        "long a = (int64_t) 65;",
     });
     EXPECT_EQ(2, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("readability/casting"));
@@ -3975,8 +3975,8 @@ TEST_F(LinesLinterTest, LintCFile) {
     ProcessLines({
         // This suppress readability/casting
         "// LINT_C_FILE",
-        "long a = (int64) 65;",
-        "long a = (int64) 65;",
+        "long a = (int64_t) 65;",
+        "long a = (int64_t) 65;",
     });
     EXPECT_EQ(2, cpplint_state.ErrorCount());
     EXPECT_EQ(2, cpplint_state.ErrorCount("runtime/int"));
@@ -3987,8 +3987,8 @@ TEST_F(LinesLinterTest, LintCFileMultiline) {
         // This suppress readability/casting
         "/* LINT_C_FILE",
         "*/",
-        "long a = (int64) 65;",
-        "long a = (int64) 65;",
+        "long a = (int64_t) 65;",
+        "long a = (int64_t) 65;",
     });
     EXPECT_EQ(2, cpplint_state.ErrorCount());
     EXPECT_EQ(2, cpplint_state.ErrorCount("runtime/int"));
@@ -3998,8 +3998,8 @@ TEST_F(LinesLinterTest, VimMode) {
     ProcessLines({
         // This suppress readability/casting
         "// vim: sw=8 filetype=c ts=8",
-        "long a = (int64) 65;",
-        "long a = (int64) 65;",
+        "long a = (int64_t) 65;",
+        "long a = (int64_t) 65;",
     });
     EXPECT_EQ(2, cpplint_state.ErrorCount());
     EXPECT_EQ(2, cpplint_state.ErrorCount("runtime/int"));
@@ -4009,8 +4009,8 @@ TEST_F(LinesLinterTest, VimMode2) {
     ProcessLines({
         // This suppresses readability/casting
         "// vi: sw=8 filetype=c ts=8",
-        "long a = (int64) 65;",
-        "long a = (int64) 65;",
+        "long a = (int64_t) 65;",
+        "long a = (int64_t) 65;",
     });
     EXPECT_EQ(2, cpplint_state.ErrorCount());
     EXPECT_EQ(2, cpplint_state.ErrorCount("runtime/int"));
@@ -4021,7 +4021,7 @@ TEST_F(LinesLinterTest, LintKernelFile) {
         // This suppresses whitespace/tab
         "// LINT_KERNEL_FILE",
         "\t\tint a = 0;",
-        "\t\tlong a = (int64) 65;",
+        "\t\tlong a = (int64_t) 65;",
     });
     EXPECT_EQ(2, cpplint_state.ErrorCount());
     EXPECT_EQ(1, cpplint_state.ErrorCount("readability/casting"));

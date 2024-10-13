@@ -2517,7 +2517,7 @@ void FileLinter::CheckCasts(const CleansedLines& clean_lines,
     // probably a member operator declaration or default constructor.
     static const regex_code RE_PATTERN_CAST =
         RegexJitCompile(R"((\bnew\s+(?:const\s+)?|\S<\s*(?:const\s+)?)?\b)"
-                        R"((int|float|double|bool|char|int32|uint32|int64|uint64))"
+                        R"((int|float|double|bool|char|int16_t|uint16_t|int32_t|uint32_t|int64_t|uint64_t))"
                         R"((\([^)].*))");
     bool match = RegexJitSearch(RE_PATTERN_CAST, line, m_re_result);
     bool expecting_function = ExpectingFunctionArgs(clean_lines, elided_line, linenum);
@@ -2565,7 +2565,7 @@ void FileLinter::CheckCasts(const CleansedLines& clean_lines,
 
     if (!expecting_function) {
         static const regex_code RE_PATTERN_STATIC_CAST =
-            RegexCompile(R"(\((int|float|double|bool|char|u?int(16|32|64)|size_t)\))");
+            RegexCompile(R"(\((int|float|double|bool|char|u?int(16|32|64)_t|size_t)\))");
         CheckCStyleCast(clean_lines,
                         elided_line, linenum, "static_cast",
                         RE_PATTERN_STATIC_CAST);
@@ -2866,7 +2866,7 @@ void FileLinter::CheckLanguage(const CleansedLines& clean_lines,
         match = RegexSearch(RE_PATTERN_CINT, line, m_re_result);
         if (match) {
             Error(linenum, "runtime/int", 4,
-                  "Use int16/int64/etc, rather than the C type " +
+                  "Use int16_t/int64_t/etc, rather than the C type " +
                   GetMatchStr(m_re_result, line, 1));
         }
     }
@@ -3355,7 +3355,7 @@ void FileLinter::CheckForNonStandardConstructs(const CleansedLines& clean_lines,
     static const regex_code RE_PATTERN_STORAGE_CLASS =
         RegexJitCompile(R"(\b(const|volatile|void|char|short|int|long)"
                      "|float|double|signed|unsigned"
-                     "|schar|u?int8|u?int16|u?int32|u?int64)"
+                     "|schar|u?int8_t|u?int16_t|u?int32_t|u?int64_t)"
                      R"(\s+(register|static|extern|typedef)\b)");
     if (RegexJitSearch(RE_PATTERN_STORAGE_CLASS, elided)) {
         Error(linenum, "build/storage_class", 5,
