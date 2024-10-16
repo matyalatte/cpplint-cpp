@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-BSD_3--Clause-green.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
-C++ reimplementation of [cpplint 1.7](https://github.com/cpplint/cpplint/tree/ab7335bcc734f6d21226631060888bfb77bbc9d7)
+C++ reimplementation of [cpplint 2.0](https://github.com/cpplint/cpplint/tree/2.0.0)
 
 ## What is cpplint?
 

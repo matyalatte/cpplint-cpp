@@ -38,7 +38,7 @@ jobs:
       - name: Copy gooletest, Download cpplint.py
         run: |
           cp -r subprojects/googletest-${{ env.GTEST_VER }} ../
-          curl -O https://raw.githubusercontent.com/cpplint/cpplint/ab7335bcc734f6d21226631060888bfb77bbc9d7/cpplint.py
+          curl -O https://raw.githubusercontent.com/cpplint/cpplint/refs/tags/2.0.0/cpplint.py
 
       - name: Show CPU info
         run: |
