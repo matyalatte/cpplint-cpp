@@ -29,8 +29,8 @@ You can see `cpplint-cpp` has significantly better performance, being over 30 ti
 
 |             | googletest-1.14.0 (s) | cpplint-cpp (s) |
 | ----------- | --------------------- | --------------- |
-| cpplint-cpp | 0.443100              | 0.090062        |
-| cpplint.py  | 25.826862             | 3.865572        |
+| cpplint-cpp | 0.439020              | 0.092547        |
+| cpplint.py  | 21.639285             | 3.782867        |
 
 ### Memory usage
 
@@ -38,8 +38,8 @@ Despite using multithreading with 4 cores, `cpplint-cpp` has lower memory usage 
 
 |             | googletest-1.14.0 | cpplint-cpp |
 | ----------- | ----------------- | ----------- |
-| cpplint-cpp | 15.55 MiB         | 10.32 MiB   |
-| cpplint.py  | 23.01 MiB         | 22.43 MiB   |
+| cpplint-cpp | 15.46 MiB         | 10.45 MiB   |
+| cpplint.py  | 23.08 MiB         | 22.57 MiB   |
 
 ## Changes from cpplint.py
 
