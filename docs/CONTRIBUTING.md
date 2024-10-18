@@ -7,7 +7,7 @@ cpplint-cpp is an open-source project that warmly welcomes contributions. We app
 The following types of changes are not acceptable. Before you start contributing, ensure that your work does not involve the following:
 
 - Adding support for new coding rules that cpplint.py does not support.
-- Breaking compatibility with [cpplint.py 1.7](https://github.com/cpplint/cpplint/tree/ab7335bcc734f6d21226631060888bfb77bbc9d7).
+- Breaking compatibility with [cpplint.py 2.0](https://github.com/cpplint/cpplint/tree/2.0.0).
 - Making extensive algorithm changes that would make it difficult for cpplint.py users to read the source code.
 - Implementing platform-specific optimizations (e.g., using SIMD extensions).
 
@@ -38,7 +38,7 @@ cpplint-cpp should maintain compatibility with cpplint.py. For the same file, th
 
 No merge request may be merged until it passes the following code checks:
 
-- Linting by cpplint.py 1.7 (or cpplint-cpp)
+- Linting by cpplint.py 2.0 (or cpplint-cpp)
 - Typo check by [codespell](https://github.com/codespell-project/codespell)
 - Unit tests with `meson test -C build`
 

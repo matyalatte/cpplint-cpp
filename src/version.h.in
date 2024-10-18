@@ -6,7 +6,7 @@
 #define CPPLINT_VERSION "@VERSION@"
 
 // Version of cpplint.py
-#define ORIGINAL_VERSION "1.7"
+#define ORIGINAL_VERSION "2.0"
 
 // Platform tag for pip
 #define PLATFORM_TAG "@PLATFORM_TAG@"
