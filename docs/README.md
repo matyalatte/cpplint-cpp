@@ -57,10 +57,8 @@ Basically, `cpplint-cpp` uses the same algorithm as `cpplint.py`, but some chang
 
 cpplint-cpp is a WIP project. Please note that the following features are not implemented yet.
 
-- Glob patterns for `--exclude` option.
 - JUnit style outputs.
 - Multibyte characters in stdin on Windows.
-- UNIX convention of using "-" for stdin.
 
 ## Building
 
